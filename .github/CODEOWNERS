@@ -1,0 +1,17 @@
+# 기본 소유자는 TaeHeeKim98입니다.
+# 담당자가 변경되면 서비스별 소유자를 추가하거나 교체합니다.
+
+*                              @TaeHeeKim98
+
+/.github/                      @TaeHeeKim98 @yonghyun0325
+/infrastructure/              @TaeHeeKim98 @yonghyun0325
+/eureka-server/               @TaeHeeKim98 @yonghyun0325
+/config-server/               @TaeHeeKim98 @yonghyun0325
+/api-gateway/                 @TaeHeeKim98 @nadaasw @yonghyun0325
+/config-repository/           @TaeHeeKim98 @nadaasw @poppq03 @yunseok36 @soyul9280 @yonghyun0325
+/hub-service/                 @poppq03 @yonghyun0325
+/company-service/             @yunseok36 @yonghyun0325
+/user-service/                @nadaasw @yonghyun0325
+/order-service/               @TaeHeeKim98 @nadaasw @yonghyun0325
+/delivery-service/            @soyul9280 @yonghyun0325
+/ai-notification-service/     @yonghyun0325
