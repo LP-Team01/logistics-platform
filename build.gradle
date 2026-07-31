@@ -7,6 +7,7 @@ plugins {
 ext {
     springCloudVersion = '2025.0.0'
     springAiVersion = '1.1.8'
+    springdocVersion = '2.8.17'
 }
 
 allprojects {
