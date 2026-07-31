@@ -1,13 +1,86 @@
+# Gradle
 .gradle/
 **/build/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+!gradle/wrapper/gradle-wrapper.jar
+hs_err_pid*
+replay_pid*
+
+# IntelliJ IDEA
 .idea/
+*.iws
 *.iml
-.vscode/
-.env
-*.log
-logs/
+*.ipr
 out/
+
+# Eclipse / STS
+.apt_generated/
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+bin/
+
+# VS Code
+.vscode/
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# OS
 .DS_Store
 Thumbs.db
-**/application-secret.yml
-**/application-local-secret.yml
+Desktop.ini
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!.env.rds.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+
+# Local Spring configuration
+application-local.yml
+application-local.yaml
+application-local.properties
+*-local.yml
+*-local.yaml
+
+# Logs and runtime files
+*.log
+logs/
+*.pid
+*.hprof
+
+# Docker local overrides and persistent data
+docker-compose.override.yml
+infrastructure/data/
+infrastructure/volumes/
+
+# Local tooling and AI assistant files
+work/
+.codex/
+.agents/
+CLAUDE.md
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~

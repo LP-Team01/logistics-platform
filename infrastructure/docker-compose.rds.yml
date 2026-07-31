@@ -1,0 +1,52 @@
+# RDS overlay: excludes the local PostgreSQL container and makes its dependency optional.
+# Usage:
+# docker compose --env-file .env \
+#   -f infrastructure/docker-compose.yml \
+#   -f infrastructure/docker-compose.rds.yml up --build -d
+
+services:
+  postgres:
+    profiles: [local-postgres]
+
+  user-service:
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_healthy
+
+  hub-service:
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_healthy
+
+  company-service:
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_healthy
+
+  order-service:
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+
+  delivery-service:
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+
+  ai-notification-service:
+    profiles: [ai]
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false

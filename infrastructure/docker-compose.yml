@@ -9,6 +9,9 @@ x-app-common: &app-common
     CONFIG_SERVER_URL: http://config-server:8888
     POSTGRES_USER: ${POSTGRES_USER:-logistics}
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-logistics}
+    POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+    POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+    POSTGRES_SSL_MODE: ${POSTGRES_SSL_MODE:-disable}
     REDIS_HOST: redis
     REDIS_PORT: 6379
 
@@ -35,7 +38,7 @@ services:
     image: redis:7.4-alpine
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "6379:6379"
+      - "${REDIS_HOST_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -66,6 +69,7 @@ services:
       args: { SERVICE: config-server }
     environment:
       <<: *common-environment
+      SPRING_PROFILES_ACTIVE: native
       CONFIG_SEARCH_LOCATION: file:/config
     volumes:
       - ../config-repository:/config:ro
@@ -90,7 +94,7 @@ services:
     build: { context: .., dockerfile: infrastructure/Dockerfile, args: { SERVICE: user-service } }
     environment:
       <<: *common-environment
-      DB_URL: jdbc:postgresql://postgres:5432/user_db
+      DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/user_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8081:8081"]
     depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
 
@@ -99,7 +103,7 @@ services:
     build: { context: .., dockerfile: infrastructure/Dockerfile, args: { SERVICE: hub-service } }
     environment:
       <<: *common-environment
-      DB_URL: jdbc:postgresql://postgres:5432/hub_db
+      DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/hub_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8082:8082"]
     depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
 
@@ -108,7 +112,7 @@ services:
     build: { context: .., dockerfile: infrastructure/Dockerfile, args: { SERVICE: company-service } }
     environment:
       <<: *common-environment
-      DB_URL: jdbc:postgresql://postgres:5432/company_db
+      DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/company_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8083:8083"]
     depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
 
@@ -117,7 +121,7 @@ services:
     build: { context: .., dockerfile: infrastructure/Dockerfile, args: { SERVICE: order-service } }
     environment:
       <<: *common-environment
-      DB_URL: jdbc:postgresql://postgres:5432/order_db
+      DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/order_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8084:8084"]
     depends_on: { postgres: { condition: service_healthy } }
 
@@ -126,7 +130,7 @@ services:
     build: { context: .., dockerfile: infrastructure/Dockerfile, args: { SERVICE: delivery-service } }
     environment:
       <<: *common-environment
-      DB_URL: jdbc:postgresql://postgres:5432/delivery_db
+      DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/delivery_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8085:8085"]
     depends_on: { postgres: { condition: service_healthy } }
 
@@ -135,7 +139,7 @@ services:
     build: { context: .., dockerfile: infrastructure/Dockerfile, args: { SERVICE: ai-notification-service } }
     environment:
       <<: *common-environment
-      DB_URL: jdbc:postgresql://postgres:5432/ai_db
+      DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/ai_db?sslmode=${POSTGRES_SSL_MODE:-disable}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_CHAT_MODEL: ${GEMINI_CHAT_MODEL:-gemini-2.5-flash}
       GEMINI_EMBEDDING_MODEL: ${GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
