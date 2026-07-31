@@ -1,0 +1,19 @@
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+        mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
+    }
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    implementation 'org.springframework.kafka:spring-kafka'
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+    implementation 'org.springframework.cloud:spring-cloud-starter-config'
+    implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
+    implementation 'org.springframework.ai:spring-ai-starter-model-google-genai-embedding'
+    implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
+    runtimeOnly 'org.postgresql:postgresql'
+}

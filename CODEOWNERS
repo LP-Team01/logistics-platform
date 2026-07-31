@@ -1,0 +1,12 @@
+# GitHub 사용자 ID가 확정되면 각 경로의 담당자를 교체합니다.
+/infrastructure/              @infra-owner
+/eureka-server/               @infra-owner
+/config-server/               @infra-owner
+/api-gateway/                 @infra-owner
+/config-repository/           @infra-owner
+/hub-service/                 @hub-owner
+/company-service/             @company-owner
+/user-service/                @user-order-owner
+/order-service/               @user-order-owner
+/delivery-service/            @delivery-owner
+/ai-notification-service/     @ai-owner

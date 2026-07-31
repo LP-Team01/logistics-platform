@@ -1,0 +1,30 @@
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: user-service
+              uri: lb://user-service
+              predicates:
+                - Path=/api/auth/**,/api/users/**
+            - id: hub-service
+              uri: lb://hub-service
+              predicates:
+                - Path=/api/hubs/**,/api/hub-routes/**
+            - id: company-service
+              uri: lb://company-service
+              predicates:
+                - Path=/api/companies/**,/api/products/**
+            - id: order-service
+              uri: lb://order-service
+              predicates:
+                - Path=/api/orders/**
+            - id: delivery-service
+              uri: lb://delivery-service
+              predicates:
+                - Path=/api/deliveries/**,/api/delivery-persons/**
+            - id: ai-notification-service
+              uri: lb://ai-notification-service
+              predicates:
+                - Path=/api/ai/**,/api/slack/**

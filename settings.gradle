@@ -1,0 +1,11 @@
+rootProject.name = 'logistics-platform'
+
+include 'eureka-server'
+include 'config-server'
+include 'api-gateway'
+include 'user-service'
+include 'hub-service'
+include 'company-service'
+include 'order-service'
+include 'delivery-service'
+include 'ai-notification-service'

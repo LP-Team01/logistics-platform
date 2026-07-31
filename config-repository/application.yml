@@ -1,0 +1,17 @@
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+spring:
+  jackson:
+    time-zone: Asia/Seoul
+
+logging:
+  pattern:
+    correlation: '[%X{requestId:-}] '

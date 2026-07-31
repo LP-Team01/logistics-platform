@@ -1,0 +1,27 @@
+server.port: 8086
+spring:
+  application.name: ai-notification-service
+  config.import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/ai_db}
+    username: ${POSTGRES_USER:logistics}
+    password: ${POSTGRES_PASSWORD:logistics}
+  ai:
+    model:
+      chat: ${AI_CHAT_PROVIDER:none}
+      embedding: ${AI_EMBEDDING_PROVIDER:none}
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY:}
+        chat.model: ${GEMINI_CHAT_MODEL:gemini-2.5-flash}
+        embedding.text.options.model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
+    vectorstore:
+      pgvector:
+        initialize-schema: false
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+app.kafka.enabled: ${KAFKA_ENABLED:false}
+eureka.client.service-url.defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+management.endpoints.web.exposure.include: health,info

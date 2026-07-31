@@ -1,0 +1,156 @@
+name: logistics-platform
+
+x-app-common: &app-common
+  restart: unless-stopped
+  networks: [logistics]
+  environment: &common-environment
+    SPRING_PROFILES_ACTIVE: local
+    EUREKA_URL: http://eureka-server:8761/eureka
+    CONFIG_SERVER_URL: http://config-server:8888
+    POSTGRES_USER: ${POSTGRES_USER:-logistics}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-logistics}
+    REDIS_HOST: redis
+    REDIS_PORT: 6379
+    KAFKA_ENABLED: ${KAFKA_ENABLED:-false}
+    KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-logistics}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-logistics}
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-logistics} -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [logistics]
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [logistics]
+
+  eureka-server:
+    <<: *app-common
+    build:
+      context: ..
+      dockerfile: infrastructure/Dockerfile
+      args: { SERVICE: eureka-server }
+    ports: ["8761:8761"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  config-server:
+    <<: *app-common
+    build:
+      context: ..
+      dockerfile: infrastructure/Dockerfile
+      args: { SERVICE: config-server }
+    environment:
+      <<: *common-environment
+      CONFIG_SEARCH_LOCATION: file:/config
+    volumes:
+      - ../config-repository:/config:ro
+    ports: ["8888:8888"]
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  api-gateway:
+    <<: *app-common
+    build:
+      context: ..
+      dockerfile: infrastructure/Dockerfile
+      args: { SERVICE: api-gateway }
+    ports: ["8080:8080"]
+    depends_on:
+      config-server:
+        condition: service_started
+
+  user-service:
+    <<: *app-common
+    build: { context: .., dockerfile: infrastructure/Dockerfile, args: { SERVICE: user-service } }
+    environment:
+      <<: *common-environment
+      DB_URL: jdbc:postgresql://postgres:5432/user_db
+    ports: ["8081:8081"]
+    depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
+
+  hub-service:
+    <<: *app-common
+    build: { context: .., dockerfile: infrastructure/Dockerfile, args: { SERVICE: hub-service } }
+    environment:
+      <<: *common-environment
+      DB_URL: jdbc:postgresql://postgres:5432/hub_db
+    ports: ["8082:8082"]
+    depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
+
+  company-service:
+    <<: *app-common
+    build: { context: .., dockerfile: infrastructure/Dockerfile, args: { SERVICE: company-service } }
+    environment:
+      <<: *common-environment
+      DB_URL: jdbc:postgresql://postgres:5432/company_db
+    ports: ["8083:8083"]
+    depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
+
+  order-service:
+    <<: *app-common
+    build: { context: .., dockerfile: infrastructure/Dockerfile, args: { SERVICE: order-service } }
+    environment:
+      <<: *common-environment
+      DB_URL: jdbc:postgresql://postgres:5432/order_db
+    ports: ["8084:8084"]
+    depends_on: { postgres: { condition: service_healthy } }
+
+  delivery-service:
+    <<: *app-common
+    build: { context: .., dockerfile: infrastructure/Dockerfile, args: { SERVICE: delivery-service } }
+    environment:
+      <<: *common-environment
+      DB_URL: jdbc:postgresql://postgres:5432/delivery_db
+    ports: ["8085:8085"]
+    depends_on: { postgres: { condition: service_healthy } }
+
+  ai-notification-service:
+    <<: *app-common
+    build: { context: .., dockerfile: infrastructure/Dockerfile, args: { SERVICE: ai-notification-service } }
+    environment:
+      <<: *common-environment
+      DB_URL: jdbc:postgresql://postgres:5432/ai_db
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_CHAT_MODEL: ${GEMINI_CHAT_MODEL:-gemini-2.5-flash}
+      GEMINI_EMBEDDING_MODEL: ${GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
+      AI_CHAT_PROVIDER: ${AI_CHAT_PROVIDER:-none}
+      AI_EMBEDDING_PROVIDER: ${AI_EMBEDDING_PROVIDER:-none}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
+    ports: ["8086:8086"]
+    depends_on: { postgres: { condition: service_healthy } }
+
+networks:
+  logistics:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
