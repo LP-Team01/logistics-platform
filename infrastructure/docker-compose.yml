@@ -11,8 +11,6 @@ x-app-common: &app-common
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-logistics}
     REDIS_HOST: redis
     REDIS_PORT: 6379
-    KAFKA_ENABLED: ${KAFKA_ENABLED:-false}
-    KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
 services:
   postgres:

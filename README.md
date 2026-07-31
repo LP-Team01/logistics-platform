@@ -1,6 +1,6 @@
 # Logistics Platform
 
-Spring Boot 3.5 기반 물류관리 MSA 프로젝트입니다. 기본 기능은 REST 동기 통신으로 구현하고, Redis·AI/RAG·Slack을 단계적으로 연결합니다. Kafka와 AWS ECR/ECS 배포는 기본 기능 완료 후 선택적으로 적용합니다.
+Spring Boot 3.5 기반 물류관리 MSA 프로젝트입니다. 기본 기능은 REST 동기 통신으로 구현하고 Redis·AI/RAG·Slack을 단계적으로 연결합니다. 이벤트 기반 통신은 확장 가능성만 고려하며, 현재 구현 범위에는 Kafka를 포함하지 않습니다. AWS ECR/ECS 배포는 기본 기능 완료 후 선택적으로 적용합니다.
 
 ## 기술 스택
 
@@ -10,7 +10,6 @@ Spring Boot 3.5 기반 물류관리 MSA 프로젝트입니다. 기본 기능은 
 - Redis
 - Spring AI 1.1.8 + Gemini + pgvector RAG
 - Slack API
-- 선택: Apache Kafka
 - Docker Compose, GitHub Actions
 - 선택 배포: AWS ECR, ECS Fargate
 
@@ -39,15 +38,6 @@ Spring Boot 3.5 기반 물류관리 MSA 프로젝트입니다. 기본 기능은 
 docker compose -f infrastructure/docker-compose.yml up --build
 ```
 
-Kafka까지 실행할 경우:
-
-```bash
-docker compose \
-  -f infrastructure/docker-compose.yml \
-  -f infrastructure/docker-compose.kafka.yml \
-  up --build
-```
-
 ## 확인 URL
 
 - Gateway health: `http://localhost:8080/actuator/health`
@@ -58,7 +48,8 @@ docker compose \
 
 - 각 서비스는 자신의 DB만 접근합니다.
 - 서비스 간 물리 FK와 DB 직접 조인을 금지합니다.
-- 기본 기능은 REST로 완성한 후 Kafka를 적용합니다.
+- 현재 서비스 간 통신은 REST/OpenFeign을 사용합니다.
+- 향후 이벤트 기반 구조로 전환할 수 있도록 서비스 경계와 이벤트 후보만 문서화합니다.
 - Secret은 `.env` 또는 배포 환경의 Secret Store에서 관리합니다.
 - `main`, `develop`에는 Pull Request로만 병합합니다.
 

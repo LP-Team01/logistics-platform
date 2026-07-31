@@ -20,8 +20,5 @@ spring:
         initialize-schema: false
         index-type: HNSW
         distance-type: COSINE_DISTANCE
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-app.kafka.enabled: ${KAFKA_ENABLED:false}
 eureka.client.service-url.defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
 management.endpoints.web.exposure.include: health,info

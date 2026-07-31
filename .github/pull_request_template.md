@@ -11,7 +11,7 @@
 - [ ] Company / Product
 - [ ] Delivery
 - [ ] AI / RAG / Slack
-- [ ] Kafka
+- [ ] 향후 이벤트 연동 계약
 
 ## 테스트
 
