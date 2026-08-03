@@ -7,13 +7,15 @@ spring:
   ai:
     model:
       chat: ${AI_CHAT_PROVIDER:none}
-      embedding: ${AI_EMBEDDING_PROVIDER:none}
+      embedding:
+        text: ${AI_EMBEDDING_PROVIDER:none}
     google:
       genai:
         api-key: ${GEMINI_API_KEY:}
         chat:
           model: ${GEMINI_CHAT_MODEL:gemini-2.5-flash}
         embedding:
+          api-key: ${GEMINI_API_KEY:disabled}
           text:
             options:
               model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
