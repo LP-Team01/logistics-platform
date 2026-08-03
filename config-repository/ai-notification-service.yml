@@ -7,19 +7,12 @@ spring:
 
   ai:
     model:
-      chat: ${AI_CHAT_PROVIDER:none}
       embedding:
         text: ${AI_EMBEDDING_PROVIDER:none}
 
     google:
       genai:
         api-key: ${GEMINI_API_KEY:}
-        chat:
-          options:
-            model: ${GEMINI_CHAT_MODEL:gemini-2.5-flash}
-            temperature: 0.1
-            response-mime-type: application/json
-
         embedding:
           api-key: ${GEMINI_API_KEY:disabled}
           text:
@@ -31,3 +24,9 @@ spring:
         initialize-schema: false
         index-type: HNSW
         distance-type: COSINE_DISTANCE
+
+# Google Gen AI SDK 직접 호출 설정
+gemini:
+  api-key: ${GEMINI_API_KEY:}
+  model: ${GEMINI_CHAT_MODEL:gemini-3.6-flash}
+  temperature: 0.1

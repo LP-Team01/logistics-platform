@@ -34,7 +34,7 @@ public class AiRequestService {
 
     private final AiRequestRepository aiRequestRepository;
     private final AiPromptService aiPromptService;
-    private final GeminiClient geminiClient;
+    private final DispatchDeadlineAiClient dispatchDeadlineAiClient;
 
     private static final LocalDateTime MIN_STATISTICS_DATE_TIME =
         LocalDateTime.of(1, 1, 1, 0, 0);
@@ -82,8 +82,8 @@ public class AiRequestService {
         long startedAt = System.nanoTime();
 
         try {
-            GeminiClient.GeminiExecutionResult executionResult =
-                geminiClient.calculateDispatchDeadline(prompt);
+            DispatchDeadlineAiClient.AiExecutionResult executionResult =
+                dispatchDeadlineAiClient.calculateDispatchDeadline(prompt);
 
             savedAiRequest.markSuccess(
                 executionResult.rawResponse(),
@@ -102,7 +102,7 @@ public class AiRequestService {
 
             savedAiRequest.markFailed(
                 exception.getMessage(),
-                geminiClient.getModel(),
+                dispatchDeadlineAiClient.getModel(),
                 processingTimeMs
             );
 
@@ -209,8 +209,8 @@ public class AiRequestService {
         long startedAt = System.nanoTime();
 
         try {
-            GeminiClient.GeminiExecutionResult executionResult =
-                geminiClient.calculateDispatchDeadline(
+            DispatchDeadlineAiClient.AiExecutionResult executionResult =
+                dispatchDeadlineAiClient.calculateDispatchDeadline(
                     pendingAiRequest.getPrompt()
                 );
 
@@ -233,7 +233,7 @@ public class AiRequestService {
 
             pendingAiRequest.markFailed(
                 exception.getMessage(),
-                geminiClient.getModel(),
+                dispatchDeadlineAiClient.getModel(),
                 processingTimeMs
             );
 

@@ -27,9 +27,11 @@ dependencies {
     implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
 
     // Spring AI / Gemini / RAG
-    implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
     implementation 'org.springframework.ai:spring-ai-starter-model-google-genai-embedding'
     implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
+
+    // Google Gemini 직접 호출 SDK
+    implementation 'com.google.genai:google-genai:1.64.0'
 
     // Lombok
     compileOnly 'org.projectlombok:lombok'
