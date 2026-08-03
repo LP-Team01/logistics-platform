@@ -30,7 +30,7 @@ public class Delivery {
 
     @Enumerated(EnumType.STRING)
     @Column(length = 40, nullable = false)
-    private DeliveryStatus deliveryStatus;
+    private DeliveryStatus status;
 
     @Column(nullable = false)
     private UUID departureHubId;
@@ -60,7 +60,7 @@ public class Delivery {
         UUID companyAgentId
     ){
         this.orderId = orderId;
-        this.deliveryStatus = DeliveryStatus.HUB_WAITING;
+        this.status = DeliveryStatus.HUB_WAITING;
         this.departureHubId = departureHubId;
         this.destinationHubId = destinationHubId;
         this.deliveryAddress = deliveryAddress;

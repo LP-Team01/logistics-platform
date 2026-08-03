@@ -49,7 +49,7 @@ public class DeliveryRouteRecord {
 
     @Enumerated(EnumType.STRING)
     @Column(length = 40, nullable = false)
-    private RouteRecordStatus routeRecordStatus;
+    private RouteRecordStatus status;
 
     private UUID agentId;
 
@@ -73,7 +73,7 @@ public class DeliveryRouteRecord {
         this.estimatedDuration = estimatedDuration;
         this.actualDistance = actualDistance;
         this.actualDuration = actualDuration;
-        this.routeRecordStatus = RouteRecordStatus.WAITING;
+        this.status = RouteRecordStatus.WAITING;
         this.agentId = agentId;
     }
 }

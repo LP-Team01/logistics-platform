@@ -44,7 +44,7 @@ public class CompanyDeliveryRouteRecord {
 
     @Enumerated(EnumType.STRING)
     @Column(length = 40, nullable = false)
-    private CompanyRouteRecordStatus companyRouteRecordStatus;
+    private CompanyRouteRecordStatus status;
 
     private UUID agentId;
 
@@ -69,7 +69,7 @@ public class CompanyDeliveryRouteRecord {
         this.estimatedDuration = estimatedDuration;
         this.actualDistance = actualDistance;
         this.actualDuration = actualDuration;
-        this.companyRouteRecordStatus = CompanyRouteRecordStatus.WAITING;
+        this.status = CompanyRouteRecordStatus.WAITING;
         this.agentId = agentId;
         this.deliverySequence = deliverySequence;
     }
