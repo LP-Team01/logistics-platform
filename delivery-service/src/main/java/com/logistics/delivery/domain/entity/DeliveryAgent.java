@@ -22,7 +22,6 @@ public class DeliveryAgent {
     // TODO: 감사필드 추가
     @Id
     @Column(name = "agent_id")
-    @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
     private UUID hubId;
@@ -42,12 +41,14 @@ public class DeliveryAgent {
 
     @Builder
     public DeliveryAgent(
+        UUID agentId,
         UUID hubId,
         AgentType agentType,
         String slackId,
         Integer deliveryOrder,
         Boolean isAvailable
     ){
+        this.id = agentId;
         this.hubId = hubId;
         this.agentType = agentType;
         this.slackId = slackId;

@@ -1,0 +1,30 @@
+package com.logistics.delivery.presentation.dto.response;
+
+import com.logistics.delivery.domain.entity.AgentType;
+import com.logistics.delivery.domain.entity.DeliveryAgent;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Builder;
+
+@Builder
+public record DeliveryAgentResponse(
+    UUID agentId,
+    UUID hubId,
+    AgentType agentType,
+    String slackId,
+    Integer deliveryOrder,
+    Boolean isAvailable,
+    Instant createdAt
+) {
+    public static DeliveryAgentResponse from(DeliveryAgent deliveryAgent) {
+        return DeliveryAgentResponse.builder()
+            .agentId(deliveryAgent.getId())
+            .hubId(deliveryAgent.getHubId())
+            .agentType(deliveryAgent.getAgentType())
+            .slackId(deliveryAgent.getSlackId())
+            .deliveryOrder(deliveryAgent.getDeliveryOrder())
+            .isAvailable(deliveryAgent.isAvailable())
+            .createdAt(null)
+            .build();
+    }
+}
