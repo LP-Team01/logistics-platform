@@ -32,8 +32,6 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-    implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
-
     // Kafka Test
     testImplementation 'org.springframework.kafka:spring-kafka-test'
 }

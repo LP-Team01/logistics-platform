@@ -36,7 +36,7 @@ public class GeminiClient {
         ObjectMapper objectMapper,
         @Value(
             "${spring.ai.google.genai.chat.options.model:"
-                + "gemini-2.0-flash}"
+                + "gemini-3.6-flash}"
         )
         String model
     ) {

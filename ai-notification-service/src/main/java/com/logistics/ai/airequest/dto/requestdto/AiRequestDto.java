@@ -35,6 +35,7 @@ public record AiRequestDto(
      * 주문에 포함된 상품과 수량입니다.
      */
     @NotEmpty(message = "상품 정보는 한 개 이상 필요합니다.")
+    @Size(max = 50, message = "상품은 최대 50개까지 입력할 수 있습니다.")
     @Valid
     @Schema(description = "상품 및 수량 정보")
     List<ProductItemDto> products,
@@ -63,10 +64,12 @@ public record AiRequestDto(
      * <p>경유지가 없는 경우 빈 배열을 전달할 수 있습니다.</p>
      */
     @NotNull(message = "경유지 목록은 필수입니다.")
+    @Size(max = 20, message = "경유지는 최대 20개까지 입력할 수 있습니다.")
     @Schema(description = "경유지 목록")
     List<
         @NotBlank(message = "경유지 정보는 비어 있을 수 없습니다.")
-            String
+        @Size(max = 500, message = "경유지 정보는 500자 이하여야 합니다.")
+        String
         > waypointLocations,
 
     /**
@@ -108,6 +111,7 @@ public record AiRequestDto(
     public record ProductItemDto(
 
         @NotBlank(message = "상품명은 필수입니다.")
+        @Size(max = 100, message = "상품명은 100자 이내여야 합니다.")
         @Schema(description = "상품명")
         String productName,
 
