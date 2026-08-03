@@ -1,13 +1,22 @@
 package com.logistics.ai.airequest.service;
 
 import com.logistics.ai.airequest.dto.requestdto.AiRequestDto;
+import com.logistics.ai.airequest.dto.requestdto.AiSearchCondition;
 import com.logistics.ai.airequest.dto.responsedto.AiResponseDto;
 import com.logistics.ai.airequest.entity.AiRequest;
+import com.logistics.ai.airequest.entity.AiRequestStatus;
 import com.logistics.ai.airequest.repository.AiRequestRepository;
+import com.logistics.ai.airequest.repository.AiRequestSpecification;
+import com.logistics.ai.common.exception.AiRequestNotFoundException;
+import com.logistics.ai.common.exception.AiRequestRetryNotAllowedException;
 import com.logistics.ai.common.exception.GeminiProcessingException;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 /**
  * AI 요청의 생성, 조회, 재처리 및 삭제를 담당하는 서비스입니다.
@@ -117,5 +126,109 @@ public class AiRequestService {
      */
     private long calculateProcessingTime(long startedAt) {
         return (System.nanoTime() - startedAt) / 1_000_000L;
+    }
+
+    /**
+     * AI 요청 식별자로 삭제되지 않은 요청 이력을 조회합니다.
+     *
+     * @param aiRequestId AI 요청 식별자
+     * @return AI 요청 처리 결과
+     * @throws AiRequestNotFoundException 요청 이력이 존재하지 않는 경우
+     */
+    public AiResponseDto getAiRequest(UUID aiRequestId) {
+        AiRequest aiRequest = aiRequestRepository
+            .findByAiRequestIdAndDeletedAtIsNull(aiRequestId)
+            .orElseThrow(
+                () -> new AiRequestNotFoundException(aiRequestId)
+            );
+
+        return AiResponseDto.from(aiRequest);
+    }
+
+    /**
+     * 검색조건과 페이지 정보를 이용하여 AI 요청 목록을 조회합니다.
+     *
+     * <p>주문 ID, 배송 ID, 처리 상태 중 전달된 조건만 적용하며,
+     * 논리적으로 삭제된 요청은 조회하지 않습니다.</p>
+     *
+     * @param condition AI 요청 검색조건
+     * @param pageable 페이지 번호, 크기 및 정렬 정보
+     * @return 페이징된 AI 요청 목록
+     */
+    @Transactional(readOnly = true)
+    public Page<AiResponseDto> searchAiRequests(
+        AiSearchCondition condition,
+        Pageable pageable
+    ) {
+        return aiRequestRepository.findAll(
+            AiRequestSpecification.withCondition(condition),
+            pageable
+        ).map(AiResponseDto::from);
+    }
+
+    /**
+     * 실패한 AI 요청을 Gemini에 다시 전달하여 재처리합니다.
+     *
+     * <p>FAILED 상태의 요청만 재처리할 수 있으며,
+     * 성공하면 SUCCESS, 실패하면 다시 FAILED 상태로 저장합니다.</p>
+     *
+     * @param aiRequestId 재처리할 AI 요청 식별자
+     * @return 재처리 결과
+     */
+    public AiResponseDto retryAiRequest(UUID aiRequestId) {
+        AiRequest aiRequest = aiRequestRepository
+            .findByAiRequestIdAndDeletedAtIsNull(aiRequestId)
+            .orElseThrow(
+                () -> new AiRequestNotFoundException(aiRequestId)
+            );
+
+        if (aiRequest.getStatus() != AiRequestStatus.FAILED) {
+            throw new AiRequestRetryNotAllowedException(
+                aiRequestId,
+                aiRequest.getStatus()
+            );
+        }
+
+        // 이전 실패 결과를 초기화하고 PENDING으로 변경합니다.
+        aiRequest.prepareRetry();
+
+        AiRequest pendingAiRequest =
+            aiRequestRepository.save(aiRequest);
+
+        long startedAt = System.nanoTime();
+
+        try {
+            GeminiClient.GeminiExecutionResult executionResult =
+                geminiClient.calculateDispatchDeadline(
+                    pendingAiRequest.getPrompt()
+                );
+
+            pendingAiRequest.markSuccess(
+                executionResult.rawResponse(),
+                executionResult.calculationResult()
+                    .dispatchDeadline(),
+                executionResult.model(),
+                executionResult.processingTimeMs()
+            );
+
+            AiRequest completedAiRequest =
+                aiRequestRepository.save(pendingAiRequest);
+
+            return AiResponseDto.from(completedAiRequest);
+
+        } catch (GeminiProcessingException exception) {
+            long processingTimeMs =
+                calculateProcessingTime(startedAt);
+
+            pendingAiRequest.markFailed(
+                exception.getMessage(),
+                geminiClient.getModel(),
+                processingTimeMs
+            );
+
+            aiRequestRepository.save(pendingAiRequest);
+
+            throw exception;
+        }
     }
 }
