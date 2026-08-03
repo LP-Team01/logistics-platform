@@ -1,5 +1,6 @@
 package com.logistics.delivery.domain.entity;
 
+import com.logistics.delivery.global.common.BaseUpdatableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -18,10 +19,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "p_delivery_route_records")
 @Getter
-public class DeliveryRouteRecord {
-    // TODO: 감사필드 추가
+public class DeliveryRouteRecord extends BaseUpdatableEntity {
     @Id
-    @Column(name = "route_record_id")
+    @Column(name = "route_record_id",updatable = false, nullable = false)
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 

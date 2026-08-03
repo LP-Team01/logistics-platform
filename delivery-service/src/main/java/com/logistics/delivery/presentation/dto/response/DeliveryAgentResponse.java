@@ -24,7 +24,7 @@ public record DeliveryAgentResponse(
             .slackId(deliveryAgent.getSlackId())
             .deliveryOrder(deliveryAgent.getDeliveryOrder())
             .isAvailable(deliveryAgent.isAvailable())
-            .createdAt(null)
+            .createdAt(deliveryAgent.getCreatedAt())
             .build();
     }
 }

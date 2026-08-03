@@ -1,5 +1,6 @@
 package com.logistics.delivery.domain.entity;
 
+import com.logistics.delivery.global.common.BaseUpdatableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -18,11 +19,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name="p_deliveries")
 @Getter
-public class Delivery {
-    // TODO: 감사필드 추가
+public class Delivery extends BaseUpdatableEntity {
+
     @Id
-    @Column(name = "delivery_id")
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "delivery_id",updatable = false, nullable = false)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(unique = true, nullable = false)
