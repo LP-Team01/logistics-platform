@@ -77,6 +77,11 @@ services:
     depends_on:
       eureka-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   api-gateway:
     <<: *app-common
@@ -87,7 +92,7 @@ services:
     ports: ["8080:8080"]
     depends_on:
       config-server:
-        condition: service_started
+        condition: service_healthy
 
   user-service:
     <<: *app-common
@@ -96,7 +101,7 @@ services:
       <<: *common-environment
       DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/user_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8081:8081"]
-    depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
+    depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
 
   hub-service:
     <<: *app-common
@@ -105,7 +110,7 @@ services:
       <<: *common-environment
       DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/hub_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8082:8082"]
-    depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
+    depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
 
   company-service:
     <<: *app-common
@@ -114,7 +119,7 @@ services:
       <<: *common-environment
       DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/company_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8083:8083"]
-    depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
+    depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
 
   order-service:
     <<: *app-common
@@ -123,7 +128,7 @@ services:
       <<: *common-environment
       DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/order_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8084:8084"]
-    depends_on: { postgres: { condition: service_healthy } }
+    depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy } }
 
   delivery-service:
     <<: *app-common
@@ -132,7 +137,7 @@ services:
       <<: *common-environment
       DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/delivery_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8085:8085"]
-    depends_on: { postgres: { condition: service_healthy } }
+    depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy } }
 
   ai-notification-service:
     <<: *app-common
@@ -147,7 +152,7 @@ services:
       AI_EMBEDDING_PROVIDER: ${AI_EMBEDDING_PROVIDER:-none}
       SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
     ports: ["8086:8086"]
-    depends_on: { postgres: { condition: service_healthy } }
+    depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy } }
 
 networks:
   logistics:

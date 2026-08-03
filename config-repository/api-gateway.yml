@@ -1,3 +1,6 @@
+server:
+  port: 8080
+
 spring:
   cloud:
     gateway:
@@ -28,3 +31,9 @@ spring:
               uri: lb://ai-notification-service
               predicates:
                 - Path=/api/ai/**,/api/slack/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway

@@ -1,30 +1,3 @@
-server.port: 8086
 spring:
   application.name: ai-notification-service
   config.import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
-  datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/ai_db}
-    username: ${POSTGRES_USER:logistics}
-    password: ${POSTGRES_PASSWORD:logistics}
-    hikari:
-      maximum-pool-size: ${DB_POOL_MAX_SIZE:5}
-      minimum-idle: ${DB_POOL_MIN_IDLE:1}
-      connection-timeout: ${DB_CONNECTION_TIMEOUT:30000}
-      idle-timeout: ${DB_IDLE_TIMEOUT:600000}
-      max-lifetime: ${DB_MAX_LIFETIME:1800000}
-  ai:
-    model:
-      chat: ${AI_CHAT_PROVIDER:none}
-      embedding: ${AI_EMBEDDING_PROVIDER:none}
-    google:
-      genai:
-        api-key: ${GEMINI_API_KEY:}
-        chat.model: ${GEMINI_CHAT_MODEL:gemini-2.5-flash}
-        embedding.text.options.model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
-    vectorstore:
-      pgvector:
-        initialize-schema: false
-        index-type: HNSW
-        distance-type: COSINE_DISTANCE
-eureka.client.service-url.defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
-management.endpoints.web.exposure.include: health,info
