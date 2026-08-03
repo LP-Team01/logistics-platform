@@ -19,8 +19,15 @@ spring:
     google:
       genai:
         api-key: ${GEMINI_API_KEY:}
-        chat.model: ${GEMINI_CHAT_MODEL:gemini-2.5-flash}
+
+        # Gemini Chat 설정
+        chat.options.model: ${GEMINI_CHAT_MODEL:gemini-3.6-flash}
+        chat.options.temperature: 0.1
+        chat.options.response-mime-type: application/json
+
+        # RAG 구현 시 사용할 임베딩 설정
         embedding.text.options.model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
+
     vectorstore:
       pgvector:
         initialize-schema: false
