@@ -3,6 +3,7 @@ package com.logistics.ai.airequest.controller;
 import com.logistics.ai.airequest.dto.requestdto.AiRequestDto;
 import com.logistics.ai.airequest.dto.requestdto.AiSearchCondition;
 import com.logistics.ai.airequest.dto.responsedto.AiResponseDto;
+import com.logistics.ai.airequest.dto.responsedto.AiStatisticsResponseDto;
 import com.logistics.ai.airequest.service.AiRequestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -14,11 +15,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.util.Set;
 import java.util.UUID;
 
@@ -154,5 +157,73 @@ public class AiRequestController {
             aiRequestService.retryAiRequest(aiRequestId);
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 지정된 기간의 AI 요청 처리 통계를 조회합니다.
+     *
+     * @param startDate 조회 시작일
+     * @param endDate 조회 종료일
+     * @return AI 요청 처리 통계
+     */
+    @GetMapping("/statistics")
+    @Operation(
+        summary = "AI 처리 통계 조회",
+        description = "기간별 성공·실패 건수와 평균 AI 처리시간을 조회합니다."
+    )
+    public ResponseEntity<AiStatisticsResponseDto> getAiStatistics(
+        @Parameter(
+            description = "조회 시작일",
+            example = "2026-08-01"
+        )
+        @RequestParam(
+            name = "startDate",
+            required = false
+        )
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        LocalDate startDate,
+
+        @Parameter(
+            description = "조회 종료일",
+            example = "2026-08-03"
+        )
+        @RequestParam(
+            name = "endDate",
+            required = false
+        )
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        LocalDate endDate
+    ) {
+        AiStatisticsResponseDto response =
+            aiRequestService.getAiStatistics(
+                startDate,
+                endDate
+            );
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * AI 요청 이력을 논리 삭제합니다.
+     *
+     * @param aiRequestId 삭제할 AI 요청 식별자
+     * @param deletedBy   삭제를 수행한 사용자 식별자
+     * @return 응답 본문 없는 204 응답
+     */
+    @DeleteMapping("/{aiRequestId}")
+    @Operation(
+        summary = "AI 요청 이력 삭제",
+        description = "AI 요청 이력을 물리적으로 삭제하지 않고 논리 삭제합니다."
+    )
+    public ResponseEntity<Void> deleteAiRequest(
+        @Parameter(description = "삭제할 AI 요청 식별자")
+        @PathVariable UUID aiRequestId,
+
+        @Parameter(description = "삭제를 수행한 사용자 식별자")
+        @RequestHeader("X-User-Id") UUID deletedBy
+    ) {
+        aiRequestService.deleteAiRequest(aiRequestId, deletedBy);
+
+        return ResponseEntity.noContent().build();
     }
 }

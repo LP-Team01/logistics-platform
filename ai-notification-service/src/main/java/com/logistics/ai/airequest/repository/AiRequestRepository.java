@@ -1,12 +1,18 @@
 package com.logistics.ai.airequest.repository;
 
 import com.logistics.ai.airequest.entity.AiRequest;
+
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
+
+import com.logistics.ai.airequest.entity.AiRequestStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * AI 요청 이력 데이터에 접근하는 Repository입니다.
@@ -83,5 +89,61 @@ public interface AiRequestRepository
     Page<AiRequest> findAllByDeliveryIdAndDeletedAtIsNull(
         UUID deliveryId,
         Pageable pageable
+    );
+
+    /**
+     * 지정된 기간의 AI 요청 처리 통계를 조회합니다.
+     *
+     * <p>삭제되지 않은 요청만 집계하며 시작 일시는 포함하고,
+     * 종료 일시는 포함하지 않습니다.</p>
+     *
+     * @param successStatus 성공 상태
+     * @param failedStatus 실패 상태
+     * @param startDateTime 조회 시작 일시
+     * @param endDateTime 조회 종료 일시
+     * @return AI 요청 처리 통계
+     */
+    @Query("""
+    SELECT
+        COUNT(ar) AS totalCount,
+        COALESCE(
+            SUM(
+                CASE
+                    WHEN ar.status = :successStatus THEN 1
+                    ELSE 0
+                END
+            ),
+            0
+        ) AS successCount,
+        COALESCE(
+            SUM(
+                CASE
+                    WHEN ar.status = :failedStatus THEN 1
+                    ELSE 0
+                END
+            ),
+            0
+        ) AS failedCount,
+        COALESCE(
+            AVG(ar.processingTimeMs),
+            0.0
+        ) AS averageProcessingTimeMs
+    FROM AiRequest ar
+    WHERE ar.deletedAt IS NULL
+      AND ar.createdAt >= :startDateTime
+      AND ar.createdAt < :endDateTime
+    """)
+    AiRequestStatisticsProjection findStatistics(
+        @Param("successStatus")
+        AiRequestStatus successStatus,
+
+        @Param("failedStatus")
+        AiRequestStatus failedStatus,
+
+        @Param("startDateTime")
+        LocalDateTime startDateTime,
+
+        @Param("endDateTime")
+        LocalDateTime endDateTime
     );
 }

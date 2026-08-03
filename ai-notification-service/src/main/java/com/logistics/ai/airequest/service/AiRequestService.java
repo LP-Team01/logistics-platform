@@ -3,19 +3,24 @@ package com.logistics.ai.airequest.service;
 import com.logistics.ai.airequest.dto.requestdto.AiRequestDto;
 import com.logistics.ai.airequest.dto.requestdto.AiSearchCondition;
 import com.logistics.ai.airequest.dto.responsedto.AiResponseDto;
+import com.logistics.ai.airequest.dto.responsedto.AiStatisticsResponseDto;
 import com.logistics.ai.airequest.entity.AiRequest;
 import com.logistics.ai.airequest.entity.AiRequestStatus;
 import com.logistics.ai.airequest.repository.AiRequestRepository;
 import com.logistics.ai.airequest.repository.AiRequestSpecification;
+import com.logistics.ai.airequest.repository.AiRequestStatisticsProjection;
 import com.logistics.ai.common.exception.AiRequestNotFoundException;
 import com.logistics.ai.common.exception.AiRequestRetryNotAllowedException;
 import com.logistics.ai.common.exception.GeminiProcessingException;
+import com.logistics.ai.common.exception.InvalidStatisticsPeriodException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
@@ -30,6 +35,12 @@ public class AiRequestService {
     private final AiRequestRepository aiRequestRepository;
     private final AiPromptService aiPromptService;
     private final GeminiClient geminiClient;
+
+    private static final LocalDateTime MIN_STATISTICS_DATE_TIME =
+        LocalDateTime.of(1, 1, 1, 0, 0);
+
+    private static final LocalDateTime MAX_STATISTICS_DATE_TIME =
+        LocalDateTime.of(9999, 12, 31, 0, 0);
 
     /**
      * 배송 정보를 이용하여 최종 발송 시한을 계산합니다.
@@ -230,5 +241,97 @@ public class AiRequestService {
 
             throw exception;
         }
+    }
+
+    /**
+     * 지정된 기간의 AI 요청 처리 통계를 조회합니다.
+     *
+     * <p>날짜는 일 단위로 입력받으며 종료일의 데이터까지
+     * 포함되도록 다음 날 0시를 조회 종료 시점으로 사용합니다.</p>
+     *
+     * @param startDate 조회 시작일
+     * @param endDate 조회 종료일
+     * @return AI 요청 처리 통계
+     */
+    @Transactional(readOnly = true)
+    public AiStatisticsResponseDto getAiStatistics(
+        LocalDate startDate,
+        LocalDate endDate
+    ) {
+        validateStatisticsPeriod(startDate, endDate);
+
+        LocalDateTime startDateTime =
+            startDate == null
+                ? MIN_STATISTICS_DATE_TIME
+                : startDate.atStartOfDay();
+
+        LocalDateTime endDateTime =
+            endDate == null
+                ? MAX_STATISTICS_DATE_TIME
+                : endDate.plusDays(1).atStartOfDay();
+
+        AiRequestStatisticsProjection statistics =
+            aiRequestRepository.findStatistics(
+                AiRequestStatus.SUCCESS,
+                AiRequestStatus.FAILED,
+                startDateTime,
+                endDateTime
+            );
+
+        return new AiStatisticsResponseDto(
+            statistics.getTotalCount(),
+            statistics.getSuccessCount(),
+            statistics.getFailedCount(),
+            roundToTwoDecimalPlaces(
+                statistics.getAverageProcessingTimeMs()
+            )
+        );
+    }
+
+    /**
+     * 통계 조회 시작일과 종료일의 순서를 검증합니다.
+     */
+    private void validateStatisticsPeriod(
+        LocalDate startDate,
+        LocalDate endDate
+    ) {
+        if (
+            startDate != null
+                && endDate != null
+                && startDate.isAfter(endDate)
+        ) {
+            throw new InvalidStatisticsPeriodException(
+                startDate,
+                endDate
+            );
+        }
+    }
+
+    /**
+     * 평균 처리시간을 소수점 둘째 자리까지 반환합니다.
+     */
+    private double roundToTwoDecimalPlaces(Double value) {
+        if (value == null) {
+            return 0.0;
+        }
+
+        return Math.round(value * 100.0) / 100.0;
+    }
+
+    /**
+     * AI 요청 이력을 논리 삭제합니다.
+     *
+     * @param aiRequestId 삭제할 AI 요청 식별자
+     * @param deletedBy   삭제를 수행한 사용자 식별자
+     */
+    @Transactional
+    public void deleteAiRequest(UUID aiRequestId, UUID deletedBy) {
+
+        AiRequest aiRequest = aiRequestRepository
+            .findByAiRequestIdAndDeletedAtIsNull(aiRequestId)
+            .orElseThrow(() -> new AiRequestNotFoundException(aiRequestId));
+
+        // 실제 행을 삭제하지 않고 deletedAt과 deletedBy를 기록합니다.
+        aiRequest.softDelete(deletedBy);
     }
 }
