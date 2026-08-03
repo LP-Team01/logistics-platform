@@ -56,10 +56,11 @@ services:
       args: { SERVICE: eureka-server }
     ports: ["8761:8761"]
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health || exit 1"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8761/actuator/health"]
       interval: 15s
       timeout: 5s
       retries: 10
+      start_period: 30s
 
   config-server:
     <<: *app-common
@@ -78,10 +79,11 @@ services:
       eureka-server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health || exit 1"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8888/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 30s
 
   api-gateway:
     <<: *app-common
@@ -93,6 +95,12 @@ services:
     depends_on:
       config-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   user-service:
     <<: *app-common
@@ -102,6 +110,12 @@ services:
       DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/user_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8081:8081"]
     depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   hub-service:
     <<: *app-common
@@ -111,6 +125,12 @@ services:
       DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/hub_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8082:8082"]
     depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8082/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   company-service:
     <<: *app-common
@@ -120,6 +140,12 @@ services:
       DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/company_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8083:8083"]
     depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8083/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   order-service:
     <<: *app-common
@@ -129,6 +155,12 @@ services:
       DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/order_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8084:8084"]
     depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8084/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   delivery-service:
     <<: *app-common
@@ -138,6 +170,12 @@ services:
       DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/delivery_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8085:8085"]
     depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8085/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   ai-notification-service:
     <<: *app-common
@@ -145,7 +183,7 @@ services:
     environment:
       <<: *common-environment
       DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/ai_db?sslmode=${POSTGRES_SSL_MODE:-disable}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-disabled}
       GEMINI_CHAT_MODEL: ${GEMINI_CHAT_MODEL:-gemini-2.5-flash}
       GEMINI_EMBEDDING_MODEL: ${GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
       AI_CHAT_PROVIDER: ${AI_CHAT_PROVIDER:-none}
@@ -153,6 +191,12 @@ services:
       SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
     ports: ["8086:8086"]
     depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8086/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
 
 networks:
   logistics:
