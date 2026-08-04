@@ -19,9 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class DeliveryAgentCommandService {
     private final DeliveryAgentRepository deliveryAgentRepository;
 
+    private static final int MAX_COUNT = 10;
+
     @Transactional
     public DeliveryAgentCreateResponseDto create(CreateDeliveryAgentCommand command) {
         // TODO: hub-service에 허브 존재 검증 API가 생기면 HubServiceClient로 hubId 유효성 확인 후 404 처리
+
+        validateAgentCapacity(command.agentType(), command.hubId());
         DeliveryAgent deliveryAgent = DeliveryAgent.builder()
                 .agentId(command.agentId())
                 .hubId(command.hubId())
@@ -29,6 +33,7 @@ public class DeliveryAgentCommandService {
                 .slackId(command.slackId())
                 .deliveryOrder(nextDeliveryOrder(command.agentType(), command.hubId()))
                 .build();
+
         DeliveryAgent saved = deliveryAgentRepository.save(deliveryAgent);
         return DeliveryAgentCreateResponseDto.from(saved);
     }
@@ -45,6 +50,18 @@ public class DeliveryAgentCommandService {
     public void delete(UUID agentId, UUID requesterId) {
         DeliveryAgent deliveryAgent = findDeliveryAgent(agentId);
         deliveryAgent.softDelete(requesterId);
+    }
+
+    private void validateAgentCapacity(AgentType agentType, UUID hubId) {
+        int count = 0;
+        if (agentType == AgentType.HUB_DELIVERY) {
+            count = deliveryAgentRepository.countByAgentTypeAndDeletedAtIsNull(agentType);
+        } else if (agentType == AgentType.COMPANY_DELIVERY) {
+            count = deliveryAgentRepository.countByAgentTypeAndHubIdAndDeletedAtIsNull(agentType,hubId);
+        }
+        if (count >= MAX_COUNT) {
+            throw new BusinessException(ErrorCode.DELIVERY_AGENT_LIMIT_EXCEEDED);
+        }
     }
 
     private DeliveryAgent findDeliveryAgent(UUID agentId) {

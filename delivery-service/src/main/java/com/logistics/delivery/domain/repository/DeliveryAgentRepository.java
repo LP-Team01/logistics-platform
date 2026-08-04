@@ -14,4 +14,6 @@ public interface DeliveryAgentRepository extends JpaRepository<DeliveryAgent, UU
         AgentType agentType, UUID hubId
     );
     Optional<DeliveryAgent> findByIdAndDeletedAtIsNull(UUID id);
+    int countByAgentTypeAndDeletedAtIsNull(AgentType agentType);
+    int countByAgentTypeAndHubIdAndDeletedAtIsNull(AgentType agentType, UUID hubId);
 }
