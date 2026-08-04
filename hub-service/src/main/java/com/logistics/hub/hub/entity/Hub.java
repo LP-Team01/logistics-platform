@@ -1,5 +1,6 @@
-package com.logistics.hub.domain.entity;
+package com.logistics.hub.hub.entity;
 
+import com.logistics.hub.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
