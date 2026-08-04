@@ -43,9 +43,9 @@ public class Order extends BaseEntity {
     @Column(name = "delivery_request", columnDefinition = "TEXT")
     private String deliveryRequest;
 
-    // 주문을 취소한 사용자의 ID와 취소 사유입니다. 명세에 따라 취소자 ID는 BIGINT를 사용합니다.
+    // 주문을 취소한 사용자의 UUID와 취소 사유입니다.
     @Column(name = "canceled_by")
-    private Long canceledBy;
+    private UUID canceledBy;
 
     @Column(name = "cancel_reason", columnDefinition = "TEXT")
     private String cancelReason;
@@ -90,7 +90,7 @@ public class Order extends BaseEntity {
     }
 
     /** 주문을 취소 상태로 변경하고 취소 정보를 기록합니다. */
-    public void cancel(Long canceledBy, String cancelReason) {
+    public void cancel(UUID canceledBy, String cancelReason) {
         this.status = OrderStatus.CANCELLED;
         this.canceledBy = canceledBy;
         this.cancelReason = cancelReason;
@@ -106,7 +106,7 @@ public class Order extends BaseEntity {
     public OrderStatus getStatus() { return status; }
     public Long getTotalAmount() { return totalAmount; }
     public String getDeliveryRequest() { return deliveryRequest; }
-    public Long getCanceledBy() { return canceledBy; }
+    public UUID getCanceledBy() { return canceledBy; }
     public String getCancelReason() { return cancelReason; }
     public List<OrderItem> getOrderItems() { return Collections.unmodifiableList(orderItems); }
 }

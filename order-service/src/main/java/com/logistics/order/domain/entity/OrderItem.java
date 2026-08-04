@@ -70,9 +70,9 @@ public class OrderItem extends BaseEntity {
     @Column(name = "requested_deadline", nullable = false)
     private LocalDateTime requestedDeadline;
 
-    // 해당 상품 주문을 취소한 사용자 ID와 사유입니다.
+    // 해당 상품 주문을 취소한 사용자의 UUID와 사유입니다.
     @Column(name = "canceled_by")
-    private Long canceledBy;
+    private UUID canceledBy;
 
     @Column(name = "cancel_reason", columnDefinition = "TEXT")
     private String cancelReason;
