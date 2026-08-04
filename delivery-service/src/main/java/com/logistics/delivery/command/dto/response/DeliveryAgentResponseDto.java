@@ -1,4 +1,4 @@
-package com.logistics.delivery.presentation.dto.response;
+package com.logistics.delivery.command.dto.response;
 
 import com.logistics.delivery.domain.entity.AgentType;
 import com.logistics.delivery.domain.entity.DeliveryAgent;
@@ -7,7 +7,7 @@ import java.util.UUID;
 import lombok.Builder;
 
 @Builder
-public record DeliveryAgentResponse(
+public record DeliveryAgentResponseDto(
     UUID agentId,
     UUID hubId,
     AgentType agentType,
@@ -16,8 +16,8 @@ public record DeliveryAgentResponse(
     Boolean isAvailable,
     Instant createdAt
 ) {
-    public static DeliveryAgentResponse from(DeliveryAgent deliveryAgent) {
-        return DeliveryAgentResponse.builder()
+    public static DeliveryAgentResponseDto from(DeliveryAgent deliveryAgent) {
+        return DeliveryAgentResponseDto.builder()
             .agentId(deliveryAgent.getId())
             .hubId(deliveryAgent.getHubId())
             .agentType(deliveryAgent.getAgentType())

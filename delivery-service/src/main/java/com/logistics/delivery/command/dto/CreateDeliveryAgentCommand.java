@@ -1,4 +1,4 @@
-package com.logistics.delivery.application.command;
+package com.logistics.delivery.command.dto;
 
 import com.logistics.delivery.domain.entity.AgentType;
 import java.util.UUID;

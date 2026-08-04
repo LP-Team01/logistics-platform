@@ -1,11 +1,11 @@
-package com.logistics.delivery.presentation.dto.request;
+package com.logistics.delivery.command.dto.request;
 
-import com.logistics.delivery.application.command.CreateDeliveryAgentCommand;
+import com.logistics.delivery.command.dto.CreateDeliveryAgentCommand;
 import com.logistics.delivery.domain.entity.AgentType;
 import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
-public record CreateDeliveryAgentRequest(
+public record CreateDeliveryAgentRequestDto(
     @NotNull(message = "배송 담당자 Id는 필수입니다.")
     UUID agentId,
 

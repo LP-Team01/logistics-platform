@@ -10,7 +10,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface DeliveryAgentRepository extends JpaRepository<DeliveryAgent, UUID> {
 
-    Optional<DeliveryAgent> findFirstByAgentTypeAndHubIdOrderByDeliveryOrderDesc(
+    Optional<DeliveryAgent> findFirstByAgentTypeAndHubIdAndDeletedAtIsNullOrderByDeliveryOrderDesc(
         AgentType agentType, UUID hubId
     );
+    Optional<DeliveryAgent> findByIdAndDeletedAtIsNull(UUID id);
 }
