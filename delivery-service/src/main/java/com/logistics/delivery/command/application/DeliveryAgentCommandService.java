@@ -2,8 +2,8 @@ package com.logistics.delivery.command.application;
 
 import com.logistics.delivery.command.dto.command.CreateDeliveryAgentCommand;
 import com.logistics.delivery.command.dto.command.UpdateDeliveryAgentCommand;
-import com.logistics.delivery.command.dto.response.DeliveryAgentCreateResponseDto;
-import com.logistics.delivery.command.dto.response.DeliveryAgentUpdateResponseDto;
+import com.logistics.delivery.command.dto.response.CreateDeliveryAgentResponseDto;
+import com.logistics.delivery.command.dto.response.UpdateDeliveryAgentResponseDto;
 import com.logistics.delivery.domain.entity.AgentType;
 import com.logistics.delivery.domain.entity.DeliveryAgent;
 import com.logistics.delivery.domain.repository.DeliveryAgentRepository;
@@ -22,7 +22,7 @@ public class DeliveryAgentCommandService {
     private static final int MAX_COUNT = 10;
 
     @Transactional
-    public DeliveryAgentCreateResponseDto create(CreateDeliveryAgentCommand command) {
+    public CreateDeliveryAgentResponseDto create(CreateDeliveryAgentCommand command) {
         // TODO: hub-service에 허브 존재 검증 API가 생기면 HubServiceClient로 hubId 유효성 확인 후 404 처리
 
         validateAgentCapacity(command.agentType(), command.hubId());
@@ -35,15 +35,15 @@ public class DeliveryAgentCommandService {
                 .build();
 
         DeliveryAgent saved = deliveryAgentRepository.save(deliveryAgent);
-        return DeliveryAgentCreateResponseDto.from(saved);
+        return CreateDeliveryAgentResponseDto.from(saved);
     }
 
     @Transactional
-    public DeliveryAgentUpdateResponseDto update(UUID agentId, UpdateDeliveryAgentCommand command) {
+    public UpdateDeliveryAgentResponseDto update(UUID agentId, UpdateDeliveryAgentCommand command) {
         // TODO: hub-service에 허브 존재 검증 API가 생기면 hubId가 바뀌는 경우에도 HubServiceClient로 유효성 확인 필요
         DeliveryAgent deliveryAgent = findDeliveryAgent(agentId);
         deliveryAgent.update(command.hubId(), command.agentType(), command.slackId(), command.isAvailable());
-        return DeliveryAgentUpdateResponseDto.from(deliveryAgent);
+        return UpdateDeliveryAgentResponseDto.from(deliveryAgent);
     }
 
     @Transactional
