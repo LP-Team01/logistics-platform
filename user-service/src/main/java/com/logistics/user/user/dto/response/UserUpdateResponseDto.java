@@ -6,26 +6,26 @@ import com.logistics.user.user.entity.UserStatus;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
-// (회원가입/단건조회/목록조회/로그인 공용)
-public record UserResponseDto(
+
+public record UserUpdateResponseDto(
     UUID userId,
     String username,
     UserRole role,
     UserStatus status,
     UUID hubId,
     UUID companyId,
-    LocalDateTime createdAt
+    LocalDateTime updatedAt
 ) {
 
-    public static UserResponseDto from(User user) {
-        return new UserResponseDto(
+    public static UserUpdateResponseDto from(User user) {
+        return new UserUpdateResponseDto(
             user.getUserId(),
             user.getUsername(),
             user.getRole(),
             user.getStatus(),
             user.getHubId(),
             user.getCompanyId(),
-            user.getCreatedAt()
+            user.getUpdatedAt()
         );
     }
 }
