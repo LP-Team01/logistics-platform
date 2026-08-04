@@ -22,6 +22,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "p_delivery_agents")
 @Getter
 public class DeliveryAgent extends BaseUpdatableEntity {
+
     @Id
     @Column(name = "agent_id",updatable = false, nullable = false)
     private UUID id;

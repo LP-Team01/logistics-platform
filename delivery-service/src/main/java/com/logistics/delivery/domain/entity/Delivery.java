@@ -23,7 +23,7 @@ public class Delivery extends BaseUpdatableEntity {
 
     @Id
     @Column(name = "delivery_id",updatable = false, nullable = false)
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(unique = true, nullable = false)

@@ -22,7 +22,7 @@ import lombok.NoArgsConstructor;
 public class DeliveryRouteRecord extends BaseUpdatableEntity {
     @Id
     @Column(name = "route_record_id",updatable = false, nullable = false)
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(nullable = false)
