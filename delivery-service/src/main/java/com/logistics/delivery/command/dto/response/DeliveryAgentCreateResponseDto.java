@@ -7,7 +7,7 @@ import java.util.UUID;
 import lombok.Builder;
 
 @Builder
-public record DeliveryAgentResponseDto(
+public record DeliveryAgentCreateResponseDto(
     UUID agentId,
     UUID hubId,
     AgentType agentType,
@@ -16,8 +16,8 @@ public record DeliveryAgentResponseDto(
     Boolean isAvailable,
     Instant createdAt
 ) {
-    public static DeliveryAgentResponseDto from(DeliveryAgent deliveryAgent) {
-        return DeliveryAgentResponseDto.builder()
+    public static DeliveryAgentCreateResponseDto from(DeliveryAgent deliveryAgent) {
+        return DeliveryAgentCreateResponseDto.builder()
             .agentId(deliveryAgent.getId())
             .hubId(deliveryAgent.getHubId())
             .agentType(deliveryAgent.getAgentType())

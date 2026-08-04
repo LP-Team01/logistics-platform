@@ -1,6 +1,6 @@
 package com.logistics.delivery.command.dto.request;
 
-import com.logistics.delivery.command.dto.UpdateDeliveryAgentCommand;
+import com.logistics.delivery.command.dto.command.UpdateDeliveryAgentCommand;
 import com.logistics.delivery.domain.entity.AgentType;
 import java.util.UUID;
 
