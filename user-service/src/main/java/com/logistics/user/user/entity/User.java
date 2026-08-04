@@ -1,8 +1,12 @@
 package com.logistics.user.user.entity;
 
+import com.logistics.user.global.entity.BaseEntity;
 import com.logistics.user.user.dto.request.UpdateRequestDto;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.util.UUID;
 
@@ -10,7 +14,7 @@ import java.util.UUID;
 @Table(name = "p_users")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class User {
+public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
