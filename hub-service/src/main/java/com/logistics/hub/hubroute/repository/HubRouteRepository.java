@@ -1,6 +1,6 @@
-package com.logistics.hub.domain.repository;
+package com.logistics.hub.hubroute.repository;
 
-import com.logistics.hub.domain.entity.HubRoute;
+import com.logistics.hub.hubroute.entity.HubRoute;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

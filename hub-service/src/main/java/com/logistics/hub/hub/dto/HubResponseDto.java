@@ -1,6 +1,6 @@
-package com.logistics.hub.domain.dto;
+package com.logistics.hub.hub.dto;
 
-import com.logistics.hub.domain.entity.Hub;
+import com.logistics.hub.hub.entity.Hub;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

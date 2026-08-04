@@ -1,4 +1,4 @@
-package com.logistics.hub.domain.dto;
+package com.logistics.hub.hub.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
