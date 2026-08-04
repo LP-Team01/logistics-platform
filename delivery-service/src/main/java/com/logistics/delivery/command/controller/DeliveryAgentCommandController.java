@@ -55,6 +55,6 @@ public class DeliveryAgentCommandController {
         @RequestHeader("X-User-Id") UUID requesterId
     ) {
         deliveryAgentCommandService.delete(agentId, requesterId);
-        return ResponseEntity.ok(null);
+        return ResponseEntity.noContent().build();
     }
 }

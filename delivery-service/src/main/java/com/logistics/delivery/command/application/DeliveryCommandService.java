@@ -1,7 +1,9 @@
 package com.logistics.delivery.command.application;
 
 import com.logistics.delivery.command.dto.command.CreateDeliveryCommand;
+import com.logistics.delivery.command.dto.command.UpdateDeliveryCommand;
 import com.logistics.delivery.command.dto.response.CreateDeliveryResponseDto;
+import com.logistics.delivery.command.dto.response.UpdateDeliveryResponseDto;
 import com.logistics.delivery.domain.entity.Delivery;
 import com.logistics.delivery.domain.entity.DeliveryRouteRecord;
 import com.logistics.delivery.domain.repository.DeliveryRepository;
@@ -46,6 +48,18 @@ public class DeliveryCommandService {
         List<DeliveryRouteRecord> savedRouteRecords = deliveryRouteRecordRepository.saveAll(List.of(routeRecord));
 
         return CreateDeliveryResponseDto.from(saved, savedRouteRecords);
+    }
+
+    @Transactional
+    public UpdateDeliveryResponseDto update(UUID deliveryId, UpdateDeliveryCommand command) {
+        Delivery delivery = findDelivery(deliveryId);
+        delivery.update(command.status());
+        return UpdateDeliveryResponseDto.from(delivery);
+    }
+
+    private Delivery findDelivery(UUID deliveryId) {
+        return deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOT_FOUND));
     }
 
     private void validateOrder(UUID orderId) {

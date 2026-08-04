@@ -6,7 +6,7 @@ public enum ErrorCode {
 
     //DELIVERY
     DELIVERY_NOT_FOUND(HttpStatus.NOT_FOUND, "DELIVERY_404_01", "배송 정보를 찾을 수 없습니다."),
-    DELIVERY_STATUS_NOT_CHANGEABLE(HttpStatus.CONFLICT, "DELIVERY_409_02", "현재 상태에서는 배송 상태를 변경할 수 없습니다."),
+    DELIVERY_STATUS_NOT_CHANGEABLE(HttpStatus.BAD_REQUEST, "DELIVERY_400_01", "유효하지 않은 상태 전이입니다."),
     DELIVERY_ORDER_ALREADY_EXISTS(HttpStatus.CONFLICT, "DELIVERY_409_04", "주문 1개에 배송 1개 생성 가능합니다."),
 
     //DELIVERY_ROUTE & COMPANY_ROUTE

@@ -1,6 +1,8 @@
 package com.logistics.delivery.domain.entity;
 
 import com.logistics.delivery.global.common.BaseUpdatableEntity;
+import com.logistics.delivery.global.exception.BusinessException;
+import com.logistics.delivery.global.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -9,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.Map;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -69,4 +72,20 @@ public class Delivery extends BaseUpdatableEntity {
         this.receiverSlackId = receiverSlackId;
         this.companyAgentId = companyAgentId;
     }
+
+    public void update(DeliveryStatus status) {
+        if (NEXT_STATUS.get(this.status) != status) {
+            throw new BusinessException(ErrorCode.DELIVERY_STATUS_NOT_CHANGEABLE);
+        }
+        this.status = status;
+    }
+
+    // 상태 전이 규칙표: key(현재 상태) → value(허용되는 다음 상태). 역행/스킵 전이는 모두 이 맵에 없으므로 거부
+    private static final Map<DeliveryStatus, DeliveryStatus> NEXT_STATUS = Map.of(
+        DeliveryStatus.HUB_WAITING, DeliveryStatus.HUB_MOVING,
+        DeliveryStatus.HUB_MOVING, DeliveryStatus.DESTINATION_ARRIVED,
+        DeliveryStatus.DESTINATION_ARRIVED, DeliveryStatus.DELIVERING,
+        DeliveryStatus.DELIVERING, DeliveryStatus.COMPANY_MOVING,
+        DeliveryStatus.COMPANY_MOVING, DeliveryStatus.DELIVERED
+    );
 }
