@@ -1,6 +1,6 @@
-package com.logistics.user.repository;
+package com.logistics.user.user.repository;
 
-import com.logistics.user.core.User;
+import com.logistics.user.user.entity.User;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;

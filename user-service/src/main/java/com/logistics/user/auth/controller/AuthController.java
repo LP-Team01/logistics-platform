@@ -1,14 +1,11 @@
-package com.logistics.user.controller;
+package com.logistics.user.auth.controller;
 
-import com.logistics.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/users")
-public class UserController {
-
-    private UserService userService;
+@RequestMapping("/api/auth")
+public class AuthController {
 }

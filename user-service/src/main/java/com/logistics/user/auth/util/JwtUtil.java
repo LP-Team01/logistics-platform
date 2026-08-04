@@ -1,6 +1,6 @@
-package com.logistics.user.auth;
+package com.logistics.user.auth.util;
 
-import com.logistics.user.core.UserRole;
+import com.logistics.user.user.entity.UserRole;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SecurityException;

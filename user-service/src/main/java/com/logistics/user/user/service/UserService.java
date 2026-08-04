@@ -1,6 +1,6 @@
-package com.logistics.user.service;
+package com.logistics.user.user.service;
 
-import com.logistics.user.repository.UserRepository;
+import com.logistics.user.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

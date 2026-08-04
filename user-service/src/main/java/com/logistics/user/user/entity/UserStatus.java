@@ -1,4 +1,4 @@
-package com.logistics.user.core;
+package com.logistics.user.user.entity;
 
 public enum UserStatus {
     PENDING, APPROVED, REJECTED

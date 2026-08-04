@@ -1,6 +1,6 @@
-package com.logistics.user.dto.request;
+package com.logistics.user.user.dto.request;
 
-import com.logistics.user.core.UserRole;
+import com.logistics.user.user.entity.UserRole;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;

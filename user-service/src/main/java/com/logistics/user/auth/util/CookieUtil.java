@@ -1,4 +1,4 @@
-package com.logistics.user.auth;
+package com.logistics.user.auth.util;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;

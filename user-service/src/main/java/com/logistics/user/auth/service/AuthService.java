@@ -1,4 +1,4 @@
-package com.logistics.user.service;
+package com.logistics.user.auth.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

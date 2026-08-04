@@ -1,6 +1,6 @@
-package com.logistics.user.core;
+package com.logistics.user.user.entity;
 
-import com.logistics.user.dto.request.UpdateRequestDto;
+import com.logistics.user.user.dto.request.UpdateRequestDto;
 import jakarta.persistence.*;
 import lombok.*;
 

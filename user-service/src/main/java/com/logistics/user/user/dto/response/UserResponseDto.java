@@ -1,8 +1,8 @@
-package com.logistics.user.dto.response;
+package com.logistics.user.user.dto.response;
 
-import com.logistics.user.core.User;
-import com.logistics.user.core.UserRole;
-import com.logistics.user.core.UserStatus;
+import com.logistics.user.user.entity.User;
+import com.logistics.user.user.entity.UserRole;
+import com.logistics.user.user.entity.UserStatus;
 
 import java.util.UUID;
 
