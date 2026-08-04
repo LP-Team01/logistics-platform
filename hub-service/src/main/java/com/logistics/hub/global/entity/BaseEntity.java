@@ -1,4 +1,4 @@
-package com.logistics.hub.domain.entity;
+package com.logistics.hub.global.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
