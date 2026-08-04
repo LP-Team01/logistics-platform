@@ -4,7 +4,7 @@ import com.logistics.user.user.entity.User;
 import com.logistics.user.user.entity.UserRole;
 import com.logistics.user.user.entity.UserStatus;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 public record UserUpdateResponseDto(
@@ -14,7 +14,7 @@ public record UserUpdateResponseDto(
     UserStatus status,
     UUID hubId,
     UUID companyId,
-    LocalDateTime updatedAt
+    Instant updatedAt
 ) {
 
     public static UserUpdateResponseDto from(User user) {
