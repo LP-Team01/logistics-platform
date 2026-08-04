@@ -1,26 +1,36 @@
 package com.logistics.delivery.global.config;
 
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.domain.AuditorAware;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Configuration
 @EnableJpaAuditing
 public class JpaAuditingConfig {
-    /*
     @Bean
     public AuditorAware<UUID> auditorProvider() {
         return () -> {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-            if (authentication == null || !authentication.isAuthenticated()
-                || authentication.getPrincipal().equals("anonymousUser")) {
-                // 인증 정보가 없을 때 (비회원 요청, 회원가입 등)
+            ServletRequestAttributes attributes =
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attributes == null) {
                 return Optional.empty();
             }
 
-            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-            return Optional.of(userDetails.getUserId());
+            String userId = attributes.getRequest().getHeader("X-User-Id");
+            if (userId == null || userId.isBlank()) {
+                return Optional.empty();
+            }
+
+            try {
+                return Optional.of(UUID.fromString(userId));
+            } catch (IllegalArgumentException e) {
+                return Optional.empty();
+            }
         };
     }
- */
 }
