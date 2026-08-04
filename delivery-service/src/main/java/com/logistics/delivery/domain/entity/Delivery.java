@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name="p_deliveries")
+@Table(name = "p_deliveries")
 @Getter
 public class Delivery extends BaseUpdatableEntity {
 
@@ -62,7 +62,7 @@ public class Delivery extends BaseUpdatableEntity {
         String receiver,
         String receiverSlackId,
         UUID companyAgentId
-    ){
+    ) {
         this.orderId = orderId;
         this.status = DeliveryStatus.HUB_WAITING;
         this.departureHubId = departureHubId;
@@ -78,6 +78,11 @@ public class Delivery extends BaseUpdatableEntity {
             throw new BusinessException(ErrorCode.DELIVERY_STATUS_NOT_CHANGEABLE);
         }
         this.status = status;
+    }
+
+    @Override
+    public void softDelete(UUID deletedBy) {
+        super.softDelete(deletedBy);
     }
 
     // 상태 전이 규칙표: key(현재 상태) → value(허용되는 다음 상태). 역행/스킵 전이는 모두 이 맵에 없으므로 거부

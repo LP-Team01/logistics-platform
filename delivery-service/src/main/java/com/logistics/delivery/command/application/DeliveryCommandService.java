@@ -57,6 +57,12 @@ public class DeliveryCommandService {
         return UpdateDeliveryResponseDto.from(delivery);
     }
 
+    @Transactional
+    public void delete(UUID requesterId, UUID deliveryId) {
+        Delivery delivery = findDelivery(deliveryId);
+        delivery.softDelete(requesterId);
+    }
+
     private Delivery findDelivery(UUID deliveryId) {
         return deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOT_FOUND));

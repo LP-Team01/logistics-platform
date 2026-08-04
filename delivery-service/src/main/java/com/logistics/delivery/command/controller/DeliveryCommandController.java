@@ -12,10 +12,12 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -36,10 +38,18 @@ public class DeliveryCommandController {
 
     @PatchMapping("/{deliveryId}/status")
     public ResponseEntity<UpdateDeliveryResponseDto> update(
-        @PathVariable UUID deliveryId,
-        @RequestBody @Valid UpdateDeliveryRequestDto request) {
+            @PathVariable UUID deliveryId,
+            @RequestBody @Valid UpdateDeliveryRequestDto request) {
         UpdateDeliveryCommand command = request.toCommand();
-        UpdateDeliveryResponseDto result = deliveryCommandService.update(deliveryId,command);
+        UpdateDeliveryResponseDto result = deliveryCommandService.update(deliveryId, command);
         return ResponseEntity.ok(result);
+    }
+
+    @DeleteMapping("/{deliveryId}")
+    public ResponseEntity<Void> delete(
+            @PathVariable UUID deliveryId,
+            @RequestHeader("X-User-Id") UUID requesterId) {
+        deliveryCommandService.delete(deliveryId, requesterId);
+        return ResponseEntity.noContent().build();
     }
 }
