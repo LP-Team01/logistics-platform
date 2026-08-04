@@ -11,7 +11,7 @@ import java.util.Optional;
 @Component
 public class CookieUtil {
 
-    // 쿠키 추가
+
     public static void addCookie(HttpServletResponse response, String name, String value, int maxAge){
         Cookie cookie = new Cookie(name, value);
         cookie.setMaxAge(maxAge);
@@ -21,7 +21,7 @@ public class CookieUtil {
         response.addCookie(cookie);
     }
 
-    // 쿠키 삭제
+
     public static void deleteCookie(HttpServletRequest request, HttpServletResponse response, String name){
         Cookie[] cookies = request.getCookies();
         if(cookies != null){
@@ -35,8 +35,8 @@ public class CookieUtil {
             }
         }
     }
-    
-    // 쿠키에서 값 가져오기
+
+
     public static Optional<Cookie> getCookie(HttpServletRequest request, String name){
         if(request.getCookies() == null){
             return Optional.empty();
