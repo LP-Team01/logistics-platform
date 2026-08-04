@@ -36,4 +36,10 @@ public class BaseEntity {
 
     @Column(name = "deleted_by", length = 100)
     private String deletedBy;
+
+    // todo: createdBy 처리 방식 확정되면 변경
+    // - AuditorAware로 가면: 이 메서드 삭제, @CreatedBy 어노테이션으로 대체
+    public void assignCreatedBy(String createdBy) {
+        this.createdBy = createdBy;
+    }
 }
