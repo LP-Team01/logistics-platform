@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class DeliverRouteRecordCommandService {
+public class DeliveryRouteRecordCommandService {
     private final DeliveryRouteRecordRepository routeRecordRepository;
 
     // TODO: user-service 연동 후 X-User-Role로 배송 담당자 권한 검증 추가 예정

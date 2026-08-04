@@ -1,6 +1,6 @@
 package com.logistics.delivery.command.controller;
 
-import com.logistics.delivery.command.application.DeliverRouteRecordCommandService;
+import com.logistics.delivery.command.application.DeliveryRouteRecordCommandService;
 import com.logistics.delivery.command.dto.command.UpdateDeliveryRouteRecordCommand;
 import com.logistics.delivery.command.dto.request.UpdateDeliveryRouteRecordRequestDto;
 import com.logistics.delivery.command.dto.response.UpdateDeliveryRouteRecordResponseDto;
@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RequestMapping("/api/deliveries")
 public class DeliveryRouteRecordCommandController {
-    private final DeliverRouteRecordCommandService deliverRouteRecordCommandService;
+    private final DeliveryRouteRecordCommandService deliverRouteRecordCommandService;
 
     @PatchMapping("/{deliveryId}/route-records/{sequence}/status")
     public ResponseEntity<UpdateDeliveryRouteRecordResponseDto> updateStatus(

@@ -13,7 +13,10 @@ public enum ErrorCode {
     INVALID_DELIVERY_ROUTE(HttpStatus.BAD_REQUEST, "DELIVERY_400", "유효하지 않은 배송 경로입니다."),
     DELIVERY_ROUTE_RECORD_NOT_FOUND(HttpStatus.NOT_FOUND, "DELIVERY_404_03", "배송 경로 기록을 찾을 수 없습니다."),
     DELIVERY_ROUTE_RECORD_STATUS_NOT_CHANGEABLE(HttpStatus.BAD_REQUEST, "DELIVERY_400_03", "유효하지 않은 배송 경로 상태 전이입니다."),
-    DELIVERY_ROUTE_RECORD_ACTUAL_INFO_REQUIRED(HttpStatus.BAD_REQUEST, "DELIVERY_400_04", "허브 도착/완료 처리 시 실제 거리와 실제 소요 시간은 필수입니다."),
+    DELIVERY_ROUTE_RECORD_ACTUAL_INFO_REQUIRED(HttpStatus.BAD_REQUEST, "DELIVERY_400_04", "허브 도착 처리 시 실제 거리와 실제 소요 시간은 필수입니다."),
+    COMPANY_ROUTE_RECORD_NOT_FOUND(HttpStatus.NOT_FOUND, "DELIVERY_404_04", "업체배송경로 기록을 찾을 수 없습니다."),
+    COMPANY_ROUTE_RECORD_STATUS_NOT_CHANGEABLE(HttpStatus.BAD_REQUEST, "DELIVERY_400_05", "유효하지 않은 업체배송경로 상태 전이입니다."),
+    COMPANY_ROUTE_RECORD_ACTUAL_INFO_REQUIRED(HttpStatus.BAD_REQUEST, "DELIVERY_400_06", "배송 완료 처리 시 실제 거리와 실제 소요 시간은 필수입니다."),
 
     //DELIVERY_AGENT
     DELIVERY_PERSON_NOT_FOUND(HttpStatus.NOT_FOUND, "DELIVERY_404_02", "배송 담당자를 찾을 수 없습니다."),

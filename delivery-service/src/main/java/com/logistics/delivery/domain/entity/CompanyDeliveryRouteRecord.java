@@ -1,6 +1,8 @@
 package com.logistics.delivery.domain.entity;
 
 import com.logistics.delivery.global.common.BaseUpdatableEntity;
+import com.logistics.delivery.global.exception.BusinessException;
+import com.logistics.delivery.global.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -9,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.Map;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -73,4 +76,26 @@ public class CompanyDeliveryRouteRecord extends BaseUpdatableEntity {
         this.agentId = agentId;
         this.deliverySequence = deliverySequence;
     }
+
+    public void update(CompanyRouteRecordStatus status, Integer actualDistance, Integer actualDuration) {
+        if (NEXT_STATUS.get(this.status) != status) {
+            throw new BusinessException(ErrorCode.COMPANY_ROUTE_RECORD_STATUS_NOT_CHANGEABLE);
+        }
+        if (status == CompanyRouteRecordStatus.DELIVERED && (actualDistance == null || actualDuration == null)) {
+            throw new BusinessException(ErrorCode.COMPANY_ROUTE_RECORD_ACTUAL_INFO_REQUIRED);
+        }
+        this.status = status;
+        if (actualDistance != null) {
+            this.actualDistance = actualDistance;
+        }
+        if (actualDuration != null) {
+            this.actualDuration = actualDuration;
+        }
+    }
+
+    // 상태 전이 규칙표: key(현재 상태) → value(허용되는 다음 상태). 역행/스킵 전이는 모두 이 맵에 없으므로 거부
+    private static final Map<CompanyRouteRecordStatus, CompanyRouteRecordStatus> NEXT_STATUS = Map.of(
+        CompanyRouteRecordStatus.WAITING, CompanyRouteRecordStatus.COMPANY_MOVING,
+        CompanyRouteRecordStatus.COMPANY_MOVING, CompanyRouteRecordStatus.DELIVERED
+    );
 }
