@@ -9,9 +9,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "p_users")
 @Getter
-@AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Builder
 public class User {
 
     @Id
@@ -42,62 +40,43 @@ public class User {
     @Column(name = "company_id", nullable = true)
     private UUID companyId;
 
-
-    public static User signup(
+    @Builder
+    private User(
         String username,
         String encodedPassword,
         String slackId,
         UserRole role,
+        UserStatus status,
         UUID hubId,
         UUID companyId
     ) {
 
-        return User.builder()
-            .username(username)
-            .password(encodedPassword)
-            .slackId(slackId)
-            .role(role)
-            .status(UserStatus.PENDING)
-            .hubId(hubId)
-            .companyId(companyId)
-            .build();
+        this.username = username;
+        this.password = encodedPassword;
+        this.slackId = slackId;
+        this.role = role;
+        this.status = status;
+        this.hubId = hubId;
+        this.companyId = companyId;
     }
 
-    public static User createByMaster(
-        String username,
-        String encodedPassword,
-        String slackId,
-        UserRole role,
-        UUID hubId,
-        UUID companyId
-    ) {
 
-        return User.builder()
-            .username(username)
-            .password(encodedPassword)
-            .slackId(slackId)
-            .role(role)
-            .status(UserStatus.APPROVED)
-            .hubId(hubId)
-            .companyId(companyId)
-            .build();
-    }
 
     public void update(UpdateRequestDto requestDto){
-        if(requestDto.getUsername() != null){
-            this.username = requestDto.getUsername();
+        if(requestDto.username() != null){
+            this.username = requestDto.username();
         }
-        if(requestDto.getSlackId() != null){
-            this.slackId = requestDto.getSlackId();
+        if(requestDto.slackId() != null){
+            this.slackId = requestDto.slackId();
         }
-        if(requestDto.getRole() != null){
-            this.role = requestDto.getRole();
+        if(requestDto.role() != null){
+            this.role = requestDto.role();
         }
-        if(requestDto.getHubId() != null){
-            this.hubId = requestDto.getHubId();
+        if(requestDto.hubId() != null){
+            this.hubId = requestDto.hubId();
         }
-        if(requestDto.getCompanyId() != null){
-            this.companyId = requestDto.getCompanyId();
+        if(requestDto.companyId() != null){
+            this.companyId = requestDto.companyId();
         }
     }
 
