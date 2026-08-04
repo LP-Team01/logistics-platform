@@ -1,14 +1,26 @@
 package com.logistics.company.controller;
 
-import com.logistics.company.dto.CompanyCreateRequest;
-import com.logistics.company.dto.CompanyResponse;
-import com.logistics.company.dto.CompanyUpdateRequest;
+import com.logistics.company.dto.CompanyCreateRequestDto;
+import com.logistics.company.dto.CompanyResponseDto;
+import com.logistics.company.dto.CompanyUpdateRequestDto;
 import com.logistics.company.service.CompanyService;
+
+// ⚠️ 프로젝트 내 RestApiResponse 위치에 맞춰 패키지 경로를 확인해 주세요! (자동 import 추천)
+import com.logistics.company.global.common.RestApiResponse;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
@@ -19,42 +31,38 @@ public class CompanyController {
 
     private final CompanyService companyService;
 
-    // 업체 생성 API , 권한 : MASTER, HUB_MANAGER (담당 허브)
     @PostMapping
-    public ResponseEntity<CompanyResponse> createCompany(
-        @Valid @RequestBody CompanyCreateRequest request,
-        @RequestHeader(value = "X-User-Passport", required = false, defaultValue = "anonymousUser") String passportUserHeader
-        ) {
-        CompanyResponse response = companyService.createCompany(request, passportUserHeader);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
-
-    // 업체 단건 조회 API , 권한 : 전원 접근 가능
-    @GetMapping("/{companyId}")
-    public ResponseEntity<CompanyResponse> getCompany(@PathVariable("companyId") UUID companyId) {
-        CompanyResponse response = companyService.getCompany(companyId);
-        return ResponseEntity.ok(response);
-    }
-
-    // 업체 수정 API , 권한 : MASTER, HUB_MANAGER(담당 허브), COMPANY_MANAGER(본인 업체)
-    @PutMapping("/{companyId}")
-    public ResponseEntity<CompanyResponse> updateCompany(
-        @PathVariable("companyId") UUID companyId,
-        @Valid @RequestBody CompanyUpdateRequest request,
+    public ResponseEntity<RestApiResponse<CompanyResponseDto>> createCompany(
+        @Valid @RequestBody CompanyCreateRequestDto request,
         @RequestHeader(value = "X-User-Passport", required = false, defaultValue = "anonymousUser") String passportUserHeader
     ) {
-        CompanyResponse response = companyService.updateCompany(companyId, request, passportUserHeader);
-        return ResponseEntity.ok(response);
+        CompanyResponseDto response = companyService.createCompany(request, passportUserHeader);
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(new RestApiResponse<>(true, 201, "업체 등록 성공", response, null));
     }
 
-    // 업체 삭제 API , 권한 : MASTER, HUB_MANAGER(담당 허브)
+    @GetMapping("/{companyId}")
+    public ResponseEntity<RestApiResponse<CompanyResponseDto>> getCompany(@PathVariable("companyId") UUID companyId) {
+        CompanyResponseDto response = companyService.getCompany(companyId);
+        return ResponseEntity.ok(new RestApiResponse<>(true, 200, "업체 조회 성공", response, null));
+    }
+
+    @PutMapping("/{companyId}")
+    public ResponseEntity<RestApiResponse<CompanyResponseDto>> updateCompany(
+        @PathVariable("companyId") UUID companyId,
+        @Valid @RequestBody CompanyUpdateRequestDto request,
+        @RequestHeader(value = "X-User-Passport", required = false, defaultValue = "anonymousUser") String passportUserHeader
+    ) {
+        CompanyResponseDto response = companyService.updateCompany(companyId, request, passportUserHeader);
+        return ResponseEntity.ok(new RestApiResponse<>(true, 200, "업체 수정 성공", response, null));
+    }
+
     @DeleteMapping("/{companyId}")
-    public ResponseEntity<Void> deleteCompany(
+    public ResponseEntity<RestApiResponse<Void>> deleteCompany(
         @PathVariable("companyId") UUID companyId,
         @RequestHeader(value = "X-User-Passport", required = false, defaultValue = "anonymousUser") String passportUserHeader
     ) {
         companyService.deleteCompany(companyId, passportUserHeader);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(new RestApiResponse<>(true, 200, "업체 삭제 성공", null, null));
     }
-
 }

@@ -12,7 +12,7 @@ import java.util.UUID;
 @Getter
 @Builder
 @AllArgsConstructor
-public class CompanyResponse {
+public class CompanyResponseDto {
 
     private UUID companyId;
     private UUID hubId;
@@ -23,8 +23,8 @@ public class CompanyResponse {
     private String createdBy;
 
     // Entity -> DTO 변환 정적 팩토리 메서드
-    public static CompanyResponse from(Company company) {
-        return CompanyResponse.builder()
+    public static CompanyResponseDto from(Company company) {
+        return CompanyResponseDto.builder()
             .companyId(company.getCompanyId())
             .hubId(company.getHubId())
             .name(company.getName())
