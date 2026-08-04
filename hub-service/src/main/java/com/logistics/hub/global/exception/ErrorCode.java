@@ -1,0 +1,26 @@
+package com.logistics.hub.global.exception;
+
+import org.springframework.http.HttpStatus;
+
+public enum ErrorCode {
+
+    HUB_NOT_FOUND(HttpStatus.NOT_FOUND, "HUB_404_01", "허브를 찾을 수 없습니다."),
+    HUB_ROUTE_NOT_FOUND(HttpStatus.NOT_FOUND, "HUB_404_02", "허브 이동 경로를 찾을 수 없습니다."),
+    DUPLICATE_HUB(HttpStatus.CONFLICT, "HUB_409_01", "이미 등록된 허브입니다."),
+    DUPLICATE_HUB_ROUTE(HttpStatus.CONFLICT, "HUB_409_02", "이미 등록된 허브 이동 경로입니다."),
+    SAME_HUB_ROUTE(HttpStatus.BAD_REQUEST, "HUB_400", "출발 허브와 도착 허브는 같을 수 없습니다.");
+
+    private final HttpStatus status;
+    private final String code;
+    private final String message;
+
+    ErrorCode(HttpStatus status, String code, String message) {
+        this.status = status;
+        this.code = code;
+        this.message = message;
+    }
+
+    public HttpStatus getStatus() { return status; }
+    public String getCode() { return code; }
+    public String getMessage() { return message; }
+}

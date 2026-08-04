@@ -10,6 +10,8 @@ services:
 
   user-service:
     depends_on:
+      config-server:
+        condition: service_healthy
       postgres:
         condition: service_healthy
         required: false
@@ -18,6 +20,8 @@ services:
 
   hub-service:
     depends_on:
+      config-server:
+        condition: service_healthy
       postgres:
         condition: service_healthy
         required: false
@@ -26,6 +30,8 @@ services:
 
   company-service:
     depends_on:
+      config-server:
+        condition: service_healthy
       postgres:
         condition: service_healthy
         required: false
@@ -34,12 +40,16 @@ services:
 
   order-service:
     depends_on:
+      config-server:
+        condition: service_healthy
       postgres:
         condition: service_healthy
         required: false
 
   delivery-service:
     depends_on:
+      config-server:
+        condition: service_healthy
       postgres:
         condition: service_healthy
         required: false
@@ -47,6 +57,8 @@ services:
   ai-notification-service:
     profiles: [ai]
     depends_on:
+      config-server:
+        condition: service_healthy
       postgres:
         condition: service_healthy
         required: false
