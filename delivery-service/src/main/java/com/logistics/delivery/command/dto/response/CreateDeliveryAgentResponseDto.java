@@ -7,24 +7,24 @@ import java.util.UUID;
 import lombok.Builder;
 
 @Builder
-public record DeliveryAgentUpdateResponseDto(
+public record CreateDeliveryAgentResponseDto(
     UUID agentId,
     UUID hubId,
     AgentType agentType,
     String slackId,
     Integer deliveryOrder,
     Boolean isAvailable,
-    Instant updatedAt
+    Instant createdAt
 ) {
-    public static DeliveryAgentUpdateResponseDto from(DeliveryAgent deliveryAgent) {
-        return DeliveryAgentUpdateResponseDto.builder()
+    public static CreateDeliveryAgentResponseDto from(DeliveryAgent deliveryAgent) {
+        return CreateDeliveryAgentResponseDto.builder()
             .agentId(deliveryAgent.getId())
             .hubId(deliveryAgent.getHubId())
             .agentType(deliveryAgent.getAgentType())
             .slackId(deliveryAgent.getSlackId())
             .deliveryOrder(deliveryAgent.getDeliveryOrder())
             .isAvailable(deliveryAgent.isAvailable())
-            .updatedAt(deliveryAgent.getUpdatedAt())
+            .createdAt(deliveryAgent.getCreatedAt())
             .build();
     }
 }

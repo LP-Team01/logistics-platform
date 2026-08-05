@@ -5,8 +5,8 @@ import com.logistics.delivery.command.dto.command.UpdateDeliveryAgentCommand;
 import com.logistics.delivery.command.application.DeliveryAgentCommandService;
 import com.logistics.delivery.command.dto.request.CreateDeliveryAgentRequestDto;
 import com.logistics.delivery.command.dto.request.UpdateDeliveryAgentRequestDto;
-import com.logistics.delivery.command.dto.response.DeliveryAgentCreateResponseDto;
-import com.logistics.delivery.command.dto.response.DeliveryAgentUpdateResponseDto;
+import com.logistics.delivery.command.dto.response.CreateDeliveryAgentResponseDto;
+import com.logistics.delivery.command.dto.response.UpdateDeliveryAgentResponseDto;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -30,22 +30,22 @@ public class DeliveryAgentCommandController {
 
     // TODO: X-User-Role 체크
     @PostMapping
-    public ResponseEntity<DeliveryAgentCreateResponseDto> create(
+    public ResponseEntity<CreateDeliveryAgentResponseDto> create(
             @RequestBody @Valid CreateDeliveryAgentRequestDto request
     ) {
         CreateDeliveryAgentCommand command = request.toCommand();
-        DeliveryAgentCreateResponseDto result = deliveryAgentCommandService.create(command);
+        CreateDeliveryAgentResponseDto result = deliveryAgentCommandService.create(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
     // TODO: X-User-Role 체크
     @PatchMapping("/{agentId}")
-    public ResponseEntity<DeliveryAgentUpdateResponseDto> update(
+    public ResponseEntity<UpdateDeliveryAgentResponseDto> update(
             @PathVariable UUID agentId,
             @RequestBody @Valid UpdateDeliveryAgentRequestDto request
     ) {
         UpdateDeliveryAgentCommand command = request.toCommand();
-        DeliveryAgentUpdateResponseDto result = deliveryAgentCommandService.update(agentId, command);
+        UpdateDeliveryAgentResponseDto result = deliveryAgentCommandService.update(agentId, command);
         return ResponseEntity.ok(result);
     }
 
@@ -55,6 +55,6 @@ public class DeliveryAgentCommandController {
         @RequestHeader("X-User-Id") UUID requesterId
     ) {
         deliveryAgentCommandService.delete(agentId, requesterId);
-        return ResponseEntity.ok(null);
+        return ResponseEntity.noContent().build();
     }
 }
