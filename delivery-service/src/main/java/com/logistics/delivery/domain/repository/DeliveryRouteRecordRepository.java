@@ -14,4 +14,5 @@ public interface DeliveryRouteRecordRepository extends JpaRepository<DeliveryRou
     Optional<DeliveryRouteRecord> findFirstByAgentIdIsNotNullOrderByCreatedAtDesc();
 
     List<DeliveryRouteRecord> findByDeliveryIdAndDeletedAtIsNullOrderBySequenceAsc(UUID deliveryId);
+
 }
