@@ -20,7 +20,7 @@ public enum ErrorCode {
 
     //DELIVERY_AGENT
     DELIVERY_PERSON_NOT_FOUND(HttpStatus.NOT_FOUND, "DELIVERY_404_02", "배송 담당자를 찾을 수 없습니다."),
-    DELIVERY_PERSON_UNAVAILABLE(HttpStatus.CONFLICT, "DELIVERY_409_01", "배정 가능한 배송 담당자가 없습니다."),
+    DELIVERY_PERSON_UNAVAILABLE(HttpStatus.NOT_FOUND, "DELIVERY_404_05", "배정 가능한 배송 담당자가 없습니다."),
     HUB_ID_REQUIRED(HttpStatus.BAD_REQUEST, "DELIVERY_400_02", "업체배송담당자는 소속 허브(hubId)가 필수입니다."),
     DELIVERY_AGENT_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "DELIVERY_409_03", "배송 담당자 총 인원은 최대 10명입니다."),
     DELIVERY_AGENT_FORBIDDEN(HttpStatus.FORBIDDEN, "DELIVERY_403_01", "배송담당자 생성/수정 권한이 없습니다.");
