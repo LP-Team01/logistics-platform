@@ -1,27 +1,20 @@
-package com.logistics.company.dto;
-
+package com.logistics.company.company.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 import java.util.UUID;
 
-@Getter
-@NoArgsConstructor
-public class CompanyUpdateRequestDto {
-
+public record CompanyCreateRequestDto(
     @NotNull(message = "관리 허브 ID는 필수입니다.")
-    private UUID hubId;
+    UUID hubId,
 
     @NotBlank(message = "업체명은 필수입니다.")
-    private String name;
+    String name,
 
     @NotBlank(message = "업체 타입은 필수입니다.")
-    private String type;
+    String type,
 
     @NotBlank(message = "업체 주소는 필수입니다.")
-    private String address;
-
-}
+    String address
+) {}

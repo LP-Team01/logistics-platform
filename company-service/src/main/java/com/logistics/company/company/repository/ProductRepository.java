@@ -1,6 +1,6 @@
-package com.logistics.company.repository;
+package com.logistics.company.company.repository;
 
-import com.logistics.company.domain.Product;
+import com.logistics.company.company.domain.Product;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

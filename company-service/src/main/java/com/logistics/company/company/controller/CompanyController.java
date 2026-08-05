@@ -1,9 +1,9 @@
-package com.logistics.company.controller;
+package com.logistics.company.company.controller;
 
-import com.logistics.company.dto.CompanyCreateRequestDto;
-import com.logistics.company.dto.CompanyResponseDto;
-import com.logistics.company.dto.CompanyUpdateRequestDto;
-import com.logistics.company.service.CompanyService;
+import com.logistics.company.company.dto.CompanyCreateRequestDto;
+import com.logistics.company.company.dto.CompanyResponseDto;
+import com.logistics.company.company.dto.CompanyUpdateRequestDto;
+import com.logistics.company.company.service.CompanyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
