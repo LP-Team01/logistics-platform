@@ -4,8 +4,10 @@ import com.logistics.delivery.command.dto.command.CreateDeliveryCommand;
 import com.logistics.delivery.command.dto.command.UpdateDeliveryCommand;
 import com.logistics.delivery.command.dto.response.CreateDeliveryResponseDto;
 import com.logistics.delivery.command.dto.response.UpdateDeliveryResponseDto;
+import com.logistics.delivery.domain.entity.CompanyDeliveryRouteRecord;
 import com.logistics.delivery.domain.entity.Delivery;
 import com.logistics.delivery.domain.entity.DeliveryRouteRecord;
+import com.logistics.delivery.domain.repository.CompanyDeliveryRouteRecordRepository;
 import com.logistics.delivery.domain.repository.DeliveryRepository;
 import com.logistics.delivery.domain.repository.DeliveryRouteRecordRepository;
 import com.logistics.delivery.global.exception.BusinessException;
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DeliveryCommandService {
     private final DeliveryRepository deliveryRepository;
     private final DeliveryRouteRecordRepository deliveryRouteRecordRepository;
+    private final CompanyDeliveryRouteRecordRepository companyDeliveryRouteRecordRepository;
 
     @Transactional
     public CreateDeliveryResponseDto create(CreateDeliveryCommand command) {
@@ -46,6 +49,14 @@ public class DeliveryCommandService {
             .estimatedDuration(0)
             .build();
         List<DeliveryRouteRecord> savedRouteRecords = deliveryRouteRecordRepository.saveAll(List.of(routeRecord));
+
+        // 목적지 허브 → 수령 업체 구간
+        CompanyDeliveryRouteRecord companyRouteRecord = CompanyDeliveryRouteRecord.builder()
+            .deliveryId(saved.getId())
+            .departureHubId(command.destinationHubId())
+            .receiverCompanyId(command.receiverCompanyId())
+            .build();
+        companyDeliveryRouteRecordRepository.save(companyRouteRecord);
 
         return CreateDeliveryResponseDto.from(saved, savedRouteRecords);
     }
