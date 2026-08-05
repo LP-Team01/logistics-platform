@@ -34,6 +34,7 @@ public record CompanyRouteResponseDto(
             .actualDuration(routeRecord.getActualDuration())
             .status(routeRecord.getStatus())
             .agentId(routeRecord.getAgentId())
+            .deliverySequence(routeRecord.getDeliverySequence())
             .build();
     }
 }

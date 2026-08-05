@@ -10,25 +10,26 @@ public class DeliveryAgentSpecification {
     public static Specification<DeliveryAgent> withSearchCondition(UUID hubId, AgentType agentType,
                                                                    Boolean isAvailable) {
         return Specification
-            .allOf(likeHubId(hubId))
-            .and(equalsAgentType(agentType))
-            .and(equalsIsAvailable(isAvailable))
-            .and(notDeleted());
+            .allOf(equalsHubId(hubId),
+                equalsAgentType(agentType),
+                equalsIsAvailable(isAvailable),
+                notDeleted()
+            );
     }
 
-    private static Specification<DeliveryAgent> likeHubId(UUID hubId) {
+    private static Specification<DeliveryAgent> equalsHubId(UUID hubId) {
         return (root, query, cb) -> hubId == null ? null
-            : cb.like(root.get("hubId"), "%" + hubId + "%");
+            : cb.equal(root.get("hubId"), hubId);
     }
 
     public static Specification<DeliveryAgent> equalsAgentType(AgentType agentType) {
         return ((root, query, cb) -> agentType == null ? null
-            : cb.equal(root.get("agentType"), "%" + agentType + "%"));
+            : cb.equal(root.get("agentType"), agentType));
     }
 
     private static Specification<DeliveryAgent> equalsIsAvailable(Boolean isAvailable) {
         return ((root, query, cb) -> isAvailable == null ? null
-            : cb.equal(root.get("isAvailable"), "%" + isAvailable + "%"));
+            : cb.equal(root.get("isAvailable"), isAvailable));
     }
 
     private static Specification<DeliveryAgent> notDeleted() {
