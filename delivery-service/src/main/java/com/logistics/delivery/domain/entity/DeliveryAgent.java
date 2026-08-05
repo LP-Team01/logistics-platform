@@ -1,5 +1,8 @@
 package com.logistics.delivery.domain.entity;
 
+import com.logistics.delivery.global.common.BaseUpdatableEntity;
+import com.logistics.delivery.global.exception.BusinessException;
+import com.logistics.delivery.global.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -18,11 +21,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "p_delivery_agents")
 @Getter
-public class DeliveryAgent {
-    // TODO: 감사필드 추가
+public class DeliveryAgent extends BaseUpdatableEntity {
+
     @Id
-    @Column(name = "agent_id")
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "agent_id",updatable = false, nullable = false)
     private UUID id;
 
     private UUID hubId;
@@ -42,16 +44,58 @@ public class DeliveryAgent {
 
     @Builder
     public DeliveryAgent(
+        UUID agentId,
         UUID hubId,
         AgentType agentType,
         String slackId,
         Integer deliveryOrder,
         Boolean isAvailable
     ){
+        validateHubId(agentType, hubId);
+        this.id = agentId;
         this.hubId = hubId;
         this.agentType = agentType;
         this.slackId = slackId;
         this.deliveryOrder = deliveryOrder;
         this.isAvailable = isAvailable != null ? isAvailable : Boolean.TRUE;
+    }
+
+    public void update(
+        UUID hubId,
+        AgentType agentType,
+        String slackId,
+        Boolean isAvailable
+    ) {
+
+        AgentType targetType = agentType != null ? agentType : this.agentType;
+
+        if (targetType == AgentType.HUB_DELIVERY) {
+            this.hubId = null;
+        } else if (hubId != null) {
+            this.hubId = hubId;
+        }
+
+        validateHubId(targetType, this.hubId);
+        this.agentType = targetType;
+
+        // TODO: agentType/hubId가 바뀌면 deliveryOrder가 이전 그룹 기준 순번이라 새 그룹의 순번 규칙과 어긋날 수 있음 - 재계산 정책 필요
+        if (slackId != null) {
+            this.slackId = slackId;
+        }
+
+        if (isAvailable != null) {
+            this.isAvailable = isAvailable;
+        }
+    }
+
+    @Override
+    public void softDelete(UUID deletedBy) {
+        super.softDelete(deletedBy);
+    }
+
+    private void validateHubId(AgentType agentType, UUID hubId) {
+        if (agentType == AgentType.COMPANY_DELIVERY && hubId == null) {
+            throw new BusinessException(ErrorCode.HUB_ID_REQUIRED);
+        }
     }
 }
