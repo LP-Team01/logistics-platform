@@ -33,6 +33,9 @@ dependencies {
     // Google Gemini 직접 호출 SDK
     implementation 'com.google.genai:google-genai:1.64.0'
 
+    // Slack Web API 직접 호출
+    implementation 'com.slack.api:slack-api-client:1.49.0'
+
     // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

@@ -62,7 +62,7 @@ public class AiRequestController {
         AiResponseDto response =
             aiRequestService.createAiRequest(requestDto);
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     /**

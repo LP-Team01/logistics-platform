@@ -6,13 +6,13 @@ import com.google.genai.Client;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.logistics.ai.airequest.dto.responsedto.AiCalculationResult;
-import com.logistics.ai.airequest.service.DispatchDeadlineAiClient.AiExecutionResult;
-import com.logistics.ai.common.exception.GeminiProcessingException;
+import com.logistics.ai.global.exception.GeminiProcessingException;
 import jakarta.annotation.PreDestroy;
-import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * Google Gen AI Java SDK를 이용하여 Gemini API를 직접 호출합니다.

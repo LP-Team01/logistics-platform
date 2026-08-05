@@ -9,38 +9,36 @@ import com.logistics.ai.airequest.entity.AiRequestStatus;
 import com.logistics.ai.airequest.repository.AiRequestRepository;
 import com.logistics.ai.airequest.repository.AiRequestSpecification;
 import com.logistics.ai.airequest.repository.AiRequestStatisticsProjection;
-import com.logistics.ai.common.exception.AiRequestNotFoundException;
-import com.logistics.ai.common.exception.AiRequestRetryNotAllowedException;
-import com.logistics.ai.common.exception.GeminiProcessingException;
-import com.logistics.ai.common.exception.InvalidStatisticsPeriodException;
+import com.logistics.ai.global.exception.BusinessException;
+import com.logistics.ai.global.exception.ErrorCode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.UUID;
-
 /**
  * AI 요청의 생성, 조회, 재처리 및 삭제를 담당하는 서비스입니다.
  *
- * <p>프롬프트 생성, Gemini 호출, AI 요청 상태 변경을 하나의 흐름으로 관리합니다.</p>
+ * <p>프롬프트 생성, Gemini 호출, AI 요청 상태 변경을
+ * 하나의 흐름으로 관리합니다.</p>
  */
 @Service
 @RequiredArgsConstructor
 public class AiRequestService {
-
-    private final AiRequestRepository aiRequestRepository;
-    private final AiPromptService aiPromptService;
-    private final DispatchDeadlineAiClient dispatchDeadlineAiClient;
 
     private static final LocalDateTime MIN_STATISTICS_DATE_TIME =
         LocalDateTime.of(1, 1, 1, 0, 0);
 
     private static final LocalDateTime MAX_STATISTICS_DATE_TIME =
         LocalDateTime.of(9999, 12, 31, 0, 0);
+
+    private final AiRequestRepository aiRequestRepository;
+    private final AiPromptService aiPromptService;
+    private final DispatchDeadlineAiClient dispatchDeadlineAiClient;
 
     /**
      * 배송 정보를 이용하여 최종 발송 시한을 계산합니다.
@@ -49,16 +47,15 @@ public class AiRequestService {
      *     <li>이벤트 중복 여부를 확인합니다.</li>
      *     <li>Gemini에 전달할 프롬프트를 생성합니다.</li>
      *     <li>AI 요청을 PENDING 상태로 먼저 저장합니다.</li>
-     *     <li>Gemini 호출 결과에 따라 SUCCESS 또는 FAILED 상태로 변경합니다.</li>
+     *     <li>AI 호출 결과에 따라 SUCCESS 또는 FAILED 상태로 변경합니다.</li>
      * </ol>
      *
      * @param requestDto AI 계산에 필요한 주문 및 배송 정보
      * @return AI 요청 처리 결과
      */
     public AiResponseDto createAiRequest(AiRequestDto requestDto) {
-        AiResponseDto existingResponse = findExistingResponse(
-            requestDto.eventId()
-        );
+        AiResponseDto existingResponse =
+            findExistingResponse(requestDto.eventId());
 
         if (existingResponse != null) {
             return existingResponse;
@@ -77,17 +74,22 @@ public class AiRequestService {
             prompt
         );
 
-        // 외부 API 호출 전에 PENDING 상태를 먼저 저장합니다.
-        AiRequest savedAiRequest = aiRequestRepository.save(aiRequest);
+        // 외부 API를 호출하기 전에 PENDING 상태를 먼저 저장합니다.
+        AiRequest savedAiRequest =
+            aiRequestRepository.save(aiRequest);
+
         long startedAt = System.nanoTime();
 
         try {
             DispatchDeadlineAiClient.AiExecutionResult executionResult =
-                dispatchDeadlineAiClient.calculateDispatchDeadline(prompt);
+                dispatchDeadlineAiClient.calculateDispatchDeadline(
+                    prompt
+                );
 
             savedAiRequest.markSuccess(
                 executionResult.rawResponse(),
-                executionResult.calculationResult().dispatchDeadline(),
+                executionResult.calculationResult()
+                    .dispatchDeadline(),
                 executionResult.model(),
                 executionResult.processingTimeMs()
             );
@@ -97,8 +99,9 @@ public class AiRequestService {
 
             return AiResponseDto.from(completedAiRequest);
 
-        } catch (GeminiProcessingException exception) {
-            long processingTimeMs = calculateProcessingTime(startedAt);
+        } catch (BusinessException exception) {
+            long processingTimeMs =
+                calculateProcessingTime(startedAt);
 
             savedAiRequest.markFailed(
                 exception.getMessage(),
@@ -106,7 +109,7 @@ public class AiRequestService {
                 processingTimeMs
             );
 
-            // 예외를 다시 던지기 전에 FAILED 상태를 먼저 저장합니다.
+            // 예외를 다시 던지기 전에 FAILED 상태를 저장합니다.
             aiRequestRepository.save(savedAiRequest);
 
             throw exception;
@@ -116,8 +119,11 @@ public class AiRequestService {
     /**
      * 동일한 이벤트가 이미 처리되었다면 기존 결과를 반환합니다.
      *
-     * <p>Kafka 메시지가 중복 전달되더라도 Gemini API를 다시 호출하지 않도록
-     * 멱등성을 보장합니다.</p>
+     * <p>Kafka 메시지가 중복 전달되더라도 AI API를 다시 호출하지
+     * 않도록 멱등성을 보장합니다.</p>
+     *
+     * @param eventId 이벤트 식별자
+     * @return 기존 처리 결과 또는 null
      */
     private AiResponseDto findExistingResponse(UUID eventId) {
         if (!aiRequestRepository.existsByEventId(eventId)) {
@@ -127,13 +133,18 @@ public class AiRequestService {
         return aiRequestRepository
             .findByEventIdAndDeletedAtIsNull(eventId)
             .map(AiResponseDto::from)
-            .orElseThrow(() -> new IllegalStateException(
-                "이미 삭제된 AI 요청 이벤트입니다. eventId=" + eventId
-            ));
+            .orElseThrow(
+                () -> new BusinessException(
+                    ErrorCode.INVALID_AI_REQUEST
+                )
+            );
     }
 
     /**
-     * AI 처리 시간을 밀리초 단위로 계산합니다.
+     * AI 처리시간을 밀리초 단위로 계산합니다.
+     *
+     * @param startedAt 처리 시작 시각
+     * @return 처리시간(ms)
      */
     private long calculateProcessingTime(long startedAt) {
         return (System.nanoTime() - startedAt) / 1_000_000L;
@@ -144,13 +155,16 @@ public class AiRequestService {
      *
      * @param aiRequestId AI 요청 식별자
      * @return AI 요청 처리 결과
-     * @throws AiRequestNotFoundException 요청 이력이 존재하지 않는 경우
+     * @throws BusinessException 요청 이력이 존재하지 않는 경우
      */
+    @Transactional(readOnly = true)
     public AiResponseDto getAiRequest(UUID aiRequestId) {
         AiRequest aiRequest = aiRequestRepository
             .findByAiRequestIdAndDeletedAtIsNull(aiRequestId)
             .orElseThrow(
-                () -> new AiRequestNotFoundException(aiRequestId)
+                () -> new BusinessException(
+                    ErrorCode.AI_REQUEST_NOT_FOUND
+                )
             );
 
         return AiResponseDto.from(aiRequest);
@@ -178,29 +192,28 @@ public class AiRequestService {
     }
 
     /**
-     * 실패한 AI 요청을 Gemini에 다시 전달하여 재처리합니다.
+     * 실패한 AI 요청을 다시 처리합니다.
      *
      * <p>FAILED 상태의 요청만 재처리할 수 있으며,
      * 성공하면 SUCCESS, 실패하면 다시 FAILED 상태로 저장합니다.</p>
      *
      * @param aiRequestId 재처리할 AI 요청 식별자
      * @return 재처리 결과
+     * @throws BusinessException 요청이 없거나 재처리가 불가능한 경우
      */
     public AiResponseDto retryAiRequest(UUID aiRequestId) {
         AiRequest aiRequest = aiRequestRepository
             .findByAiRequestIdAndDeletedAtIsNull(aiRequestId)
             .orElseThrow(
-                () -> new AiRequestNotFoundException(aiRequestId)
+                () -> new BusinessException(
+                    ErrorCode.AI_REQUEST_NOT_FOUND
+                )
             );
 
-        if (aiRequest.getStatus() != AiRequestStatus.FAILED) {
-            throw new AiRequestRetryNotAllowedException(
-                aiRequestId,
-                aiRequest.getStatus()
-            );
-        }
-
-        // 이전 실패 결과를 초기화하고 PENDING으로 변경합니다.
+        /*
+         * 재처리가 가능한 상태인지에 대한 검증은
+         * AiRequest.prepareRetry()에서 수행합니다.
+         */
         aiRequest.prepareRetry();
 
         AiRequest pendingAiRequest =
@@ -227,7 +240,7 @@ public class AiRequestService {
 
             return AiResponseDto.from(completedAiRequest);
 
-        } catch (GeminiProcessingException exception) {
+        } catch (BusinessException exception) {
             long processingTimeMs =
                 calculateProcessingTime(startedAt);
 
@@ -237,6 +250,7 @@ public class AiRequestService {
                 processingTimeMs
             );
 
+            // 실패한 상태를 먼저 저장한 뒤 예외를 다시 전달합니다.
             aiRequestRepository.save(pendingAiRequest);
 
             throw exception;
@@ -246,8 +260,8 @@ public class AiRequestService {
     /**
      * 지정된 기간의 AI 요청 처리 통계를 조회합니다.
      *
-     * <p>날짜는 일 단위로 입력받으며 종료일의 데이터까지
-     * 포함되도록 다음 날 0시를 조회 종료 시점으로 사용합니다.</p>
+     * <p>날짜는 일 단위로 입력받으며 종료일의 데이터까지 포함되도록
+     * 다음 날 0시를 조회 종료 시점으로 사용합니다.</p>
      *
      * @param startDate 조회 시작일
      * @param endDate 조회 종료일
@@ -290,6 +304,10 @@ public class AiRequestService {
 
     /**
      * 통계 조회 시작일과 종료일의 순서를 검증합니다.
+     *
+     * @param startDate 조회 시작일
+     * @param endDate 조회 종료일
+     * @throws BusinessException 시작일이 종료일보다 늦은 경우
      */
     private void validateStatisticsPeriod(
         LocalDate startDate,
@@ -300,15 +318,17 @@ public class AiRequestService {
                 && endDate != null
                 && startDate.isAfter(endDate)
         ) {
-            throw new InvalidStatisticsPeriodException(
-                startDate,
-                endDate
+            throw new BusinessException(
+                ErrorCode.INVALID_STATISTICS_PERIOD
             );
         }
     }
 
     /**
      * 평균 처리시간을 소수점 둘째 자리까지 반환합니다.
+     *
+     * @param value 평균 처리시간
+     * @return 소수점 둘째 자리까지 반올림한 값
      */
     private double roundToTwoDecimalPlaces(Double value) {
         if (value == null) {
@@ -322,16 +342,22 @@ public class AiRequestService {
      * AI 요청 이력을 논리 삭제합니다.
      *
      * @param aiRequestId 삭제할 AI 요청 식별자
-     * @param deletedBy   삭제를 수행한 사용자 식별자
+     * @param deletedBy 삭제를 수행한 사용자 식별자
+     * @throws BusinessException 요청 이력이 존재하지 않는 경우
      */
     @Transactional
-    public void deleteAiRequest(UUID aiRequestId, UUID deletedBy) {
-
+    public void deleteAiRequest(
+        UUID aiRequestId,
+        UUID deletedBy
+    ) {
         AiRequest aiRequest = aiRequestRepository
             .findByAiRequestIdAndDeletedAtIsNull(aiRequestId)
-            .orElseThrow(() -> new AiRequestNotFoundException(aiRequestId));
+            .orElseThrow(
+                () -> new BusinessException(
+                    ErrorCode.AI_REQUEST_NOT_FOUND
+                )
+            );
 
-        // 실제 행을 삭제하지 않고 deletedAt과 deletedBy를 기록합니다.
         aiRequest.softDelete(deletedBy);
     }
 }

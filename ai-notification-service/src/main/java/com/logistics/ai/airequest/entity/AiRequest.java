@@ -1,6 +1,8 @@
 package com.logistics.ai.airequest.entity;
 
 import com.logistics.ai.common.entity.BaseEntity;
+import com.logistics.ai.global.exception.BusinessException;
+import com.logistics.ai.global.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -269,12 +271,11 @@ public class AiRequest extends BaseEntity {
      */
     public void prepareRetry() {
         if (status != AiRequestStatus.FAILED) {
-            throw new IllegalStateException(
-                "실패한 AI 요청만 재처리할 수 있습니다."
+            throw new BusinessException(
+                ErrorCode.AI_REQUEST_RETRY_NOT_ALLOWED
             );
         }
 
-        // 기존 실패 결과를 초기화하고 다시 PENDING 상태로 변경합니다.
         this.response = null;
         this.dispatchDeadline = null;
         this.errorMessage = null;
