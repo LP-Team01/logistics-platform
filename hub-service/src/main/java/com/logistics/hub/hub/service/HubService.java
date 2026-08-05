@@ -4,11 +4,14 @@ import com.logistics.hub.global.exception.BusinessException;
 import com.logistics.hub.global.exception.ErrorCode;
 import com.logistics.hub.hub.dto.HubCreateRequestDto;
 import com.logistics.hub.hub.dto.HubDeleteResponseDto;
+import com.logistics.hub.hub.dto.HubPageResponseDto;
 import com.logistics.hub.hub.dto.HubResponseDto;
 import com.logistics.hub.hub.dto.HubUpdateRequestDto;
 import com.logistics.hub.hub.entity.Hub;
 import com.logistics.hub.hub.repository.HubRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -67,5 +70,10 @@ public class HubService {
         hub.assignDeletedInfo("system"); // 임시값
 
         return HubDeleteResponseDto.from(hub);
+    }
+
+    public HubPageResponseDto searchHubs(String keyword, Pageable pageable) {
+        Page<Hub> hubPage = hubRepository.search(keyword, pageable);
+        return HubPageResponseDto.from(hubPage);
     }
 }

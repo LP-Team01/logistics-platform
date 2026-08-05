@@ -2,12 +2,17 @@ package com.logistics.hub.hub.controller;
 
 import com.logistics.hub.hub.dto.HubCreateRequestDto;
 import com.logistics.hub.hub.dto.HubDeleteResponseDto;
+import com.logistics.hub.hub.dto.HubPageResponseDto;
 import com.logistics.hub.hub.dto.HubResponseDto;
 import com.logistics.hub.hub.dto.HubUpdateRequestDto;
 import com.logistics.hub.hub.service.HubService;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.PATCH;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
@@ -52,6 +58,15 @@ public class HubController {
     @DeleteMapping("/{hubId}")
     public ResponseEntity<HubDeleteResponseDto> deletedHub(@PathVariable UUID hubId) {
         HubDeleteResponseDto response = hubService.deleteHub(hubId);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping
+    public ResponseEntity<HubPageResponseDto> searchHubs(
+        @RequestParam(required = false) String keyword,
+        @ParameterObject @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        HubPageResponseDto response = hubService.searchHubs(keyword, pageable);
         return ResponseEntity.ok(response);
     }
 }
