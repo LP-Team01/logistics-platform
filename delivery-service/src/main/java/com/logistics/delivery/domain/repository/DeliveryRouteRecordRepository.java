@@ -1,6 +1,7 @@
 package com.logistics.delivery.domain.repository;
 
 import com.logistics.delivery.domain.entity.DeliveryRouteRecord;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,4 +12,6 @@ public interface DeliveryRouteRecordRepository extends JpaRepository<DeliveryRou
     Optional<DeliveryRouteRecord> findByDeliveryIdAndSequenceAndDeletedAtIsNull(UUID deliveryId, Integer sequence);
 
     Optional<DeliveryRouteRecord> findFirstByAgentIdIsNotNullOrderByCreatedAtDesc();
+
+    List<DeliveryRouteRecord> findByDeliveryIdAndDeletedAtIsNullOrderBySequenceAsc(UUID deliveryId);
 }
