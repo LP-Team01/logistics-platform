@@ -77,6 +77,10 @@ public class CompanyDeliveryRouteRecord extends BaseUpdatableEntity {
         this.deliverySequence = deliverySequence;
     }
 
+    public void assignAgent(UUID agentId) {
+        this.agentId = agentId;
+    }
+
     public void update(CompanyRouteRecordStatus status, Integer actualDistance, Integer actualDuration) {
         if (NEXT_STATUS.get(this.status) != status) {
             throw new BusinessException(ErrorCode.COMPANY_ROUTE_RECORD_STATUS_NOT_CHANGEABLE);

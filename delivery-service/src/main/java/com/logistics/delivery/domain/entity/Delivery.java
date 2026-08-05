@@ -73,6 +73,10 @@ public class Delivery extends BaseUpdatableEntity {
         this.companyAgentId = companyAgentId;
     }
 
+    public void assignCompanyAgent(UUID companyAgentId) {
+        this.companyAgentId = companyAgentId;
+    }
+
     public void update(DeliveryStatus status) {
         if (NEXT_STATUS.get(this.status) != status) {
             throw new BusinessException(ErrorCode.DELIVERY_STATUS_NOT_CHANGEABLE);

@@ -80,6 +80,10 @@ public class DeliveryRouteRecord extends BaseUpdatableEntity {
         this.agentId = agentId;
     }
 
+    public void assignAgent(UUID agentId) {
+        this.agentId = agentId;
+    }
+
     public void update(RouteRecordStatus status, Integer actualDistance, Integer actualDuration) {
         if (NEXT_STATUS.get(this.status) != status) {
             throw new BusinessException(ErrorCode.DELIVERY_ROUTE_RECORD_STATUS_NOT_CHANGEABLE);
