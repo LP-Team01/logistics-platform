@@ -1,13 +1,18 @@
 package com.logistics.hub.hub.controller;
 
 import com.logistics.hub.hub.dto.HubCreateRequestDto;
+import com.logistics.hub.hub.dto.HubDeleteResponseDto;
 import com.logistics.hub.hub.dto.HubResponseDto;
+import com.logistics.hub.hub.dto.HubUpdateRequestDto;
 import com.logistics.hub.hub.service.HubService;
 import jakarta.validation.Valid;
+import jakarta.ws.rs.PATCH;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,6 +37,21 @@ public class HubController {
     @GetMapping("/{hubId}")
     public ResponseEntity<HubResponseDto> getHub(@PathVariable UUID hubId) {
         HubResponseDto response = hubService.getHub(hubId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{hubId}")
+    public ResponseEntity<HubResponseDto> updateHub(
+        @PathVariable UUID hubId,
+        @RequestBody HubUpdateRequestDto request
+        ) {
+        HubResponseDto response = hubService.updateHub(hubId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{hubId}")
+    public ResponseEntity<HubDeleteResponseDto> deletedHub(@PathVariable UUID hubId) {
+        HubDeleteResponseDto response = hubService.deleteHub(hubId);
         return ResponseEntity.ok(response);
     }
 }

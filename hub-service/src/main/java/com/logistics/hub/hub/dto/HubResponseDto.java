@@ -2,6 +2,7 @@ package com.logistics.hub.hub.dto;
 
 import com.logistics.hub.hub.entity.Hub;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -11,9 +12,9 @@ public record HubResponseDto (
     String address,
     Double latitude,
     Double longitude,
-    LocalDateTime createdAt,
+    Instant createdAt,
     String createdBy,
-    LocalDateTime updatedAt,
+    Instant updatedAt,
     String updatedBy
 ) {
 

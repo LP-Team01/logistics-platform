@@ -3,7 +3,9 @@ package com.logistics.hub.hub.service;
 import com.logistics.hub.global.exception.BusinessException;
 import com.logistics.hub.global.exception.ErrorCode;
 import com.logistics.hub.hub.dto.HubCreateRequestDto;
+import com.logistics.hub.hub.dto.HubDeleteResponseDto;
 import com.logistics.hub.hub.dto.HubResponseDto;
+import com.logistics.hub.hub.dto.HubUpdateRequestDto;
 import com.logistics.hub.hub.entity.Hub;
 import com.logistics.hub.hub.repository.HubRepository;
 import lombok.RequiredArgsConstructor;
@@ -41,5 +43,29 @@ public class HubService {
             .orElseThrow(()-> new BusinessException(ErrorCode.HUB_NOT_FOUND));
 
         return HubResponseDto.from(hub);
+    }
+
+    @Transactional
+    public HubResponseDto updateHub(UUID hubId, HubUpdateRequestDto request) {
+        Hub hub = hubRepository.findByHubIdAndDeletedAtIsNull(hubId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.HUB_NOT_FOUND));
+
+        hub.updateInfo(request.name(),request.address(), request.latitude(), request.longitude());
+
+        // todo: JWT 인증/게이트웨이 헤더 전달 방식 확정되면 실제 요청자로 교체
+        hub.assignUpdatedBy("system"); // 임시값
+
+        return HubResponseDto.from(hub);
+    }
+
+    @Transactional
+    public HubDeleteResponseDto deleteHub(UUID hubId) {
+        Hub hub = hubRepository.findByHubIdAndDeletedAtIsNull(hubId)
+            .orElseThrow(()->new BusinessException(ErrorCode.HUB_NOT_FOUND));
+
+        // todo: JWT 인증/게이트웨이 헤더 전달 방식 확정되면 실제 요청자로 교체
+        hub.assignDeletedInfo("system"); // 임시값
+
+        return HubDeleteResponseDto.from(hub);
     }
 }
