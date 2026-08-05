@@ -10,7 +10,6 @@ dependencies {
     implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
     runtimeOnly 'org.postgresql:postgresql'
 
-    //TODO: 공통 설정 추가 후 제거
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testCompileOnly 'org.projectlombok:lombok'
