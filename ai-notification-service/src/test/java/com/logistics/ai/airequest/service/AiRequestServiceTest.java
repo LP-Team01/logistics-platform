@@ -118,19 +118,25 @@ class AiRequestServiceTest {
     @DisplayName("동일한 이벤트가 존재하면 AI를 다시 호출하지 않는다")
     void returnExistingAiRequest() {
         // given
-        AiRequestDto requestDto = createRequestDto();
-        AiRequest existingRequest = createTestAiRequest();
+        UUID eventId = UUID.randomUUID();
+
+        AiRequestDto requestDto =
+            mock(AiRequestDto.class);
+
+        AiRequest existingRequest =
+            createTestAiRequest();
+
+        // 이 테스트에서 실제 사용하는 eventId만 설정합니다.
+        when(requestDto.eventId())
+            .thenReturn(eventId);
 
         when(
-            aiRequestRepository.existsByEventId(
-                requestDto.eventId()
-            )
+            aiRequestRepository.existsByEventId(eventId)
         ).thenReturn(true);
 
         when(
-            aiRequestRepository.findByEventIdAndDeletedAtIsNull(
-                requestDto.eventId()
-            )
+            aiRequestRepository
+                .findByEventIdAndDeletedAtIsNull(eventId)
         ).thenReturn(Optional.of(existingRequest));
 
         // when
