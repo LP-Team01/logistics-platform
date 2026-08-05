@@ -97,6 +97,11 @@ public class CompanyDeliveryRouteRecord extends BaseUpdatableEntity {
         }
     }
 
+    @Override
+    public void softDelete(UUID deletedBy) {
+        super.softDelete(deletedBy);
+    }
+
     // 상태 전이 규칙표: key(현재 상태) → value(허용되는 다음 상태). 역행/스킵 전이는 모두 이 맵에 없으므로 거부
     private static final Map<CompanyRouteRecordStatus, CompanyRouteRecordStatus> NEXT_STATUS = Map.of(
         CompanyRouteRecordStatus.WAITING, CompanyRouteRecordStatus.COMPANY_MOVING,

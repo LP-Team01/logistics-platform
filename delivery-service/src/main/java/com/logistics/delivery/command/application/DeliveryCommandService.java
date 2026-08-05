@@ -93,6 +93,12 @@ public class DeliveryCommandService {
     public void delete(UUID requesterId, UUID deliveryId) {
         Delivery delivery = findDelivery(deliveryId);
         delivery.softDelete(requesterId);
+
+        deliveryRouteRecordRepository.findByDeliveryIdAndDeletedAtIsNullOrderBySequenceAsc(deliveryId)
+            .forEach(routeRecord -> routeRecord.softDelete(requesterId));
+
+        companyDeliveryRouteRecordRepository.findByDeliveryIdAndDeletedAtIsNull(deliveryId)
+            .ifPresent(companyRouteRecord -> companyRouteRecord.softDelete(requesterId));
     }
 
     private Delivery findDelivery(UUID deliveryId) {

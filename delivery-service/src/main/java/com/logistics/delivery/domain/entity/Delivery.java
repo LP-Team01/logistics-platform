@@ -29,7 +29,7 @@ public class Delivery extends BaseUpdatableEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false)
     private UUID orderId;
 
     @Enumerated(EnumType.STRING)
