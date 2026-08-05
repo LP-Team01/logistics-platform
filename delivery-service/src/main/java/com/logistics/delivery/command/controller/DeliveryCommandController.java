@@ -49,7 +49,7 @@ public class DeliveryCommandController {
     public ResponseEntity<Void> delete(
             @PathVariable UUID deliveryId,
             @RequestHeader("X-User-Id") UUID requesterId) {
-        deliveryCommandService.delete(deliveryId, requesterId);
+        deliveryCommandService.delete(requesterId, deliveryId);
         return ResponseEntity.noContent().build();
     }
 }
