@@ -1,6 +1,10 @@
 package com.logistics.company.domain;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -20,7 +24,6 @@ public class Company {
     @Column(name = "company_id", updatable = false, nullable = false)
     private UUID companyId;
 
-    // Hub Entity를 @ManyToOne 하지 않고 UUID 값만 저장
     @Column(name = "hub_id", nullable = false)
     private UUID hubId;
 
@@ -28,12 +31,11 @@ public class Company {
     private String name;
 
     @Column(name = "type", nullable = false, length = 50)
-    private String type; // PRODUCER / RECEIVER
+    private String type;
 
     @Column(name = "address", nullable = false, length = 255)
     private String address;
 
-    // BaseEntity(Audit) 공통화 전, 기본 시간 및 사용자 필드 정의
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -75,5 +77,4 @@ public class Company {
         this.deletedBy = deletedBy;
         this.deletedAt = LocalDateTime.now();
     }
-
 }
