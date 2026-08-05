@@ -1,15 +1,10 @@
 package com.logistics.delivery.query.application;
 
 import com.logistics.delivery.domain.entity.CompanyDeliveryRouteRecord;
-import com.logistics.delivery.domain.entity.DeliveryRouteRecord;
 import com.logistics.delivery.domain.repository.CompanyDeliveryRouteRecordRepository;
-import com.logistics.delivery.domain.repository.DeliveryRouteRecordRepository;
 import com.logistics.delivery.global.exception.BusinessException;
 import com.logistics.delivery.global.exception.ErrorCode;
-import com.logistics.delivery.query.dto.reponse.CompanyRouteResponseDto;
-import com.logistics.delivery.query.dto.reponse.DeliveryRouteDetailResponseDto;
-import com.logistics.delivery.query.dto.reponse.DeliveryRouteResponseDto;
-import java.util.List;
+import com.logistics.delivery.query.dto.response.CompanyRouteResponseDto;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

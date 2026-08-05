@@ -1,10 +1,7 @@
 package com.logistics.delivery.query.controller;
 
 import com.logistics.delivery.query.application.CompanyRouteQueryService;
-import com.logistics.delivery.query.application.DeliveryRouteQueryService;
-import com.logistics.delivery.query.dto.reponse.CompanyRouteResponseDto;
-import com.logistics.delivery.query.dto.reponse.DeliveryRouteDetailResponseDto;
-import com.logistics.delivery.query.dto.reponse.DeliveryRouteResponseDto;
+import com.logistics.delivery.query.dto.response.CompanyRouteResponseDto;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

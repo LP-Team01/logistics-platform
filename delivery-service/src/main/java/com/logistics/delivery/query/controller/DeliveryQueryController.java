@@ -1,8 +1,8 @@
 package com.logistics.delivery.query.controller;
 
 import com.logistics.delivery.query.application.DeliveryQueryService;
-import com.logistics.delivery.query.dto.reponse.DeliveryDetailResponseDto;
-import com.logistics.delivery.query.dto.reponse.DeliveryResponseDto;
+import com.logistics.delivery.query.dto.response.DeliveryDetailResponseDto;
+import com.logistics.delivery.query.dto.response.DeliveryResponseDto;
 import com.logistics.delivery.query.dto.request.DeliverySearchRequestDto;
 import jakarta.validation.Valid;
 import java.util.UUID;

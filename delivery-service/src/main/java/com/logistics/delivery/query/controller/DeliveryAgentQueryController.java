@@ -2,8 +2,8 @@ package com.logistics.delivery.query.controller;
 
 import com.logistics.delivery.domain.entity.AgentType;
 import com.logistics.delivery.query.application.DeliveryAgentQueryService;
-import com.logistics.delivery.query.dto.reponse.DeliveryAgentDetailResponseDto;
-import com.logistics.delivery.query.dto.reponse.DeliveryAgentResponseDto;
+import com.logistics.delivery.query.dto.response.DeliveryAgentDetailResponseDto;
+import com.logistics.delivery.query.dto.response.DeliveryAgentResponseDto;
 import com.logistics.delivery.query.dto.request.DeliveryAgentSearchRequestDto;
 import jakarta.validation.Valid;
 import java.util.UUID;
