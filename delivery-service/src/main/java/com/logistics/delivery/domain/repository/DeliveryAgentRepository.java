@@ -9,12 +9,24 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface DeliveryAgentRepository extends JpaRepository<DeliveryAgent, UUID> , JpaSpecificationExecutor<DeliveryAgent> {
+public interface DeliveryAgentRepository extends JpaRepository<DeliveryAgent, UUID>,
+    JpaSpecificationExecutor<DeliveryAgent> {
 
     Optional<DeliveryAgent> findFirstByAgentTypeAndHubIdAndDeletedAtIsNullOrderByDeliveryOrderDesc(
         AgentType agentType, UUID hubId
     );
+
     Optional<DeliveryAgent> findByIdAndDeletedAtIsNull(UUID id);
+
     int countByAgentTypeAndDeletedAtIsNull(AgentType agentType);
+
     int countByAgentTypeAndHubIdAndDeletedAtIsNull(AgentType agentType, UUID hubId);
+
+    Optional<DeliveryAgent> findFirstByAgentTypeAndHubIdAndIsAvailableTrueAndDeletedAtIsNullAndDeliveryOrderGreaterThanOrderByDeliveryOrderAsc(
+        AgentType agentType, UUID hubId, Integer deliveryOrder
+    );
+
+    Optional<DeliveryAgent> findFirstByAgentTypeAndHubIdAndIsAvailableTrueAndDeletedAtIsNullOrderByDeliveryOrderAsc(
+        AgentType agentType, UUID hubId
+    );
 }

@@ -1,5 +1,6 @@
 package com.logistics.delivery.query.controller;
 
+import com.logistics.delivery.domain.entity.AgentType;
 import com.logistics.delivery.query.application.DeliveryAgentQueryService;
 import com.logistics.delivery.query.dto.reponse.DeliveryAgentDetailResponseDto;
 import com.logistics.delivery.query.dto.reponse.DeliveryAgentResponseDto;
@@ -37,6 +38,15 @@ public class DeliveryAgentQueryController {
         @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
         ) {
         DeliveryAgentResponseDto result = deliveryAgentQueryService.searchDeliveryAgents(request, pageable);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/next")
+    public ResponseEntity<DeliveryAgentDetailResponseDto> getNextDeliveryAgent(
+        @RequestParam AgentType agentType,
+        @RequestParam(required = false) UUID hubId
+        ) {
+        DeliveryAgentDetailResponseDto result = deliveryAgentQueryService.getNextDeliveryAgent(agentType, hubId);
         return ResponseEntity.ok(result);
     }
 

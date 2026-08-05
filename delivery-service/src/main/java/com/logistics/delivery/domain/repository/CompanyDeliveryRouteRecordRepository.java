@@ -9,4 +9,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface CompanyDeliveryRouteRecordRepository extends JpaRepository<CompanyDeliveryRouteRecord, UUID> {
     Optional<CompanyDeliveryRouteRecord> findByIdAndDeliveryIdAndDeletedAtIsNull(UUID id, UUID deliveryId);
+
+    Optional<CompanyDeliveryRouteRecord> findFirstByDepartureHubIdAndAgentIdIsNotNullOrderByCreatedAtDesc(UUID hubId);
 }
