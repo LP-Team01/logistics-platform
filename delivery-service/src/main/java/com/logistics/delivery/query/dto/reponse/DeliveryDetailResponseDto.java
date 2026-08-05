@@ -13,6 +13,7 @@ import lombok.Builder;
 public record DeliveryDetailResponseDto(
     UUID deliveryId,
     UUID orderId,
+    UUID orderItemId,
     DeliveryStatus status,
     UUID departureHubId,
     UUID destinationHubId,
@@ -28,6 +29,7 @@ public record DeliveryDetailResponseDto(
         return DeliveryDetailResponseDto.builder()
             .deliveryId(delivery.getId())
             .orderId(delivery.getOrderId())
+            .orderItemId(delivery.getOrderItemId())
             .status(delivery.getStatus())
             .departureHubId(delivery.getDepartureHubId())
             .destinationHubId(delivery.getDestinationHubId())

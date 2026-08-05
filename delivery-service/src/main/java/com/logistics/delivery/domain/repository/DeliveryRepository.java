@@ -9,6 +9,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface DeliveryRepository extends JpaRepository<Delivery, UUID>, JpaSpecificationExecutor<Delivery> {
-    boolean existsByOrderIdAndDeletedAtIsNull(UUID orderId);
+    boolean existsByOrderItemIdAndDeletedAtIsNull(UUID orderItemId);
     Optional<Delivery> findByIdAndDeletedAtIsNull(UUID id);
 }

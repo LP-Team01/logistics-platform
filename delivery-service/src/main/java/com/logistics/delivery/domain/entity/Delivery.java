@@ -32,6 +32,10 @@ public class Delivery extends BaseUpdatableEntity {
     @Column(nullable = false)
     private UUID orderId;
 
+    // 주문아이템 ID. 아이템마다 다른 허브를 거칠 수 있어 주문 단위가 아닌 아이템 단위로 배송 생성.
+    @Column(nullable = false)
+    private UUID orderItemId;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 40, nullable = false)
     private DeliveryStatus status;
@@ -56,6 +60,7 @@ public class Delivery extends BaseUpdatableEntity {
     @Builder
     public Delivery(
         UUID orderId,
+        UUID orderItemId,
         UUID departureHubId,
         UUID destinationHubId,
         String deliveryAddress,
@@ -64,6 +69,7 @@ public class Delivery extends BaseUpdatableEntity {
         UUID companyAgentId
     ) {
         this.orderId = orderId;
+        this.orderItemId = orderItemId;
         this.status = DeliveryStatus.HUB_WAITING;
         this.departureHubId = departureHubId;
         this.destinationHubId = destinationHubId;

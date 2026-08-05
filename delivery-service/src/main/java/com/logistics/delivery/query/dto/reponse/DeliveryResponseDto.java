@@ -20,6 +20,7 @@ public record DeliveryResponseDto(
     public record DeliverSummary(
         UUID deliveryId,
         UUID orderId,
+        UUID orderItemId,
         DeliveryStatus status,
         UUID departureHubId,
         UUID destinationHubId,
@@ -30,6 +31,7 @@ public record DeliveryResponseDto(
             return new DeliverSummary(
                 delivery.getId(),
                 delivery.getOrderId(),
+                delivery.getOrderItemId(),
                 delivery.getStatus(),
                 delivery.getDepartureHubId(),
                 delivery.getDestinationHubId(),

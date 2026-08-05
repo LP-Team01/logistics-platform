@@ -39,7 +39,7 @@ public class DeliveryQueryService {
     public DeliveryResponseDto searchDelivery(DeliverySearchRequestDto request, Pageable pageable) {
         // TODO: 게이트웨이의 X-User-Id/X-User-Role 전달이 구현되면, COMPANY 역할은 요청자 X-User-Id로
         Specification<Delivery> spec = DeliverySpecification.withSearchCondition(
-            request.status(), request.orderId(), request.companyAgentId());
+            request.status(), request.orderId(), request.orderItemId(), request.companyAgentId());
         Page<Delivery> page = deliveryRepository.findAll(spec, pageable);
         return DeliveryResponseDto.from(page);
     }

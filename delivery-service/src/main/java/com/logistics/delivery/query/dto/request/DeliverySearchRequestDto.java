@@ -6,6 +6,7 @@ import java.util.UUID;
 public record DeliverySearchRequestDto(
     DeliveryStatus status,
     UUID orderId,
+    UUID orderItemId,
     UUID companyAgentId
 ) {
 }

@@ -32,9 +32,10 @@ public class DeliveryCommandService {
 
     @Transactional
     public CreateDeliveryResponseDto create(CreateDeliveryCommand command) {
-        validateOrder(command.orderId());
+        validateOrderItem(command.orderItemId());
         Delivery delivery = Delivery.builder()
             .orderId(command.orderId())
+            .orderItemId(command.orderItemId())
             .departureHubId(command.departureHubId())
             .destinationHubId(command.destinationHubId())
             .deliveryAddress(command.deliveryAddress())
@@ -106,8 +107,8 @@ public class DeliveryCommandService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOT_FOUND));
     }
 
-    private void validateOrder(UUID orderId) {
-        boolean exists = deliveryRepository.existsByOrderIdAndDeletedAtIsNull(orderId);
+    private void validateOrderItem(UUID orderItemId) {
+        boolean exists = deliveryRepository.existsByOrderItemIdAndDeletedAtIsNull(orderItemId);
         if (exists) {
             throw new BusinessException(ErrorCode.DELIVERY_ORDER_ALREADY_EXISTS);
         }
