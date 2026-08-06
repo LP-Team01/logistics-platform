@@ -10,6 +10,7 @@ public enum ErrorCode {
     DELIVERY_ORDER_ALREADY_EXISTS(HttpStatus.CONFLICT, "DELIVERY_409_04", "주문아이템 1개에 배송 1개 생성 가능합니다."),
     DELIVERY_FORBIDDEN(HttpStatus.FORBIDDEN, "DELIVERY_403_05", "배송 수정/삭제 권한이 없습니다."),
     DELIVERY_QUERY_FORBIDDEN(HttpStatus.FORBIDDEN, "DELIVERY_403_06", "본인이 배정된 배송만 조회할 수 있습니다."),
+    DELIVERY_INTERNAL_FORBIDDEN(HttpStatus.FORBIDDEN, "DELIVERY_403_07", "내부 서비스 호출만 허용됩니다."),
 
     //DELIVERY_ROUTE & COMPANY_ROUTE
     INVALID_DELIVERY_ROUTE(HttpStatus.BAD_REQUEST, "DELIVERY_400", "유효하지 않은 배송 경로입니다."),

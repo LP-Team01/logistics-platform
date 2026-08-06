@@ -4,3 +4,8 @@ server:
 spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/delivery_db}
+
+internal:
+  service:
+    name: delivery-service
+    key: ${INTERNAL_SERVICE_KEY:temp-internal-service-key} # TODO: 실제 공유 비밀값 받으면 교체

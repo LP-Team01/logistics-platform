@@ -34,14 +34,12 @@ public class DeliveryCommandService {
     private final CompanyDeliveryRouteRecordRepository companyDeliveryRouteRecordRepository;
     private final DeliveryAgentAssignmentService deliveryAgentAssignmentService;
 
-    private static final Set<UserRole> DELIVERY_CREATE_ROLES = EnumSet.of(UserRole.MASTER);
     private static final Set<UserRole> DELIVERY_UPDATE_ROLES =
         EnumSet.of(UserRole.MASTER, UserRole.HUB_MANAGER, UserRole.DELIVERY_MANAGER);
     private static final Set<UserRole> DELIVERY_DELETE_ROLES = EnumSet.of(UserRole.MASTER, UserRole.HUB_MANAGER);
 
     @Transactional
-    public CreateDeliveryResponseDto create(UserRole userRole, CreateDeliveryCommand command) {
-        DeliveryAccessGuard.requireRole(userRole, DELIVERY_CREATE_ROLES, ErrorCode.DELIVERY_FORBIDDEN);
+    public CreateDeliveryResponseDto create(CreateDeliveryCommand command) {
         validateOrderItem(command.orderItemId());
         Delivery delivery = Delivery.builder()
             .orderId(command.orderId())
@@ -111,6 +109,20 @@ public class DeliveryCommandService {
 
         companyDeliveryRouteRecordRepository.findByDeliveryIdAndDeletedAtIsNull(deliveryId)
             .ifPresent(companyRouteRecord -> companyRouteRecord.softDelete(requesterId));
+    }
+
+    // Order 서비스의 주문 취소 콜백 전용. 호출자가 사람이 아니라 deletedBy(감사 정보)는 null
+    @Transactional
+    public void deleteByOrderItem(UUID orderItemId) {
+        Delivery delivery = deliveryRepository.findByOrderItemIdAndDeletedAtIsNull(orderItemId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOT_FOUND));
+        delivery.softDelete(null);
+
+        deliveryRouteRecordRepository.findByDeliveryIdAndDeletedAtIsNullOrderBySequenceAsc(delivery.getId())
+            .forEach(routeRecord -> routeRecord.softDelete(null));
+
+        companyDeliveryRouteRecordRepository.findByDeliveryIdAndDeletedAtIsNull(delivery.getId())
+            .ifPresent(companyRouteRecord -> companyRouteRecord.softDelete(null));
     }
 
     private void validateDeliveryAccess(UserRole userRole, UUID requesterId, UUID requesterHubId, Delivery delivery,
