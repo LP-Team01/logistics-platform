@@ -7,7 +7,6 @@ import com.logistics.hub.hub.dto.HubResponseDto;
 import com.logistics.hub.hub.dto.HubUpdateRequestDto;
 import com.logistics.hub.hub.service.HubService;
 import jakarta.validation.Valid;
-import jakarta.ws.rs.PATCH;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
@@ -49,7 +48,7 @@ public class HubController {
     @PatchMapping("/{hubId}")
     public ResponseEntity<HubResponseDto> updateHub(
         @PathVariable UUID hubId,
-        @RequestBody HubUpdateRequestDto request
+        @Valid @RequestBody HubUpdateRequestDto request
         ) {
         HubResponseDto response = hubService.updateHub(hubId, request);
         return ResponseEntity.ok(response);
