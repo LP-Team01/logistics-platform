@@ -2,6 +2,7 @@ package com.logistics.hub.hub.dto;
 
 import com.logistics.hub.hub.entity.Hub;
 
+import java.io.Serializable;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -16,7 +17,7 @@ public record HubResponseDto (
     String createdBy,
     Instant updatedAt,
     String updatedBy
-) {
+) implements Serializable {
 
     public static HubResponseDto from(Hub hub) {
         return new HubResponseDto(

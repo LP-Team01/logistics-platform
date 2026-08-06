@@ -10,6 +10,8 @@ import com.logistics.hub.hub.dto.HubUpdateRequestDto;
 import com.logistics.hub.hub.entity.Hub;
 import com.logistics.hub.hub.repository.HubRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -41,6 +43,7 @@ public class HubService {
         return HubResponseDto.from(savedHub);
     }
 
+    @Cacheable(value = "hubs", key = "#hubId")
     public HubResponseDto getHub(UUID hubId) {
         Hub hub = hubRepository.findByHubIdAndDeletedAtIsNull(hubId)
             .orElseThrow(()-> new BusinessException(ErrorCode.HUB_NOT_FOUND));
@@ -49,6 +52,7 @@ public class HubService {
     }
 
     @Transactional
+    @CacheEvict(value = "hubs", key = "#hubId") // 캐시 비우기
     public HubResponseDto updateHub(UUID hubId, HubUpdateRequestDto request) {
         Hub hub = hubRepository.findByHubIdAndDeletedAtIsNull(hubId)
             .orElseThrow(() -> new BusinessException(ErrorCode.HUB_NOT_FOUND));
@@ -62,6 +66,7 @@ public class HubService {
     }
 
     @Transactional
+    @CacheEvict(value = "hubs", key = "#hubId") // 캐시 비우기
     public HubDeleteResponseDto deleteHub(UUID hubId) {
         Hub hub = hubRepository.findByHubIdAndDeletedAtIsNull(hubId)
             .orElseThrow(()->new BusinessException(ErrorCode.HUB_NOT_FOUND));
