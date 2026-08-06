@@ -1,9 +1,9 @@
-package com.logistics.delivery.query.dto.reponse;
+package com.logistics.delivery.query.dto.response;
 
 import com.logistics.delivery.domain.entity.Delivery;
 import com.logistics.delivery.domain.entity.DeliveryRouteRecord;
 import com.logistics.delivery.domain.entity.DeliveryStatus;
-import com.logistics.delivery.query.dto.reponse.DeliveryRouteResponseDto.DeliverRouteSummary;
+import com.logistics.delivery.query.dto.response.DeliveryRouteResponseDto.DeliverRouteSummary;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

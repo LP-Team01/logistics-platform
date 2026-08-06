@@ -7,7 +7,12 @@ import com.logistics.delivery.command.dto.request.CreateDeliveryAgentRequestDto;
 import com.logistics.delivery.command.dto.request.UpdateDeliveryAgentRequestDto;
 import com.logistics.delivery.command.dto.response.CreateDeliveryAgentResponseDto;
 import com.logistics.delivery.command.dto.response.UpdateDeliveryAgentResponseDto;
+import com.logistics.delivery.global.common.UserRole;
+import com.logistics.delivery.global.exception.BusinessException;
+import com.logistics.delivery.global.exception.ErrorCode;
 import jakarta.validation.Valid;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -28,33 +33,38 @@ public class DeliveryAgentCommandController {
 
     private final DeliveryAgentCommandService deliveryAgentCommandService;
 
-    // TODO: X-User-Role 체크
     @PostMapping
     public ResponseEntity<CreateDeliveryAgentResponseDto> create(
+            @RequestHeader("X-User-Role") UserRole userRole,
+            @RequestHeader(value = "X-Hub-Id", required = false) UUID requesterHubId,
             @RequestBody @Valid CreateDeliveryAgentRequestDto request
     ) {
         CreateDeliveryAgentCommand command = request.toCommand();
-        CreateDeliveryAgentResponseDto result = deliveryAgentCommandService.create(command);
+        CreateDeliveryAgentResponseDto result = deliveryAgentCommandService.create(command, userRole, requesterHubId);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
-    // TODO: X-User-Role 체크
     @PatchMapping("/{agentId}")
     public ResponseEntity<UpdateDeliveryAgentResponseDto> update(
+            @RequestHeader("X-User-Role") UserRole userRole,
+            @RequestHeader(value = "X-Hub-Id", required = false) UUID requesterHubId,
             @PathVariable UUID agentId,
             @RequestBody @Valid UpdateDeliveryAgentRequestDto request
     ) {
         UpdateDeliveryAgentCommand command = request.toCommand();
-        UpdateDeliveryAgentResponseDto result = deliveryAgentCommandService.update(agentId, command);
+        UpdateDeliveryAgentResponseDto result = deliveryAgentCommandService.update(
+            agentId, command, userRole, requesterHubId);
         return ResponseEntity.ok(result);
     }
 
     @DeleteMapping("/{agentId}")
     public ResponseEntity<Void> delete(
+        @RequestHeader("X-User-Role") UserRole userRole,
+        @RequestHeader(value = "X-Hub-Id", required = false) UUID requesterHubId,
         @PathVariable UUID agentId,
         @RequestHeader("X-User-Id") UUID requesterId
     ) {
-        deliveryAgentCommandService.delete(agentId, requesterId);
+        deliveryAgentCommandService.delete(agentId, requesterId, userRole, requesterHubId);
         return ResponseEntity.noContent().build();
     }
 }

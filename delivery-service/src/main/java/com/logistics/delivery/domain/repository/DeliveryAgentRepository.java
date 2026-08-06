@@ -2,31 +2,29 @@ package com.logistics.delivery.domain.repository;
 
 import com.logistics.delivery.domain.entity.AgentType;
 import com.logistics.delivery.domain.entity.DeliveryAgent;
+import jakarta.persistence.LockModeType;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public interface DeliveryAgentRepository extends JpaRepository<DeliveryAgent, UUID>,
     JpaSpecificationExecutor<DeliveryAgent> {
 
-    Optional<DeliveryAgent> findFirstByAgentTypeAndHubIdAndDeletedAtIsNullOrderByDeliveryOrderDesc(
+    Optional<DeliveryAgent> findByIdAndDeletedAtIsNull(UUID id);
+
+    // (agentType, hubId) 그룹 전체를 잠근다. 담당자 생성 시 정원 검증 + 배송순번 채번을 원자적으로 처리
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    List<DeliveryAgent> findByAgentTypeAndHubIdAndDeletedAtIsNullOrderByDeliveryOrderAsc(
         AgentType agentType, UUID hubId
     );
 
-    Optional<DeliveryAgent> findByIdAndDeletedAtIsNull(UUID id);
-
-    int countByAgentTypeAndDeletedAtIsNull(AgentType agentType);
-
-    int countByAgentTypeAndHubIdAndDeletedAtIsNull(AgentType agentType, UUID hubId);
-
-    Optional<DeliveryAgent> findFirstByAgentTypeAndHubIdAndIsAvailableTrueAndDeletedAtIsNullAndDeliveryOrderGreaterThanOrderByDeliveryOrderAsc(
-        AgentType agentType, UUID hubId, Integer deliveryOrder
-    );
-
-    Optional<DeliveryAgent> findFirstByAgentTypeAndHubIdAndIsAvailableTrueAndDeletedAtIsNullOrderByDeliveryOrderAsc(
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    List<DeliveryAgent> findByAgentTypeAndHubIdAndIsAvailableTrueAndDeletedAtIsNullOrderByDeliveryOrderAsc(
         AgentType agentType, UUID hubId
     );
 }

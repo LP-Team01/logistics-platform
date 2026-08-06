@@ -26,7 +26,7 @@ spring:
             - id: delivery-service
               uri: lb://delivery-service
               predicates:
-                - Path=/api/deliveries/**,/api/delivery-persons/**
+                - Path=/api/deliveries/**,/api/delivery-agents/**
             - id: ai-notification-service
               uri: lb://ai-notification-service
               predicates:

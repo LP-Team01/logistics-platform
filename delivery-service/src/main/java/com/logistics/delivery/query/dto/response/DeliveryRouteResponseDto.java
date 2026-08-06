@@ -1,4 +1,4 @@
-package com.logistics.delivery.query.dto.reponse;
+package com.logistics.delivery.query.dto.response;
 
 import com.logistics.delivery.domain.entity.DeliveryRouteRecord;
 import com.logistics.delivery.domain.entity.RouteRecordStatus;
