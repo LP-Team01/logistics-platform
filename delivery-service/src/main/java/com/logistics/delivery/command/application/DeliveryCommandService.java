@@ -14,9 +14,12 @@ import com.logistics.delivery.domain.repository.CompanyDeliveryRouteRecordReposi
 import com.logistics.delivery.domain.repository.DeliveryRepository;
 import com.logistics.delivery.domain.repository.DeliveryRouteRecordRepository;
 import com.logistics.delivery.domain.service.DeliveryAgentAssignmentService;
+import com.logistics.delivery.global.common.UserRole;
 import com.logistics.delivery.global.exception.BusinessException;
 import com.logistics.delivery.global.exception.ErrorCode;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,8 +33,13 @@ public class DeliveryCommandService {
     private final CompanyDeliveryRouteRecordRepository companyDeliveryRouteRecordRepository;
     private final DeliveryAgentAssignmentService deliveryAgentAssignmentService;
 
+    private static final Set<UserRole> DELIVERY_DELETE_ROLES = EnumSet.of(UserRole.MASTER, UserRole.HUB_MANAGER);
+
     @Transactional
-    public CreateDeliveryResponseDto create(CreateDeliveryCommand command) {
+    public CreateDeliveryResponseDto create(UserRole userRole, CreateDeliveryCommand command) {
+        if (userRole != UserRole.MASTER) {
+            throw new BusinessException(ErrorCode.DELIVERY_FORBIDDEN);
+        }
         validateOrderItem(command.orderItemId());
         Delivery delivery = Delivery.builder()
             .orderId(command.orderId())
@@ -51,9 +59,10 @@ public class DeliveryCommandService {
             .sequence(1)
             .departureHubId(command.departureHubId())
             .arrivalHubId(command.destinationHubId())
-            .estimatedDistance(0)
-            .estimatedDuration(0)
+            .estimatedDistance(null)
+            .estimatedDuration(null)
             .build();
+
         // 허브 배송 담당자는 허브 구분 없이 전체 10명 풀에서 순번대로 배정
         DeliveryAgent hubAgent = deliveryAgentAssignmentService.assignNext(AgentType.HUB_DELIVERY, null);
         routeRecord.assignAgent(hubAgent.getId());
@@ -71,13 +80,60 @@ public class DeliveryCommandService {
     }
 
     @Transactional
-    public UpdateDeliveryResponseDto update(UUID deliveryId, UpdateDeliveryCommand command) {
+    public UpdateDeliveryResponseDto update(UserRole userRole, UUID requesterId, UUID requesterHubId,
+                                             UUID deliveryId, UpdateDeliveryCommand command) {
         Delivery delivery = findDelivery(deliveryId);
+        List<DeliveryRouteRecord> routeRecords = deliveryRouteRecordRepository
+            .findByDeliveryIdAndDeletedAtIsNullOrderBySequenceAsc(deliveryId);
+        validateDeliveryAccess(userRole, requesterId, requesterHubId, delivery, routeRecords);
+
         delivery.update(command.status());
         if (command.status() == DeliveryStatus.DESTINATION_ARRIVED) {
             assignCompanyAgent(delivery);
         }
         return UpdateDeliveryResponseDto.from(delivery);
+    }
+
+    @Transactional
+    public void delete(UserRole userRole, UUID requesterId, UUID requesterHubId, UUID deliveryId) {
+        if (!DELIVERY_DELETE_ROLES.contains(userRole)) {
+            throw new BusinessException(ErrorCode.DELIVERY_FORBIDDEN);
+        }
+        Delivery delivery = findDelivery(deliveryId);
+        if (userRole == UserRole.HUB_MANAGER && !isWithinHub(requesterHubId, delivery)) {
+            throw new BusinessException(ErrorCode.DELIVERY_FORBIDDEN);
+        }
+        delivery.softDelete(requesterId);
+
+        deliveryRouteRecordRepository.findByDeliveryIdAndDeletedAtIsNullOrderBySequenceAsc(deliveryId)
+            .forEach(routeRecord -> routeRecord.softDelete(requesterId));
+
+        companyDeliveryRouteRecordRepository.findByDeliveryIdAndDeletedAtIsNull(deliveryId)
+            .ifPresent(companyRouteRecord -> companyRouteRecord.softDelete(requesterId));
+    }
+
+    private void validateDeliveryAccess(UserRole userRole, UUID requesterId, UUID requesterHubId, Delivery delivery,
+                                         List<DeliveryRouteRecord> routeRecords) {
+        if (userRole == UserRole.COMPANY_MANAGER) {
+            throw new BusinessException(ErrorCode.DELIVERY_FORBIDDEN);
+        }
+        if (userRole == UserRole.DELIVERY_MANAGER && !isAssignedAgent(requesterId, delivery, routeRecords)) {
+            throw new BusinessException(ErrorCode.DELIVERY_FORBIDDEN);
+        }
+        if (userRole == UserRole.HUB_MANAGER && !isWithinHub(requesterHubId, delivery)) {
+            throw new BusinessException(ErrorCode.DELIVERY_FORBIDDEN);
+        }
+    }
+
+    private boolean isAssignedAgent(UUID requesterId, Delivery delivery, List<DeliveryRouteRecord> routeRecords) {
+        return requesterId.equals(delivery.getCompanyAgentId())
+            || routeRecords.stream().anyMatch(record -> requesterId.equals(record.getAgentId()));
+    }
+
+    private boolean isWithinHub(UUID requesterHubId, Delivery delivery) {
+        return requesterHubId != null
+            && (requesterHubId.equals(delivery.getDepartureHubId())
+                || requesterHubId.equals(delivery.getDestinationHubId()));
     }
 
     private void assignCompanyAgent(Delivery delivery) {
@@ -88,18 +144,6 @@ public class DeliveryCommandService {
             .assignNext(AgentType.COMPANY_DELIVERY, delivery.getDestinationHubId());
         companyRouteRecord.assignAgent(companyAgent.getId());
         delivery.assignCompanyAgent(companyAgent.getId());
-    }
-
-    @Transactional
-    public void delete(UUID requesterId, UUID deliveryId) {
-        Delivery delivery = findDelivery(deliveryId);
-        delivery.softDelete(requesterId);
-
-        deliveryRouteRecordRepository.findByDeliveryIdAndDeletedAtIsNullOrderBySequenceAsc(deliveryId)
-            .forEach(routeRecord -> routeRecord.softDelete(requesterId));
-
-        companyDeliveryRouteRecordRepository.findByDeliveryIdAndDeletedAtIsNull(deliveryId)
-            .ifPresent(companyRouteRecord -> companyRouteRecord.softDelete(requesterId));
     }
 
     private Delivery findDelivery(UUID deliveryId) {

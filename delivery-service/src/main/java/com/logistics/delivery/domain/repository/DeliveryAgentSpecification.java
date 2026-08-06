@@ -8,11 +8,12 @@ import org.springframework.data.jpa.domain.Specification;
 
 public class DeliveryAgentSpecification {
     public static Specification<DeliveryAgent> withSearchCondition(UUID hubId, AgentType agentType,
-                                                                   Boolean isAvailable) {
+                                                                   Boolean isAvailable, UUID agentId) {
         return Specification
             .allOf(equalsHubId(hubId),
                 equalsAgentType(agentType),
                 equalsIsAvailable(isAvailable),
+                equalsAgentId(agentId),
                 notDeleted()
             );
     }
@@ -20,6 +21,11 @@ public class DeliveryAgentSpecification {
     private static Specification<DeliveryAgent> equalsHubId(UUID hubId) {
         return (root, query, cb) -> hubId == null ? null
             : cb.equal(root.get("hubId"), hubId);
+    }
+
+    private static Specification<DeliveryAgent> equalsAgentId(UUID agentId) {
+        return (root, query, cb) -> agentId == null ? null
+            : cb.equal(root.get("id"), agentId);
     }
 
     public static Specification<DeliveryAgent> equalsAgentType(AgentType agentType) {
