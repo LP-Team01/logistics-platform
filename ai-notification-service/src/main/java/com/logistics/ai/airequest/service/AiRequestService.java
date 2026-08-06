@@ -13,6 +13,7 @@ import com.logistics.ai.global.exception.BusinessException;
 import com.logistics.ai.global.exception.ErrorCode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -53,14 +54,23 @@ public class AiRequestService {
      * @param requestDto AI 계산에 필요한 주문 및 배송 정보
      * @return AI 요청 처리 결과
      */
-    public AiResponseDto createAiRequest(AiRequestDto requestDto) {
-        AiResponseDto existingResponse =
-            findExistingResponse(requestDto.eventId());
+    public AiResponseDto createAiRequest(
+        AiRequestDto requestDto
+    ) {
+        return aiRequestRepository
+            .findByEventId(requestDto.eventId())
+            .map(AiResponseDto::from)
+            .orElseGet(
+                () -> createNewAiRequest(requestDto)
+            );
+    }
 
-        if (existingResponse != null) {
-            return existingResponse;
-        }
-
+    /**
+     * 새로운 AI 요청을 생성하고 Gemini 계산을 수행합니다.
+     */
+    private AiResponseDto createNewAiRequest(
+        AiRequestDto requestDto
+    ) {
         String prompt = aiPromptService.createPrompt(requestDto);
 
         AiRequest aiRequest = AiRequest.create(
@@ -74,7 +84,6 @@ public class AiRequestService {
             prompt
         );
 
-        // 외부 API를 호출하기 전에 PENDING 상태를 먼저 저장합니다.
         AiRequest savedAiRequest =
             aiRequestRepository.save(aiRequest);
 
@@ -109,7 +118,6 @@ public class AiRequestService {
                 processingTimeMs
             );
 
-            // 예외를 다시 던지기 전에 FAILED 상태를 저장합니다.
             aiRequestRepository.save(savedAiRequest);
 
             throw exception;
@@ -117,19 +125,60 @@ public class AiRequestService {
     }
 
     /**
-     * 동일한 이벤트가 이미 처리되었다면 기존 결과를 반환합니다.
+     * Kafka 이벤트의 기존 처리 상태에 따라
+     * AI 요청을 생성하거나 실패 요청을 재처리합니다.
      *
-     * <p>Kafka 메시지가 중복 전달되더라도 AI API를 다시 호출하지
-     * 않도록 멱등성을 보장합니다.</p>
+     * <p>논리 삭제된 요청도 동일 eventId의 처리 이력으로 인정합니다.
+     * 삭제된 이력이 존재하는 경우 같은 이벤트를 다시 실행하지 않습니다.</p>
      *
-     * @param eventId 이벤트 식별자
-     * @return 기존 처리 결과 또는 null
+     * @param requestDto AI 계산 요청 정보
+     * @return Slack 처리까지 이어갈 AI 응답.
+     *         삭제된 이벤트 이력이면 Optional.empty()
      */
-    private AiResponseDto findExistingResponse(UUID eventId) {
-        return aiRequestRepository
-            .findByEventIdAndDeletedAtIsNull(eventId)
-            .map(AiResponseDto::from)
-            .orElse(null);
+    public Optional<AiResponseDto> createOrRetryAiRequest(
+        AiRequestDto requestDto
+    ) {
+        Optional<AiRequest> existingRequest =
+            aiRequestRepository.findByEventId(
+                requestDto.eventId()
+            );
+
+        if (existingRequest.isEmpty()) {
+            return Optional.of(
+                createNewAiRequest(requestDto)
+            );
+        }
+
+        AiRequest aiRequest = existingRequest.get();
+
+        /*
+         * 삭제된 AI 요청도 과거에 소비된 Kafka 이벤트입니다.
+         * 같은 eventId로 Gemini와 Slack을 다시 실행하지 않습니다.
+         */
+        if (aiRequest.isDeleted()) {
+            return Optional.empty();
+        }
+
+        if (aiRequest.getStatus() == AiRequestStatus.SUCCESS) {
+            return Optional.of(
+                AiResponseDto.from(aiRequest)
+            );
+        }
+
+        if (aiRequest.getStatus() == AiRequestStatus.FAILED) {
+            return Optional.of(
+                retryAiRequest(aiRequest)
+            );
+        }
+
+        /*
+         * PENDING은 다른 Consumer가 처리 중이거나
+         * 이전 처리가 비정상적으로 중단된 상태일 수 있습니다.
+         * 정상 종료하지 않고 Kafka 재처리가 가능하도록 예외를 전달합니다.
+         */
+        throw new BusinessException(
+            ErrorCode.AI_REQUEST_RETRY_NOT_ALLOWED
+        );
     }
 
     /**
@@ -193,7 +242,9 @@ public class AiRequestService {
      * @return 재처리 결과
      * @throws BusinessException 요청이 없거나 재처리가 불가능한 경우
      */
-    public AiResponseDto retryAiRequest(UUID aiRequestId) {
+    public AiResponseDto retryAiRequest(
+        UUID aiRequestId
+    ) {
         AiRequest aiRequest = aiRequestRepository
             .findByAiRequestIdAndDeletedAtIsNull(aiRequestId)
             .orElseThrow(
@@ -202,6 +253,18 @@ public class AiRequestService {
                 )
             );
 
+        return retryAiRequest(aiRequest);
+    }
+
+    /**
+     * 조회된 FAILED 상태의 AI 요청을 다시 처리합니다.
+     *
+     * @param aiRequest 재처리할 AI 요청
+     * @return AI 재처리 결과
+     */
+    private AiResponseDto retryAiRequest(
+        AiRequest aiRequest
+    ) {
         /*
          * 재처리가 가능한 상태인지에 대한 검증은
          * AiRequest.prepareRetry()에서 수행합니다.
@@ -242,7 +305,7 @@ public class AiRequestService {
                 processingTimeMs
             );
 
-            // 실패한 상태를 먼저 저장한 뒤 예외를 다시 전달합니다.
+            // 실패 상태를 저장한 뒤 예외를 다시 전달합니다.
             aiRequestRepository.save(pendingAiRequest);
 
             throw exception;

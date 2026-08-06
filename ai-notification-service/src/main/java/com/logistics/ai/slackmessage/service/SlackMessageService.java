@@ -11,6 +11,8 @@ import com.logistics.ai.slackmessage.entity.SlackMessageStatus;
 import com.logistics.ai.slackmessage.repository.SlackMessageRepository;
 import com.logistics.ai.slackmessage.repository.SlackMessageSpecification;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ import java.util.*;
 /**
  * Slack 메시지 발송과 발송 이력 저장을 처리하는 서비스입니다.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SlackMessageService {
@@ -31,6 +34,9 @@ public class SlackMessageService {
 
     private final SlackMessageRepository slackMessageRepository;
     private final SlackNotificationClient slackNotificationClient;
+
+    @Value("${slack.pending-recovery-minutes:5}")
+    private long pendingRecoveryMinutes = 5L;
 
     /**
      * Slack 메시지 이력을 생성한 후 실제 Slack 메시지를 발송합니다.
@@ -43,7 +49,6 @@ public class SlackMessageService {
     ) {
         validateDuplicateMessage(requestDto);
 
-        // Slack 발송 전 PENDING 상태의 이력을 먼저 저장합니다.
         SlackMessage slackMessage = SlackMessage.create(
             requestDto.aiRequestId(),
             requestDto.recipientUserId(),
@@ -56,33 +61,12 @@ public class SlackMessageService {
         SlackMessage savedSlackMessage =
             slackMessageRepository.save(slackMessage);
 
-        try {
-            SlackNotificationClient.SlackSendResult result =
-                slackNotificationClient.sendMessage(
-                    requestDto.recipientSlackId(),
-                    requestDto.title(),
-                    requestDto.content()
-                );
-
-            savedSlackMessage.markSent(result.slackTimestamp());
-
-            SlackMessage completedMessage =
-                slackMessageRepository.save(savedSlackMessage);
-
-            return SlackMessageResponseDto.from(completedMessage);
-
-        } catch (BusinessException exception) {
-            // Slack 발송 실패 이력도 DB에 남깁니다.
-            savedSlackMessage.markFailed(exception.getMessage());
-            slackMessageRepository.save(savedSlackMessage);
-
-            throw exception;
-        }
+        return sendPendingMessage(savedSlackMessage);
     }
 
     /**
      * 동일한 AI 요청의 Slack 메시지를 생성하거나,
-     * 기존 실패 메시지를 다시 발송합니다.
+     * 기존 실패 또는 오래된 PENDING 메시지를 다시 발송합니다.
      */
     public SlackMessageResponseDto createOrRetrySlackMessage(
         SlackMessageRequestDto requestDto
@@ -110,9 +94,68 @@ public class SlackMessageService {
             );
         }
 
+        if (
+            slackMessage.getStatus() == SlackMessageStatus.PENDING
+                && isRecoverablePending(slackMessage)
+        ) {
+            log.warn(
+                "오래된 PENDING Slack 메시지를 복구합니다. "
+                    + "slackMessageId={}, aiRequestId={}, "
+                    + "pendingRecoveryMinutes={}",
+                slackMessage.getSlackMessageId(),
+                slackMessage.getAiRequestId(),
+                pendingRecoveryMinutes
+            );
+
+            return recoverPendingSlackMessage(slackMessage);
+        }
+
         throw new BusinessException(
             ErrorCode.SLACK_MESSAGE_RETRY_NOT_ALLOWED
         );
+    }
+
+    /**
+     * PENDING 메시지가 복구 기준 시간을 초과했는지 확인합니다.
+     */
+    private boolean isRecoverablePending(
+        SlackMessage slackMessage
+    ) {
+        LocalDateTime pendingStartedAt =
+            slackMessage.getUpdatedAt() != null
+                ? slackMessage.getUpdatedAt()
+                : slackMessage.getCreatedAt();
+
+        if (pendingStartedAt == null) {
+            return false;
+        }
+
+        LocalDateTime recoveryThreshold =
+            LocalDateTime.now()
+                .minusMinutes(pendingRecoveryMinutes);
+
+        return !pendingStartedAt.isAfter(recoveryThreshold);
+    }
+
+    /**
+     * 오래된 PENDING Slack 메시지를 다시 발송합니다.
+     */
+    private SlackMessageResponseDto recoverPendingSlackMessage(
+        SlackMessage slackMessage
+    ) {
+        /*
+         * 오래된 PENDING 메시지를 새로운 발송 시도로 전환합니다.
+         * retryCount를 증가시키고 발송 결과를 다시 기록합니다.
+         *
+         * Slack 외부 호출과 DB 저장은 하나의 트랜잭션이 아니므로
+         * 장애 복구 과정에서 중복 발송 가능성이 있습니다.
+         */
+        slackMessage.prepareRetry();
+
+        SlackMessage pendingMessage =
+            slackMessageRepository.save(slackMessage);
+
+        return sendPendingMessage(pendingMessage);
     }
 
     /**
@@ -140,7 +183,7 @@ public class SlackMessageService {
      * Slack 메시지 목록을 검색하고 페이징하여 조회합니다.
      *
      * @param condition Slack 메시지 검색 조건
-     * @param pageable 페이지 번호, 크기 및 정렬 조건
+     * @param pageable  페이지 번호, 크기 및 정렬 조건
      * @return 페이징된 Slack 메시지 목록
      */
     @Transactional(readOnly = true)
@@ -171,42 +214,18 @@ public class SlackMessageService {
                 )
             );
 
-        // 이미 성공했거나 아직 처리 중인 메시지는 재발송할 수 없습니다.
         if (slackMessage.getStatus() != SlackMessageStatus.FAILED) {
             throw new BusinessException(
                 ErrorCode.SLACK_MESSAGE_RETRY_NOT_ALLOWED
             );
         }
 
-        // 실패 정보를 초기화하고 PENDING 상태로 변경합니다.
         slackMessage.prepareRetry();
+
         SlackMessage pendingMessage =
             slackMessageRepository.save(slackMessage);
 
-        try {
-            SlackNotificationClient.SlackSendResult sendResult =
-                slackNotificationClient.sendMessage(
-                    pendingMessage.getRecipientSlackId(),
-                    pendingMessage.getTitle(),
-                    pendingMessage.getContent()
-                );
-
-            pendingMessage.markSent(
-                sendResult.slackTimestamp()
-            );
-
-            SlackMessage sentMessage =
-                slackMessageRepository.save(pendingMessage);
-
-            return SlackMessageResponseDto.from(sentMessage);
-
-        } catch (BusinessException exception) {
-            // 외부 Slack 호출이 실패해도 실패 이력은 DB에 남깁니다.
-            pendingMessage.markFailed(exception.getMessage());
-            slackMessageRepository.save(pendingMessage);
-
-            throw exception;
-        }
+        return sendPendingMessage(pendingMessage);
     }
 
     /**
@@ -216,7 +235,7 @@ public class SlackMessageService {
      * 이미 발송이 완료된 메시지는 수정할 수 없습니다.</p>
      *
      * @param slackMessageId 수정할 Slack 메시지 식별자
-     * @param requestDto Slack 메시지 수정 요청
+     * @param requestDto     Slack 메시지 수정 요청
      * @return 수정된 Slack 메시지
      */
     @Transactional
@@ -262,7 +281,7 @@ public class SlackMessageService {
      * 기록하여 일반 조회 결과에서 제외합니다.</p>
      *
      * @param slackMessageId 삭제할 Slack 메시지 식별자
-     * @param deletedBy 삭제를 수행한 사용자 식별자
+     * @param deletedBy      삭제를 수행한 사용자 식별자
      */
     @Transactional
     public void deleteSlackMessage(
@@ -401,6 +420,41 @@ public class SlackMessageService {
             throw new BusinessException(
                 ErrorCode.SLACK_MESSAGE_ALREADY_EXISTS
             );
+        }
+    }
+
+    /**
+     * PENDING 상태의 Slack 메시지를 실제로 발송하고
+     * 성공 또는 실패 상태를 저장합니다.
+     *
+     * @param pendingMessage 발송 대기 상태의 Slack 메시지
+     * @return Slack 메시지 처리 결과
+     */
+    private SlackMessageResponseDto sendPendingMessage(
+        SlackMessage pendingMessage
+    ) {
+        try {
+            SlackNotificationClient.SlackSendResult sendResult =
+                slackNotificationClient.sendMessage(
+                    pendingMessage.getRecipientSlackId(),
+                    pendingMessage.getTitle(),
+                    pendingMessage.getContent()
+                );
+
+            pendingMessage.markSent(
+                sendResult.slackTimestamp()
+            );
+
+            SlackMessage sentMessage =
+                slackMessageRepository.save(pendingMessage);
+
+            return SlackMessageResponseDto.from(sentMessage);
+
+        } catch (BusinessException exception) {
+            pendingMessage.markFailed(exception.getMessage());
+            slackMessageRepository.save(pendingMessage);
+
+            throw exception;
         }
     }
 }

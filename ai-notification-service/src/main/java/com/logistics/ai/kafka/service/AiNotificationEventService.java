@@ -1,7 +1,6 @@
 package com.logistics.ai.kafka.service;
 
 import com.logistics.ai.airequest.dto.responsedto.AiResponseDto;
-import com.logistics.ai.airequest.entity.AiRequestStatus;
 import com.logistics.ai.airequest.service.AiRequestService;
 import com.logistics.ai.global.exception.BusinessException;
 import com.logistics.ai.global.exception.ErrorCode;
@@ -11,6 +10,8 @@ import com.logistics.ai.slackmessage.service.SlackMessageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.Optional;
 
 /**
  * Kafka 배송 이벤트를 받아 AI 계산과 Slack 발송을 연결합니다.
@@ -44,29 +45,26 @@ public class AiNotificationEventService {
             event.deliveryId()
         );
 
-        AiResponseDto aiResponse =
-            aiRequestService.createAiRequest(
+        Optional<AiResponseDto> aiResponseOptional =
+            aiRequestService.createOrRetryAiRequest(
                 eventMapper.toAiRequestDto(event)
             );
 
         /*
-         * 중복 전달된 이벤트의 기존 AI 요청이 FAILED 상태라면
-         * Slack 메시지를 만들 수 없으므로 여기에서 처리를 종료합니다.
-         *
-         * 실패한 AI 요청은 기존 재처리 API를 통해 다시 처리합니다.
+         * 논리 삭제된 AI 요청도 이미 소비된 Kafka 이벤트입니다.
+         * 같은 eventId로 Gemini와 Slack을 다시 실행하지 않습니다.
          */
-        if (aiResponse.status() != AiRequestStatus.SUCCESS) {
-            log.warn(
-                "AI 요청이 성공 상태가 아니므로 "
-                    + "Slack 발송을 생략합니다. "
-                    + "eventId={}, aiRequestId={}, status={}",
-                event.eventId(),
-                aiResponse.aiRequestId(),
-                aiResponse.status()
+        if (aiResponseOptional.isEmpty()) {
+            log.info(
+                "이미 처리 후 삭제된 Kafka 이벤트이므로 "
+                    + "재처리를 생략합니다. eventId={}",
+                event.eventId()
             );
 
             return;
         }
+
+        AiResponseDto aiResponse = aiResponseOptional.get();
 
         try {
             slackMessageService.createOrRetrySlackMessage(

@@ -2,7 +2,6 @@ package com.logistics.ai.kafka.service;
 
 import com.logistics.ai.airequest.dto.requestdto.AiRequestDto;
 import com.logistics.ai.airequest.dto.responsedto.AiResponseDto;
-import com.logistics.ai.airequest.entity.AiRequestStatus;
 import com.logistics.ai.airequest.service.AiRequestService;
 import com.logistics.ai.global.exception.BusinessException;
 import com.logistics.ai.global.exception.ErrorCode;
@@ -16,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Optional;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.Mockito.*;
@@ -43,29 +44,25 @@ class AiNotificationEventServiceTest {
     void processSuccess() {
         // given
         DeliveryAiNotificationEvent event =
-            org.mockito.Mockito.mock(
-                DeliveryAiNotificationEvent.class
-            );
+            mock(DeliveryAiNotificationEvent.class);
 
         AiRequestDto aiRequestDto =
-            org.mockito.Mockito.mock(AiRequestDto.class);
+            mock(AiRequestDto.class);
 
         AiResponseDto aiResponse =
-            org.mockito.Mockito.mock(AiResponseDto.class);
+            mock(AiResponseDto.class);
 
         SlackMessageRequestDto slackRequest =
-            org.mockito.Mockito.mock(
-                SlackMessageRequestDto.class
-            );
+            mock(SlackMessageRequestDto.class);
 
         when(eventMapper.toAiRequestDto(event))
             .thenReturn(aiRequestDto);
 
-        when(aiRequestService.createAiRequest(aiRequestDto))
-            .thenReturn(aiResponse);
-
-        when(aiResponse.status())
-            .thenReturn(AiRequestStatus.SUCCESS);
+        when(
+            aiRequestService.createOrRetryAiRequest(aiRequestDto)
+        ).thenReturn(
+            Optional.of(aiResponse)
+        );
 
         when(
             eventMapper.toSlackMessageRequestDto(
@@ -82,7 +79,7 @@ class AiNotificationEventServiceTest {
             .toAiRequestDto(event);
 
         verify(aiRequestService)
-            .createAiRequest(aiRequestDto);
+            .createOrRetryAiRequest(aiRequestDto);
 
         verify(eventMapper)
             .toSlackMessageRequestDto(
@@ -95,47 +92,38 @@ class AiNotificationEventServiceTest {
     }
 
     @Test
-    @DisplayName("AI 계산 결과가 실패 상태이면 Slack 발송을 생략한다")
-    void skipSlackWhenAiRequestFailed() {
+    @DisplayName("삭제된 AI 요청의 Kafka 이벤트는 다시 처리하지 않는다")
+    void skipDeletedAiRequestEvent() {
         // given
         DeliveryAiNotificationEvent event =
-            org.mockito.Mockito.mock(
-                DeliveryAiNotificationEvent.class
-            );
+            mock(DeliveryAiNotificationEvent.class);
 
         AiRequestDto aiRequestDto =
-            org.mockito.Mockito.mock(AiRequestDto.class);
-
-        AiResponseDto aiResponse =
-            org.mockito.Mockito.mock(AiResponseDto.class);
+            mock(AiRequestDto.class);
 
         when(eventMapper.toAiRequestDto(event))
             .thenReturn(aiRequestDto);
 
-        when(aiRequestService.createAiRequest(aiRequestDto))
-            .thenReturn(aiResponse);
-
-        when(aiResponse.status())
-            .thenReturn(AiRequestStatus.FAILED);
+        when(
+            aiRequestService.createOrRetryAiRequest(aiRequestDto)
+        ).thenReturn(Optional.empty());
 
         // when
         eventService.process(event);
 
         // then
+        verify(aiRequestService)
+            .createOrRetryAiRequest(aiRequestDto);
+
         verify(
             eventMapper,
             never()
         ).toSlackMessageRequestDto(
-            event,
-            aiResponse
+            eq(event),
+            any(AiResponseDto.class)
         );
 
-        verify(
-            slackMessageService,
-            never()
-        ).createOrRetrySlackMessage(
-            org.mockito.ArgumentMatchers.any()
-        );
+        verifyNoInteractions(slackMessageService);
     }
 
     @Test
@@ -162,11 +150,11 @@ class AiNotificationEventServiceTest {
         when(eventMapper.toAiRequestDto(event))
             .thenReturn(aiRequestDto);
 
-        when(aiRequestService.createAiRequest(aiRequestDto))
-            .thenReturn(aiResponse);
-
-        when(aiResponse.status())
-            .thenReturn(AiRequestStatus.SUCCESS);
+        when(
+            aiRequestService.createOrRetryAiRequest(aiRequestDto)
+        ).thenReturn(
+            Optional.of(aiResponse)
+        );
 
         when(
             eventMapper.toSlackMessageRequestDto(

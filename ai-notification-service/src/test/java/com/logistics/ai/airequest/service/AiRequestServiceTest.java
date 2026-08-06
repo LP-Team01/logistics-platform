@@ -72,7 +72,7 @@ class AiRequestServiceTest {
 
         when(
             aiRequestRepository
-                .findByEventIdAndDeletedAtIsNull(
+                .findByEventId(
                     requestDto.eventId()
                 )
         ).thenReturn(Optional.empty());
@@ -127,18 +127,11 @@ class AiRequestServiceTest {
         AiRequest existingRequest =
             createTestAiRequest();
 
-        // 이 테스트에서 실제 사용하는 eventId만 설정합니다.
         when(requestDto.eventId())
             .thenReturn(eventId);
 
         when(
-            aiRequestRepository
-                .findByEventIdAndDeletedAtIsNull(eventId)
-        ).thenReturn(Optional.of(existingRequest));
-
-        when(
-            aiRequestRepository
-                .findByEventIdAndDeletedAtIsNull(eventId)
+            aiRequestRepository.findByEventId(eventId)
         ).thenReturn(Optional.of(existingRequest));
 
         // when
@@ -173,8 +166,7 @@ class AiRequestServiceTest {
 
         when(
             aiRequestRepository
-                .findByEventIdAndDeletedAtIsNull(
-                    requestDto.eventId()
+                .findByEventId(requestDto.eventId()
                 )
         ).thenReturn(Optional.empty());
 
@@ -373,5 +365,88 @@ class AiRequestServiceTest {
             30,
             "최종 발송 시한을 계산해주세요."
         );
+    }
+
+    @Test
+    @DisplayName(
+        "기존 FAILED AI 요청은 Kafka 재전달 시 다시 처리하여 성공한다"
+    )
+    void retryFailedAiRequestFromKafkaEvent() {
+        // given
+        UUID eventId = UUID.randomUUID();
+
+        AiRequestDto requestDto =
+            mock(AiRequestDto.class);
+
+        when(requestDto.eventId())
+            .thenReturn(eventId);
+
+        AiRequest failedRequest = createTestAiRequest();
+
+        failedRequest.markFailed(
+            "이전 Gemini 호출 실패",
+            "gemini-3.6-flash",
+            100L
+        );
+
+        LocalDateTime dispatchDeadline =
+            LocalDateTime.of(2026, 8, 5, 9, 0);
+
+        AiCalculationResult calculationResult =
+            mock(AiCalculationResult.class);
+
+        when(
+            calculationResult.dispatchDeadline()
+        ).thenReturn(dispatchDeadline);
+
+        DispatchDeadlineAiClient.AiExecutionResult executionResult =
+            new DispatchDeadlineAiClient.AiExecutionResult(
+                "{\"dispatchDeadline\":\"2026-08-05T09:00:00\"}",
+                calculationResult,
+                "gemini-3.6-flash",
+                1200L
+            );
+
+        when(
+            aiRequestRepository.findByEventId(eventId)
+        ).thenReturn(Optional.of(failedRequest));
+
+        when(
+            aiRequestRepository.save(any(AiRequest.class))
+        ).thenAnswer(
+            invocation -> invocation.getArgument(0)
+        );
+
+        when(
+            dispatchDeadlineAiClient.calculateDispatchDeadline(
+                failedRequest.getPrompt()
+            )
+        ).thenReturn(executionResult);
+
+        // when
+        Optional<AiResponseDto> response =
+            aiRequestService.createOrRetryAiRequest(requestDto);
+
+        // then
+        assertThat(response).isPresent();
+
+        assertThat(failedRequest.getStatus())
+            .isEqualTo(AiRequestStatus.SUCCESS);
+
+        assertThat(failedRequest.getDispatchDeadline())
+            .isEqualTo(dispatchDeadline);
+
+        assertThat(failedRequest.getModel())
+            .isEqualTo("gemini-3.6-flash");
+
+        verify(dispatchDeadlineAiClient)
+            .calculateDispatchDeadline(
+                failedRequest.getPrompt()
+            );
+
+        verify(aiRequestRepository, times(2))
+            .save(failedRequest);
+
+        verifyNoInteractions(aiPromptService);
     }
 }

@@ -57,3 +57,4 @@ gemini:
 
 slack:
   bot-token: ${SLACK_BOT_TOKEN:}
+  pending-recovery-minutes: ${SLACK_PENDING_RECOVERY_MINUTES:5}

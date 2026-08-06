@@ -26,6 +26,9 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class DeliveryAiNotificationConsumer {
 
+    private static final Set<String> SUPPORTED_EVENT_VERSIONS =
+        Set.of("v1");
+
     private final AiNotificationEventService eventService;
     private final Validator validator;
 
@@ -43,6 +46,7 @@ public class DeliveryAiNotificationConsumer {
         DeliveryAiNotificationEvent event = record.value();
 
         validateEvent(event);
+        validateEventVersion(event);
 
         log.info(
             "Kafka 배송 AI 알림 이벤트를 수신했습니다. "
@@ -109,6 +113,37 @@ public class DeliveryAiNotificationConsumer {
         throw new BusinessException(
             ErrorCode.INVALID_AI_REQUEST,
             validationMessage
+        );
+    }
+
+    /**
+     * AI 알림 서비스가 지원하는 Kafka 이벤트 버전인지 검증합니다.
+     *
+     * @param event 검증할 배송 AI 알림 이벤트
+     */
+    private void validateEventVersion(
+        DeliveryAiNotificationEvent event
+    ) {
+        if (
+            SUPPORTED_EVENT_VERSIONS.contains(
+                event.eventVersion()
+            )
+        ) {
+            return;
+        }
+
+        log.error(
+            "지원하지 않는 Kafka 배송 AI 알림 이벤트 버전입니다. "
+                + "eventId={}, eventVersion={}, supportedVersions={}",
+            event.eventId(),
+            event.eventVersion(),
+            SUPPORTED_EVENT_VERSIONS
+        );
+
+        throw new BusinessException(
+            ErrorCode.UNSUPPORTED_EVENT_VERSION,
+            "지원하지 않는 이벤트 버전입니다: "
+                + event.eventVersion()
         );
     }
 }

@@ -149,10 +149,45 @@ class DeliveryAiNotificationConsumerTest {
         verifyNoInteractions(eventService);
     }
 
+    @Test
+    @DisplayName("지원하지 않는 Kafka 이벤트 버전은 처리하지 않는다")
+    void consumeUnsupportedEventVersion() {
+        // given
+        DeliveryAiNotificationEvent event =
+            createEventWithVersion("v999");
+
+        ConsumerRecord<String, DeliveryAiNotificationEvent> record =
+            new ConsumerRecord<>(
+                "delivery-ai-notification",
+                0,
+                1L,
+                event.eventId().toString(),
+                event
+            );
+
+        // when & then
+        assertThatExceptionOfType(BusinessException.class)
+            .isThrownBy(() -> consumer.consume(record))
+            .satisfies(exception ->
+                assertThat(exception.getErrorCode())
+                    .isEqualTo(
+                        ErrorCode.UNSUPPORTED_EVENT_VERSION
+                    )
+            );
+
+        verifyNoInteractions(eventService);
+    }
+
     private DeliveryAiNotificationEvent createValidEvent() {
+        return createEventWithVersion("v1");
+    }
+
+    private DeliveryAiNotificationEvent createEventWithVersion(
+        String eventVersion
+    ) {
         return new DeliveryAiNotificationEvent(
             UUID.randomUUID(),
-            "v1",
+            eventVersion,
             DeliveryAiNotificationEventType.DELIVERY_CREATED,
             Instant.parse("2026-08-05T12:30:00Z"),
             UUID.randomUUID(),
