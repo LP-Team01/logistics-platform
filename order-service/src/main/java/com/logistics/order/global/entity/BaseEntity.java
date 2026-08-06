@@ -1,6 +1,6 @@
 package com.logistics.order.global.entity;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 import org.springframework.data.annotation.CreatedBy;
@@ -27,7 +27,7 @@ public abstract class BaseEntity {
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @CreatedBy
     @Column(name = "created_by", updatable = false)
@@ -35,14 +35,14 @@ public abstract class BaseEntity {
 
     @LastModifiedDate
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @LastModifiedBy
     @Column(name = "updated_by")
     private UUID updatedBy;
 
     @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    private Instant deletedAt;
 
     @Column(name = "deleted_by")
     private UUID deletedBy;
@@ -68,7 +68,7 @@ public abstract class BaseEntity {
      * 예) orderRepository.findById(id).ifPresent(o -> o.softDelete(currentUserId));
      */
     public void softDelete(UUID deletedByUserId) {
-        this.deletedAt = LocalDateTime.now();
+        this.deletedAt = Instant.now();
         this.deletedBy = deletedByUserId;
     }
 

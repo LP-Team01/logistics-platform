@@ -4,3 +4,8 @@ server:
 spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/order_db}
+
+internal:
+  service:
+    name: order-service
+    key: ${INTERNAL_SERVICE_KEY}

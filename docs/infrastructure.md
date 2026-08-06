@@ -17,7 +17,7 @@
 ## 통신 원칙
 
 1. 클라이언트는 API Gateway로만 접근합니다.
-2. Gateway가 JWT를 검증하고 `X-User-Id`, `X-User-Role`, `X-Request-Id`를 전달합니다.
+2. Gateway가 JWT를 검증하고 `X-User-Id`, `X-User-Role`, `X-Hub-Id` , `X-Company-Id`, `X-Request-Id`를 전달합니다.
 3. 서비스 간 동기 통신은 REST/OpenFeign을 사용합니다.
 4. 현재 비동기 메시지 브로커는 도입하지 않으며 REST 기반으로 구현합니다.
 5. 향후 이벤트 기반 전환을 고려하여 서비스 간 데이터 계약과 멱등성 기준을 분리합니다.

@@ -1,5 +1,21 @@
 package com.logistics.order.command.dto;
 
-/** 주문 수정 필드는 주문 요구사항 확정 후 추가합니다. */
-public record UpdateOrderRequest() {
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Size;
+
+/**
+ * 주문 수정 요청
+ */
+public record UpdateOrderRequest(
+
+        @Schema(
+                description = "배송 요청사항",
+                example = "도착 전에 연락해주세요."
+        )
+        @Size(
+                max = 500,
+                message = "배송 요청사항은 500자 이하여야 합니다."
+        )
+        String deliveryRequest
+) {
 }
