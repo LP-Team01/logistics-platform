@@ -7,6 +7,7 @@ import com.logistics.order.command.dto.OrderCommandResponse;
 
 import com.logistics.order.command.dto.UpdateOrderRequest;
 import com.logistics.order.global.auth.HeaderRoleValidator;
+import com.logistics.order.global.auth.InternalServiceValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 
@@ -24,6 +25,7 @@ public class OrderCommandController {
 
     private final OrderCommandService orderCommandService;
     private final HeaderRoleValidator roleValidator;
+    private final InternalServiceValidator internalServiceValidator;
 
     /**
      * 주문을 생성합니다.
@@ -169,35 +171,67 @@ public class OrderCommandController {
     }
 
     /**
-     * 주문 확정
+     * 주문 논리 삭제
      */
-//    @Operation(
-//            summary = "주문 확정",
-//            description = "대기 중인 주문과 유효한 주문 상품을 확정합니다."
-//    )
-//    @PatchMapping("/{orderId}/confirm")
-//    public ResponseEntity<OrderCommandResponse> confirmOrder(
-//            @PathVariable UUID orderId,
-//            @RequestHeader("X-User-Id") UUID userId,
-//            @RequestHeader("X-User-Role") String userRole,
-//            @RequestHeader(
-//                    value = "X-Hub-Id",
-//                    required = false
-//            ) UUID hubId
-//    ) {
-//        // 주문 확정 권한 검사
-//        roleValidator.validate(
-//                userRole,
-//                "HUB_MANAGER",
-//                "MASTER"
-//        );
-//
-//        return ResponseEntity.ok(
-//                orderCommandService.confirmOrder(
-//                    orderId,
-//                    userRole,
-//                    hubId
-//                )
-//        );
-//    }
+    @Operation(
+            summary = "주문 삭제",
+            description = "취소된 주문과 주문 상품을 논리 삭제합니다."
+    )
+    @DeleteMapping("/{orderId}")
+    public ResponseEntity<Void> deleteOrder(
+            @PathVariable UUID orderId,
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader("X-User-Role") String userRole,
+            @RequestHeader(
+                    value = "X-Hub-Id",
+                    required = false
+            ) UUID hubId
+    ) {
+        // MASTER 또는 HUB_MANAGER만 접근 가능
+        roleValidator.validate(
+                userRole,
+                "MASTER",
+                "HUB_MANAGER"
+        );
+
+        orderCommandService.deleteOrder(
+                orderId,
+                userId,
+                userRole,
+                hubId
+        );
+
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 배송 완료 내부 연동
+     */
+    @Operation(
+            summary = "주문 상품 배송 완료",
+            description = "Delivery Service가 배송 완료 후 호출하는 내부 API입니다."
+    )
+    @PatchMapping("/{orderId}/items/{orderItemId}/complete")
+    public ResponseEntity<Void> completeOrderItem(
+            @PathVariable UUID orderId,
+            @PathVariable UUID orderItemId,
+            @RequestHeader("X-Internal-Service")
+            String serviceName,
+            @RequestHeader("X-Internal-Service-Key")
+            String serviceKey
+    ) {
+        // Delivery Service 내부 호출 검증
+        internalServiceValidator.validateDeliveryService(
+                serviceName,
+                serviceKey
+        );
+
+        // 주문 상품 배송 완료 반영
+        orderCommandService.completeOrderItem(
+                orderId,
+                orderItemId
+        );
+
+        return ResponseEntity.noContent().build();
+    }
 }

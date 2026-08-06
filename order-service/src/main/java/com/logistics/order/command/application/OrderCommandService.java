@@ -4,6 +4,7 @@ import com.logistics.order.command.dto.*;
 import com.logistics.order.config.InternalServiceProperties;
 import com.logistics.order.domain.entity.Order;
 import com.logistics.order.domain.entity.OrderItem;
+import com.logistics.order.domain.entity.OrderItemStatus;
 import com.logistics.order.domain.repository.OrderRepository;
 
 import com.logistics.order.global.auth.OrderOwnershipValidator;
@@ -46,17 +47,6 @@ public class OrderCommandService {
         CreateOrderRequest request,
         UUID userId
     ) {
-        // 필수 요청값 검증
-        if (request == null
-                || userId == null
-                || request.receiverCompanyId() == null
-                || request.items() == null
-                || request.items().isEmpty()) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_ORDER_REQUEST
-            );
-        }
-
         // 수령업체와 주문자 조회
         CompanyResponse receiverCompany =
                 getCompany(request.receiverCompanyId());
@@ -244,10 +234,12 @@ public class OrderCommandService {
         Order order = orderRepository
                 .findByOrderIdAndDeletedAtIsNull(orderId)
                 .orElseThrow(() ->
-                        new BusinessException(ErrorCode.ORDER_NOT_FOUND)
+                        new BusinessException(
+                                ErrorCode.ORDER_NOT_FOUND
+                        )
                 );
 
-        // COMPANY_MANAGER이면 주문 소유 업체 확인
+        // 사용자별 주문 취소 권한 검사
         orderOwnershipValidator.validateCancelAccess(
                 order,
                 userRole,
@@ -255,8 +247,23 @@ public class OrderCommandService {
                 hubId
         );
 
-        // 주문과 주문 상품 상태를 취소로 변경
-        order.cancel(userId, request.cancelReason());
+        // 외부 배송 API 호출 전에 전체 취소 가능 여부 검사
+        order.validateCancellation();
+
+        // 취소 대상 상품의 배송부터 취소
+        order.getOrderItems().stream()
+                .filter(item -> !item.isDeleted())
+                .filter(item ->
+                        item.getStatus()
+                                != OrderItemStatus.CANCELLED
+                )
+                .forEach(this::cancelDelivery);
+
+        // 배송 취소 성공 후 주문과 상품 상태 변경
+        order.cancel(
+                userId,
+                request.cancelReason()
+        );
 
         // JPA 변경 감지로 자동 UPDATE
         return OrderCommandResponse.from(order);
@@ -289,7 +296,14 @@ public class OrderCommandService {
                 hubId
         );
 
-        // 선택한 주문 상품 취소
+        // 취소할 주문 상품 조회
+        OrderItem orderItem =
+                order.getOrderItem(orderItemId);
+
+        // 생성된 배송 먼저 취소
+        cancelDelivery(orderItem);
+
+        // 배송 취소 성공 후 주문 상품 취소
         order.cancelItem(
                 orderItemId,
                 userId,
@@ -331,35 +345,6 @@ public class OrderCommandService {
         // JPA 변경 감지로 자동 UPDATE
         return OrderCommandResponse.from(order);
     }
-
-    /**
-     * 주문 확정
-     */
-//    public OrderCommandResponse confirmOrder(
-//        UUID orderId,
-//        String userRole,
-//        UUID hubId
-//    ) {
-//        // 삭제되지 않은 주문 조회
-//        Order order = orderRepository
-//                .findByOrderIdAndDeletedAtIsNull(orderId)
-//                .orElseThrow(() ->
-//                        new BusinessException(ErrorCode.ORDER_NOT_FOUND)
-//                );
-//
-//        // 마스터 또는 담당 허브 관리자 검사
-//        orderOwnershipValidator.validateManageAccess(
-//                order,
-//                userRole,
-//                hubId
-//        );
-//
-//        // 주문과 유효한 주문 상품 확정
-//        order.confirm();
-//
-//        // JPA 변경 감지로 자동 UPDATE
-//        return OrderCommandResponse.from(order);
-//    }
 
     /**
      * 사용자 정보 조회
@@ -465,6 +450,84 @@ public class OrderCommandService {
                     exception
             );
         }
+    }
+
+    /**
+     * 주문 취소 전 배송 취소
+     */
+    private void cancelDelivery(OrderItem orderItem) {
+        if (orderItem == null) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_ITEM_NOT_FOUND
+            );
+        }
+
+        // 아직 배송이 생성되지 않은 상품
+        if (orderItem.getDeliveryId() == null) {
+            return;
+        }
+
+        try {
+            deliveryClient.cancelDeliveryByOrderItemId(
+                    internalServiceProperties.name(),
+                    internalServiceProperties.key(),
+                    orderItem.getOrderItemId()
+            );
+        } catch (FeignException exception) {
+            // 배송 취소 실패 시 주문 상태는 변경하지 않음
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_CANCELLATION_FAILED
+            );
+        }
+    }
+
+    /**
+     * 주문 논리 삭제
+     */
+    public void deleteOrder(
+            UUID orderId,
+            UUID userId,
+            String userRole,
+            UUID hubId
+    ) {
+        // 삭제되지 않은 주문 조회
+        Order order = orderRepository
+                .findByOrderIdAndDeletedAtIsNull(orderId)
+                .orElseThrow(() ->
+                        new BusinessException(
+                                ErrorCode.ORDER_NOT_FOUND
+                        )
+                );
+
+        // MASTER 또는 담당 HUB_MANAGER만 삭제 가능
+        orderOwnershipValidator.validateManageAccess(
+                order,
+                userRole,
+                hubId
+        );
+
+        // 주문과 주문 상품 논리 삭제
+        order.delete(userId);
+    }
+
+    /**
+     * 배송 완료된 주문 상품 상태 변경
+     */
+    public void completeOrderItem(
+            UUID orderId,
+            UUID orderItemId
+    ) {
+        // 삭제되지 않은 주문 조회
+        Order order = orderRepository
+                .findByOrderIdAndDeletedAtIsNull(orderId)
+                .orElseThrow(() ->
+                        new BusinessException(
+                                ErrorCode.ORDER_NOT_FOUND
+                        )
+                );
+
+        // 상품 완료 및 주문 완료 상태 반영
+        order.completeItem(orderItemId);
     }
 
 }

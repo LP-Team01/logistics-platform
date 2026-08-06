@@ -12,8 +12,4 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
      */
     Optional<Order> findByOrderIdAndDeletedAtIsNull(UUID orderId);
 
-    /**
-     * 삭제되지 않은 주문 상품 조회
-     */
-    Optional<Order> findByOrderIdAndOrderItem(UUID orderId, UUID orderItemId);
 }

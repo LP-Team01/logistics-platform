@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "p_order")
+@Table(name = "p_orders")
 public class Order extends BaseEntity {
 
     // 주문의 고유 식별자입니다. Hibernate가 UUID를 자동 생성합니다.
@@ -122,24 +122,77 @@ public class Order extends BaseEntity {
 
     /** 주문을 취소 상태로 변경하고 취소 정보를 기록합니다. */
     public void cancel(UUID canceledBy, String cancelReason) {
-         // 이미 취소된 주문인지 확인
-        if (this.status == OrderStatus.CANCELLED) {
-            throw new BusinessException(ErrorCode.ORDER_ALREADY_CANCELED);
+        // 주문과 상품 상태 사전 검사
+        validateCancellation();
+        // 취소 정보 검사
+        if (canceledBy == null
+                || cancelReason == null
+                || cancelReason.isBlank()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_ORDER_REQUEST
+            );
         }
 
-        // 완료되거나 실패한 주문은 취소할 수 없음
-        if (this.status == OrderStatus.COMPLETED || this.status == OrderStatus.FAILED) {
-            throw new BusinessException(ErrorCode.ORDER_STATUS_NOT_CHANGEABLE);
-        }
+        // 삭제·취소되지 않은 상품만 취소
+        orderItems.stream()
+                .filter(item -> !item.isDeleted())
+                .filter(item ->
+                        item.getStatus()
+                                != OrderItemStatus.CANCELLED
+                )
+                .forEach(item ->
+                        item.cancel(
+                                canceledBy,
+                                cancelReason
+                        )
+                );
 
         this.status = OrderStatus.CANCELLED;
         this.canceledBy = canceledBy;
         this.cancelReason = cancelReason;
+    }
 
-        // 주문에 포함된 상품도 모두 취소
-        orderItems.forEach(
-                item -> item.cancel(canceledBy, cancelReason)
-        );
+    /**
+     * 주문 전체 취소 가능 여부 검사
+     */
+    public void validateCancellation() {
+        // 삭제된 주문은 취소 불가
+        if (isDeleted()) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_STATUS_NOT_CHANGEABLE
+            );
+        }
+
+        // 이미 취소된 주문
+        if (this.status == OrderStatus.CANCELLED) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_ALREADY_CANCELED
+            );
+        }
+
+        // 완료·실패 주문은 취소 불가
+        if (this.status == OrderStatus.COMPLETED
+                || this.status == OrderStatus.FAILED) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_STATUS_NOT_CHANGEABLE
+            );
+        }
+
+        // 완료·실패 상품이 하나라도 있으면 전체 취소 불가
+        boolean invalidItemExists = orderItems.stream()
+                .filter(item -> !item.isDeleted())
+                .anyMatch(item ->
+                        item.getStatus()
+                                == OrderItemStatus.COMPLETED
+                                || item.getStatus()
+                                == OrderItemStatus.FAILED
+                );
+
+        if (invalidItemExists) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_ITEM_STATUS_NOT_CANCELED
+            );
+        }
     }
 
     /**
@@ -163,16 +216,7 @@ public class Order extends BaseEntity {
         }
 
         // 주문에 포함된 상품 조회
-        OrderItem orderItem = orderItems.stream()
-                .filter(item ->
-                        item.getOrderItemId().equals(orderItemId)
-                )
-                .findFirst()
-                .orElseThrow(() ->
-                        new BusinessException(
-                                ErrorCode.ORDER_ITEM_NOT_FOUND
-                        )
-                );
+        OrderItem orderItem = getOrderItem(orderItemId);
 
         // 선택한 상품만 취소
         orderItem.cancel(canceledBy, cancelReason);
@@ -180,11 +224,15 @@ public class Order extends BaseEntity {
         // 취소 상품을 제외하고 총액 재계산
         recalculateTotalAmount();
 
-        // 모든 상품이 취소되면 주문도 취소
-        if (orderItems.stream()
+        // 삭제되지 않은 모든 상품이 취소됐는지 확인
+        boolean allActiveItemsCanceled = orderItems.stream()
+                .filter(item -> !item.isDeleted())
                 .allMatch(item ->
-                        item.getStatus() == OrderItemStatus.CANCELLED
-                )) {
+                        item.getStatus()
+                                == OrderItemStatus.CANCELLED
+                );
+
+        if (allActiveItemsCanceled) {
             this.status = OrderStatus.CANCELLED;
             this.canceledBy = canceledBy;
             this.cancelReason = "모든 주문 상품이 취소되었습니다.";
@@ -195,65 +243,27 @@ public class Order extends BaseEntity {
      * 배송 요청사항 수정
      */
     public void updateDeliveryRequest(String deliveryRequest) {
-        // 대기 중인 주문만 수정 가능
-        if (this.status != OrderStatus.PENDING) {
+        // 생성 대기 또는 배송 생성 완료 주문만 수정 가능
+        boolean modifiable =
+                this.status == OrderStatus.PENDING
+                        || this.status == OrderStatus.CONFIRMED;
+
+        if (!modifiable) {
             throw new BusinessException(
                     ErrorCode.ORDER_STATUS_NOT_CHANGEABLE
             );
         }
 
+        // 요청사항 길이 방어
+        if (deliveryRequest != null
+                && deliveryRequest.length() > 500) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_ORDER_REQUEST
+            );
+        }
+
         this.deliveryRequest = deliveryRequest;
     }
-
-    /**
-     * 주문과 주문 상품 확정
-     */
-//    public void confirm() {
-//        // 삭제된 주문은 확정 불가
-//        if (isDeleted()) {
-//            throw new BusinessException(
-//                    ErrorCode.ORDER_STATUS_NOT_CHANGEABLE
-//            );
-//        }
-//
-//        // 대기 중인 주문만 확정 가능
-//        if (this.status != OrderStatus.PENDING) {
-//            throw new BusinessException(
-//                    ErrorCode.ORDER_STATUS_NOT_CHANGEABLE
-//            );
-//        }
-//
-//        // 취소되지 않고 삭제되지 않은 상품만 선택
-//        List<OrderItem> confirmableItems = orderItems.stream()
-//                .filter(item ->
-//                        !item.isDeleted()
-//                                && item.getStatus()
-//                                != OrderItemStatus.CANCELLED
-//                )
-//                .toList();
-//
-//        // 확정할 상품이 없는 주문 방지
-//        if (confirmableItems.isEmpty()) {
-//            throw new BusinessException(
-//                    ErrorCode.ORDER_ITEM_NO_CONFIRMABLE
-//            );
-//        }
-//        // 일부 상품만 변경되는 상황을 막기 위해 먼저 전체 상태 검사
-//        boolean invalidItemExists = confirmableItems.stream()
-//                .anyMatch(item ->
-//                        item.getStatus() != OrderItemStatus.PENDING
-//                );
-//
-//        if (invalidItemExists) {
-//            throw new BusinessException(
-//                    ErrorCode.ORDER_ITEM_STATUS_NOT_CHANGEABLE
-//            );
-//        }
-//        // 검증 완료 후 상태 변경
-//        confirmableItems.forEach(OrderItem::confirm);
-//
-//        this.status = OrderStatus.CONFIRMED;
-//    }
 
     /**
      * 담당 허브 주문인지 확인
@@ -319,6 +329,98 @@ public class Order extends BaseEntity {
         }
 
         this.status = OrderStatus.CONFIRMED;
+    }
+
+    /**
+     * 주문과 주문 상품 논리 삭제
+     */
+    public void delete(UUID deletedBy) {
+        // 삭제 사용자 검증
+        if (deletedBy == null) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_ORDER_REQUEST
+            );
+        }
+
+        // 중복 삭제 방지
+        if (isDeleted()) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_ALREADY_DELETED
+            );
+        }
+
+        // 취소된 주문만 삭제 가능
+        if (this.status != OrderStatus.CANCELLED) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_STATUS_NOT_DELETE
+            );
+        }
+
+        // 삭제되지 않은 주문 상품만 논리 삭제
+        orderItems.stream()
+                .filter(item -> !item.isDeleted())
+                .forEach(item ->
+                        item.softDelete(deletedBy)
+                );
+
+        // 주문 논리 삭제
+        softDelete(deletedBy);
+    }
+
+    /**
+     * 삭제되지 않은 주문 상품 조회
+     */
+    public OrderItem getOrderItem(UUID orderItemId) {
+        if (orderItemId == null) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_ITEM_NOT_FOUND
+            );
+        }
+
+        return orderItems.stream()
+                .filter(item -> !item.isDeleted())
+                .filter(item ->
+                        orderItemId.equals(
+                                item.getOrderItemId()
+                        )
+                )
+                .findFirst()
+                .orElseThrow(() ->
+                        new BusinessException(
+                                ErrorCode.ORDER_ITEM_NOT_FOUND
+                        )
+                );
+    }
+
+    /**
+     * 주문 상품 배송 완료 처리
+     */
+    public void completeItem(UUID orderItemId) {
+        // 확정된 주문만 배송 완료 처리 가능
+        if (this.status != OrderStatus.CONFIRMED) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_STATUS_NOT_CHANGEABLE
+            );
+        }
+
+        // 완료할 주문 상품 조회
+        OrderItem orderItem = getOrderItem(orderItemId);
+
+        // 선택한 주문 상품 배송 완료
+        orderItem.complete();
+
+        // 모든 활성 상품이 완료 또는 취소됐는지 확인
+        boolean allItemsFinished = orderItems.stream()
+                .filter(item -> !item.isDeleted())
+                .allMatch(item ->
+                        item.getStatus() == OrderItemStatus.COMPLETED
+                                || item.getStatus() == OrderItemStatus.CANCELLED
+                );
+
+        // 모든 상품 처리가 끝나면 주문 완료
+        if (allItemsFinished) {
+            this.status = OrderStatus.COMPLETED;
+        }
     }
 
     // 상품이 추가될 때마다 DB 값에 의존하지 않고 현재 상품 목록으로 총액을 계산합니다.

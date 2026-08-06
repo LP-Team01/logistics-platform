@@ -132,16 +132,31 @@ public class OrderItem extends BaseEntity {
      * 주문 상품 취소
      */
     void cancel(UUID canceledBy, String cancelReason) {
-        // 이미 취소된 상품
+        // 삭제된 상품 취소 방지
+        if (isDeleted()) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_ITEM_STATUS_NOT_CANCELED
+            );
+        }
+
+        // 취소 정보 검증
+        if (canceledBy == null
+                || cancelReason == null
+                || cancelReason.isBlank()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_ORDER_REQUEST
+            );
+        }
+
+        // 중복 취소 방지
         if (this.status == OrderItemStatus.CANCELLED) {
             throw new BusinessException(
                     ErrorCode.ORDER_ITEM_ALREADY_CANCELED
             );
         }
 
-        // 배송 생성 이후 또는 처리가 끝난 상품
-        if (this.status == OrderItemStatus.DELIVERY_CREATED
-                || this.status == OrderItemStatus.COMPLETED
+        // 완료·실패 상품은 취소 불가
+        if (this.status == OrderItemStatus.COMPLETED
                 || this.status == OrderItemStatus.FAILED) {
             throw new BusinessException(
                     ErrorCode.ORDER_ITEM_STATUS_NOT_CANCELED
@@ -152,26 +167,6 @@ public class OrderItem extends BaseEntity {
         this.canceledBy = canceledBy;
         this.cancelReason = cancelReason;
     }
-
-    /**
-     * 주문 상품 확정
-     */
-//    void confirm() {
-//        // 삭제된 상품은 확정 불가
-//        if (isDeleted()) {
-//            throw new BusinessException(
-//                    ErrorCode.ORDER_ITEM_STATUS_NOT_CHANGEABLE
-//            );
-//        }
-//        // 대기 중인 상품만 확정 가능
-//        if (this.status != OrderItemStatus.PENDING) {
-//            throw new BusinessException(
-//                    ErrorCode.ORDER_ITEM_STATUS_NOT_CHANGEABLE
-//            );
-//        }
-//
-//        this.status = OrderItemStatus.CONFIRMED;
-//    }
 
     /**
      * 생성된 배송 연결
@@ -206,6 +201,27 @@ public class OrderItem extends BaseEntity {
 
         this.deliveryId = deliveryId;
         this.status = OrderItemStatus.DELIVERY_CREATED;
+    }
+
+    /**
+     * 주문 상품 배송 완료
+     */
+    void complete() {
+        // 삭제된 상품은 완료 처리 불가
+        if (isDeleted()) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_ITEM_STATUS_NOT_CHANGEABLE
+            );
+        }
+
+        // 배송이 생성된 상품만 완료 가능
+        if (this.status != OrderItemStatus.DELIVERY_CREATED) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_ITEM_STATUS_NOT_CHANGEABLE
+            );
+        }
+
+        this.status = OrderItemStatus.COMPLETED;
     }
 
     public static OrderItem create(

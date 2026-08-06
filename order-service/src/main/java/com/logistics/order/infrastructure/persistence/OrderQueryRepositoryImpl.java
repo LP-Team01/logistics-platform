@@ -79,6 +79,7 @@ public class OrderQueryRepositoryImpl
             .where(
                 order.deletedAt.isNull(),       // 소프트 삭제된 주문은 조회하지 않습니다.
                 keywordCondition(keyword),                      // 상품명 또는 배송 요청사항 키워드 검색
+                receiverCompanyCondition(receiverCompanyId),
                 createdByCondition(createdBy),
                 hubCondition(hubId)
             )
@@ -97,6 +98,7 @@ public class OrderQueryRepositoryImpl
             .where(
                     order.deletedAt.isNull(),
                     keywordCondition(keyword),
+                    receiverCompanyCondition(receiverCompanyId),
                     createdByCondition(createdBy),
                     hubCondition(hubId)
             )
@@ -139,5 +141,18 @@ public class OrderQueryRepositoryImpl
                 ? null
                 : order.receiverHubId.eq(hubId)
                         .or(orderItem.supplierHubId.eq(hubId));
+    }
+
+    /**
+     * 수령업체 주문 조건
+     */
+    private BooleanExpression receiverCompanyCondition(
+            UUID receiverCompanyId
+    ) {
+        return receiverCompanyId == null
+                ? null
+                : order.receiverCompanyId.eq(
+                        receiverCompanyId
+                );
     }
 }
