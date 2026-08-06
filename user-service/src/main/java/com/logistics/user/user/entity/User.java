@@ -21,13 +21,16 @@ public class User extends BaseEntity {
     @Column(name = "user_id")
     private UUID userId;
 
-    @Column(length = 10, nullable = false, unique = true)
+    // 유니크 제약은 활성(soft-delete/REJECTED 아님) 유저에게만 적용되는
+    // partial unique index(ux_users_username_active)로 DB에서 관리됨 (V4 마이그레이션)
+    @Column(length = 10, nullable = false)
     private String username;
 
     @Column(length = 100, nullable = false)
     private String password;
 
-    @Column(name = "slack_id", length = 100, nullable = false, unique = true)
+    // 유니크 제약은 ux_users_slack_id_active partial unique index로 DB에서 관리됨 (V4 마이그레이션)
+    @Column(name = "slack_id", length = 100, nullable = false)
     private String slackId;
 
     @Enumerated(EnumType.STRING)

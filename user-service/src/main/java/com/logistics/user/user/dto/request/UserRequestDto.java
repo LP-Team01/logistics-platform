@@ -2,6 +2,7 @@ package com.logistics.user.user.dto.request;
 
 import com.logistics.user.user.entity.UserRole;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -24,7 +25,10 @@ public record UserRequestDto(
     @Size(min = 8, max = 15)
     String password,
 
+    @NotBlank(message = "슬랙ID는 필수입니다.")
     String slackId,
+
+    @NotNull(message = "권한선택은 필수입니다.")
     UserRole role,
     UUID hubId,
     UUID companyId

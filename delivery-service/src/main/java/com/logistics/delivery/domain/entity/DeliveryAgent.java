@@ -93,7 +93,7 @@ public class DeliveryAgent extends BaseUpdatableEntity {
         super.softDelete(deletedBy);
     }
 
-    private void validateHubId(AgentType agentType, UUID hubId) {
+    public static void validateHubId(AgentType agentType, UUID hubId) {
         if (agentType == AgentType.COMPANY_DELIVERY && hubId == null) {
             throw new BusinessException(ErrorCode.HUB_ID_REQUIRED);
         }

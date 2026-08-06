@@ -1,15 +1,16 @@
 package com.logistics.user.user.repository;
 
 import com.logistics.user.user.entity.User;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import com.logistics.user.user.entity.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Optional;
 import java.util.UUID;
 
-public interface UserRepository extends JpaRepository<User, UUID>{
-    boolean existsBySlackId(String slackId);
+public interface UserRepository extends JpaRepository<User, UUID>, UserRepositoryCustom {
+    boolean existsBySlackIdAndDeletedAtIsNullAndStatusNot(String slackId, UserStatus status);
 
-    boolean existsByUsername(String username);
+    boolean existsByUsernameAndDeletedAtIsNullAndStatusNot(String username, UserStatus status);
+
+    Optional<User> findByUserIdAndDeletedAtIsNull(UUID userId);
 }
