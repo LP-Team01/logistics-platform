@@ -1,7 +1,11 @@
 package com.logistics.hub.hubroute.repository;
 
 import com.logistics.hub.hubroute.entity.HubRoute;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,4 +19,11 @@ public interface HubRouteRepository extends JpaRepository<HubRoute, UUID> {
     boolean existsByDepartureHubIdAndArrivalHubIdAndDeletedAtIsNull(
         UUID departureHubId, UUID arrivalHubId
     ); // 출발-도착 조합 중복 체크
+
+    @Query("SELECT r FROM HubRoute r WHERE r.deletedAt IS NULL "
+        + "AND (:departureHubId IS NULL OR r.departureHubId = :departureHubId) "
+        + "AND (:arrivalHubId IS NULL OR r.arrivalHubId = :arrivalHubId)")
+    Page<HubRoute> search(@Param("departureHubId") UUID departureHubId,
+                          @Param("arrivalHubId") UUID arrivalHubId,
+                          Pageable pageable);
 }
