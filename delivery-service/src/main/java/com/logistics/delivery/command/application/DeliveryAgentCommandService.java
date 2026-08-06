@@ -9,6 +9,7 @@ import com.logistics.delivery.domain.entity.DeliveryAgent;
 import com.logistics.delivery.domain.repository.DeliveryAgentRepository;
 import com.logistics.delivery.global.common.DeliveryAccessGuard;
 import com.logistics.delivery.global.common.UserRole;
+import com.logistics.delivery.global.common.UserStatus;
 import com.logistics.delivery.global.exception.BusinessException;
 import com.logistics.delivery.global.exception.ErrorCode;
 import com.logistics.delivery.infrastructure.client.UserServiceClient;
@@ -88,6 +89,9 @@ public class DeliveryAgentCommandService {
         }
         if (user.role() != UserRole.DELIVERY_MANAGER) {
             throw new BusinessException(ErrorCode.DELIVERY_AGENT_INVALID_USER_ROLE);
+        }
+        if (user.status() != UserStatus.APPROVED) {
+            throw new BusinessException(ErrorCode.DELIVERY_AGENT_USER_NOT_APPROVED);
         }
     }
 

@@ -54,7 +54,7 @@ public class DeliverySpecification {
             var subquery = query.subquery(UUID.class);
             var routeRoot = subquery.from(DeliveryRouteRecord.class);
             subquery.select(routeRoot.get("deliveryId"))
-                .where(cb.equal(routeRoot.get("agentId"), agentId));
+                .where(cb.equal(routeRoot.get("agentId"), agentId), cb.isNull(routeRoot.get("deletedAt")));
             return cb.or(
                 cb.equal(root.get("companyAgentId"), agentId),
                 root.get("id").in(subquery)
@@ -77,7 +77,8 @@ public class DeliverySpecification {
             var subquery = query.subquery(UUID.class);
             var companyRouteRoot = subquery.from(CompanyDeliveryRouteRecord.class);
             subquery.select(companyRouteRoot.get("deliveryId"))
-                .where(cb.equal(companyRouteRoot.get("receiverCompanyId"), companyId));
+                .where(cb.equal(companyRouteRoot.get("receiverCompanyId"), companyId),
+                    cb.isNull(companyRouteRoot.get("deletedAt")));
             return root.get("id").in(subquery);
         };
     }
