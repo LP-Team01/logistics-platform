@@ -8,6 +8,9 @@ public record CreateDeliveryRequestDto(
     @NotNull(message = "주문 id는 필수입니다.")
     UUID orderId,
 
+    @NotNull(message = "주문아이템 id는 필수입니다.")
+    UUID orderItemId,
+
     @NotNull(message = "출발 허브 id는 필수입니다.")
     UUID departureHubId,
 
@@ -28,6 +31,7 @@ public record CreateDeliveryRequestDto(
     public CreateDeliveryCommand toCommand() {
         return CreateDeliveryCommand.builder()
             .orderId(orderId)
+            .orderItemId(orderItemId)
             .departureHubId(departureHubId)
             .destinationHubId(destinationHubId)
             .deliveryAddress(deliveryAddress)

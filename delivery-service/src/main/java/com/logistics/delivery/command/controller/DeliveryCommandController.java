@@ -27,7 +27,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class DeliveryCommandController {
     private final DeliveryCommandService deliveryCommandService;
 
-    //TODO : 내부 호출 보장성 어떻게 가져갈지 논의 할 것
     @PostMapping
     public ResponseEntity<CreateDeliveryResponseDto> create(@RequestBody @Valid CreateDeliveryRequestDto request) {
         //TODO: HubService 만들어진 후 hubClient로 hub유효성 검사

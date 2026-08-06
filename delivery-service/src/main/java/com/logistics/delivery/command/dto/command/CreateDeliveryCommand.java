@@ -6,6 +6,7 @@ import lombok.Builder;
 @Builder
 public record CreateDeliveryCommand(
     UUID orderId,
+    UUID orderItemId,
     UUID departureHubId,
     UUID destinationHubId,
     String deliveryAddress,

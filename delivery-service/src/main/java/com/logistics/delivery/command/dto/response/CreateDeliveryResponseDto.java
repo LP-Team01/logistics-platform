@@ -13,6 +13,7 @@ import lombok.Builder;
 public record CreateDeliveryResponseDto(
         UUID deliveryId,
         UUID orderId,
+        UUID orderItemId,
         DeliveryStatus status,
         List<RouteRecordSummary> routeRecords,
         Instant createdAt
@@ -41,6 +42,7 @@ public record CreateDeliveryResponseDto(
         return CreateDeliveryResponseDto.builder()
                 .deliveryId(delivery.getId())
                 .orderId(delivery.getOrderId())
+                .orderItemId(delivery.getOrderItemId())
                 .status(delivery.getStatus())
                 .routeRecords(routeRecords.stream().map(RouteRecordSummary::from).toList())
                 .createdAt(delivery.getCreatedAt())
