@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.util.UUID;
 
-public record CompanyCreateRequestDto(
+public record CreateRequestDto(
     @NotNull(message = "관리 허브 ID는 필수입니다.")
     UUID hubId,
 

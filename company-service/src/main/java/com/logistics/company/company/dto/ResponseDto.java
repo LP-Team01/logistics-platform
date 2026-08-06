@@ -5,7 +5,7 @@ import com.logistics.company.company.domain.Company;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-public record CompanyResponseDto(
+public record ResponseDto(
     UUID companyId,
     UUID hubId,
     String name,
@@ -15,8 +15,8 @@ public record CompanyResponseDto(
     String createdBy
 ) {
     // Entity -> DTO 변환 정적 팩토리 메서드
-    public static CompanyResponseDto from(Company company) {
-        return new CompanyResponseDto(
+    public static ResponseDto from(Company company) {
+        return new ResponseDto(
             company.getCompanyId(),
             company.getHubId(),
             company.getName(),

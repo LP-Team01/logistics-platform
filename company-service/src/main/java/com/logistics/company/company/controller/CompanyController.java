@@ -1,8 +1,8 @@
 package com.logistics.company.company.controller;
 
-import com.logistics.company.company.dto.CompanyCreateRequestDto;
-import com.logistics.company.company.dto.CompanyResponseDto;
-import com.logistics.company.company.dto.CompanyUpdateRequestDto;
+import com.logistics.company.company.dto.CreateRequestDto;
+import com.logistics.company.company.dto.ResponseDto;
+import com.logistics.company.company.dto.UpdateRequestDto;
 import com.logistics.company.company.service.CompanyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,36 +28,36 @@ public class CompanyController {
     private final CompanyService companyService;
 
     @PostMapping
-    public ResponseEntity<CompanyResponseDto> createCompany(
-        @Valid @RequestBody CompanyCreateRequestDto request,
-        @RequestHeader(value = "X-User-Passport", required = false, defaultValue = "anonymousUser") String passportUserHeader
+    public ResponseEntity<ResponseDto> createCompany(
+        @Valid @RequestBody CreateRequestDto request,
+        @RequestHeader(value = "X-User-Id", required = false, defaultValue = "anonymousUser") String userId
     ) {
-        CompanyResponseDto response = companyService.createCompany(request, passportUserHeader);
+        ResponseDto response = companyService.createCompany(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{companyId}")
-    public ResponseEntity<CompanyResponseDto> getCompany(@PathVariable("companyId") UUID companyId) {
-        CompanyResponseDto response = companyService.getCompany(companyId);
+    public ResponseEntity<ResponseDto> getCompany(@PathVariable("companyId") UUID companyId) {
+        ResponseDto response = companyService.getCompany(companyId);
         return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{companyId}")
-    public ResponseEntity<CompanyResponseDto> updateCompany(
+    public ResponseEntity<ResponseDto> updateCompany(
         @PathVariable("companyId") UUID companyId,
-        @Valid @RequestBody CompanyUpdateRequestDto request,
-        @RequestHeader(value = "X-User-Passport", required = false, defaultValue = "anonymousUser") String passportUserHeader
+        @Valid @RequestBody UpdateRequestDto request,
+        @RequestHeader(value = "X-User-Id", required = false, defaultValue = "anonymousUser") String userId
     ) {
-        CompanyResponseDto response = companyService.updateCompany(companyId, request, passportUserHeader);
+        ResponseDto response = companyService.updateCompany(companyId, request, userId);
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{companyId}")
     public ResponseEntity<Void> deleteCompany(
         @PathVariable("companyId") UUID companyId,
-        @RequestHeader(value = "X-User-Passport", required = false, defaultValue = "anonymousUser") String passportUserHeader
+        @RequestHeader(value = "X-User-Id", required = false, defaultValue = "anonymousUser") String userId
     ) {
-        companyService.deleteCompany(companyId, passportUserHeader);
+        companyService.deleteCompany(companyId, userId);
         return ResponseEntity.noContent().build();
     }
 }

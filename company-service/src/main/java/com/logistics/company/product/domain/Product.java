@@ -1,11 +1,14 @@
-package com.logistics.company.company.domain;
+package com.logistics.company.product.domain;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.cglib.core.Local;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -15,12 +18,12 @@ import java.util.UUID;
 @Entity
 @Table(name = "p_products")
 public class Product {
+
     @Id
     @GeneratedValue(generator = "UUID")
     @Column(name = "product_id", updatable = false, nullable = false)
     private UUID productId;
 
-    // Company Entity 객체를 직접 참조하지 않고 UUID ID만 보유
     @Column(name = "company_id", nullable = false)
     private UUID companyId;
 
@@ -30,10 +33,12 @@ public class Product {
     @Column(name = "name", nullable = false, length = 100)
     private String name;
 
-    @Column(name = "stock_quantity", nullable = false)
-    private Integer stockQuantity;
+    @Column(name = "quantity", nullable = false)
+    private Integer quantity;
 
-    // BseEntity 감사(Audit) 필드
+    @Column(name = "price", nullable = false)
+    private Integer price;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -53,14 +58,26 @@ public class Product {
     private String deletedBy;
 
     @Builder
-    public Product(UUID companyId, UUID hubId, String name, Integer stockQuantity,String createdBy) {
+    public Product(UUID companyId, UUID hubId, String name, Integer quantity, Integer price, String createdBy) {
         this.companyId = companyId;
         this.hubId = hubId;
         this.name = name;
-        this.stockQuantity = stockQuantity;
+        this.quantity = quantity;
+        this.price = price;
         this.createdBy = createdBy;
         this.createdAt = LocalDateTime.now();
     }
 
+    public void update(String name, Integer quantity, Integer price, String updatedBy) {
+        this.name = name;
+        this.quantity = quantity;
+        this.price = price;
+        this.updatedBy = updatedBy;
+        this.updatedAt = LocalDateTime.now();
+    }
 
+    public void delete(String deletedBy) {
+        this.deletedBy = deletedBy;
+        this.deletedAt = LocalDateTime.now();
+    }
 }
