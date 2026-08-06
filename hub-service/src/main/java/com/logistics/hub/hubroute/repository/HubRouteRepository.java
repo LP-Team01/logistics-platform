@@ -26,4 +26,8 @@ public interface HubRouteRepository extends JpaRepository<HubRoute, UUID> {
     Page<HubRoute> search(@Param("departureHubId") UUID departureHubId,
                           @Param("arrivalHubId") UUID arrivalHubId,
                           Pageable pageable);
+
+    @Query("SELECT r FROM HubRoute r WHERE r.deletedAt IS NULL " +
+        "AND (r.departureHubId = :hubId OR r.arrivalHubId = :hubId)")
+    List<HubRoute> findAllByHubIdAndDeletedAtIsNull(@Param("hubId") UUID hubId);
 }
