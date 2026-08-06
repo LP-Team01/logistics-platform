@@ -15,6 +15,7 @@ import com.logistics.delivery.infrastructure.client.UserServiceClient;
 import com.logistics.delivery.infrastructure.client.dto.UserServiceUserResponseDto;
 import feign.FeignException;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -38,13 +39,18 @@ public class DeliveryAgentCommandService {
         validateRole(userRole);
         validateHubManagerScope(userRole, command.agentType(), command.hubId(), requesterHubId);
         validateAgentUser(command.agentId());
-        validateAgentCapacity(command.agentType(), command.hubId());
+
+        // (agentType, hubId) 그룹을 잠근 뒤 정원 검증과 배송순번 채번을 한 트랜잭션 안에서 처리->동시 생성 요청으로 인한 정원 초과·순번 중복을 막기
+        List<DeliveryAgent> lockedAgents = deliveryAgentRepository
+            .findByAgentTypeAndHubIdAndDeletedAtIsNullOrderByDeliveryOrderAsc(command.agentType(), command.hubId());
+        validateAgentCapacity(lockedAgents);
+
         DeliveryAgent deliveryAgent = DeliveryAgent.builder()
                 .agentId(command.agentId())
                 .hubId(command.hubId())
                 .agentType(command.agentType())
                 .slackId(command.slackId())
-                .deliveryOrder(nextDeliveryOrder(command.agentType(), command.hubId()))
+                .deliveryOrder(nextDeliveryOrder(lockedAgents))
                 .build();
 
         DeliveryAgent saved = deliveryAgentRepository.save(deliveryAgent);
@@ -85,14 +91,8 @@ public class DeliveryAgentCommandService {
         }
     }
 
-    private void validateAgentCapacity(AgentType agentType, UUID hubId) {
-        int count = 0;
-        if (agentType == AgentType.HUB_DELIVERY) {
-            count = deliveryAgentRepository.countByAgentTypeAndDeletedAtIsNull(agentType);
-        } else if (agentType == AgentType.COMPANY_DELIVERY) {
-            count = deliveryAgentRepository.countByAgentTypeAndHubIdAndDeletedAtIsNull(agentType,hubId);
-        }
-        if (count >= MAX_COUNT) {
+    private void validateAgentCapacity(List<DeliveryAgent> lockedAgents) {
+        if (lockedAgents.size() >= MAX_COUNT) {
             throw new BusinessException(ErrorCode.DELIVERY_AGENT_LIMIT_EXCEEDED);
         }
     }
@@ -102,11 +102,10 @@ public class DeliveryAgentCommandService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_PERSON_NOT_FOUND));
     }
 
-    private int nextDeliveryOrder(AgentType agentType, UUID hubId) {
-        return deliveryAgentRepository
-                .findFirstByAgentTypeAndHubIdAndDeletedAtIsNullOrderByDeliveryOrderDesc(agentType, hubId)
-                .map(agent -> agent.getDeliveryOrder() + 1)
-                .orElse(0);
+    private int nextDeliveryOrder(List<DeliveryAgent> lockedAgents) {
+        return lockedAgents.isEmpty()
+            ? 0
+            : lockedAgents.get(lockedAgents.size() - 1).getDeliveryOrder() + 1;
     }
 
     private void validateRole(UserRole userRole) {
