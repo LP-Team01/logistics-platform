@@ -108,4 +108,12 @@ public class JwtUtil {
         }
         return null;
     }
+
+    public long getAccessTokenExpirationSeconds(){
+        return ACCESS_TOKEN_TIME / 1000;
+    }
+
+    public Duration getRefreshTokenExpiration(){
+        return Duration.ofMillis(REFRESH_TOKEN_TIME);
+    }
 }
