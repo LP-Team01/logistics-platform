@@ -53,14 +53,14 @@ public class DeliveryCommandService {
 
         Delivery saved = deliveryRepository.save(delivery);
 
-        // TODO: Hub 연동(거리/소요시간 조회, 허브 간 다구간 분할) 붙기 전까지의 임시 구현.
+        // TODO: Hub 연동(거리/소요시간 조회, 허브 간 다구간 분할) 붙기 전까지의 임시 구현.->예측 거리와 시간은 not null->0으로 임시설정
         DeliveryRouteRecord routeRecord = DeliveryRouteRecord.builder()
             .deliveryId(saved.getId())
             .sequence(1)
             .departureHubId(command.departureHubId())
             .arrivalHubId(command.destinationHubId())
-            .estimatedDistance(null)
-            .estimatedDuration(null)
+            .estimatedDistance(0)
+            .estimatedDuration(0)
             .build();
 
         // 허브 배송 담당자는 허브 구분 없이 전체 10명 풀에서 순번대로 배정
