@@ -38,7 +38,7 @@ public class UserService {
 
 
     @Transactional
-    public UserResponseDto signUp(@Valid UserRequestDto requestDto) {
+    public UserResponseDto signUp(UserRequestDto requestDto) {
         // 닉네임 중복확인
         validateDuplicateId(requestDto.username());
         // slackID 중복확인
@@ -46,7 +46,7 @@ public class UserService {
         // 권한별 소속(hubId/companyId) 조합 검증
         validateAffiliation(requestDto.role(), requestDto.hubId(), requestDto.companyId());
 
-        // TODO: OpenFeign 붙으면 hub-service/company-service에 실제 hubId/companyId 존재 여부 검증
+        // TODO: hub-service/company-service에 실제 hubId/companyId 존재 여부 검증
 
         User user = User.builder()
             .username(requestDto.username())
@@ -178,7 +178,6 @@ public class UserService {
                     throw new BusinessException(ErrorCode.BAD_REQUEST);
                 }
             }
-            // DELIVERY_MANAGER는 추후의 승인과정에서 hubId가 채워질 예정이니 가입시점 필수값 아님
 
         }
     }
