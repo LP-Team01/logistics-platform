@@ -12,6 +12,7 @@ import com.logistics.delivery.global.common.UserRole;
 import com.logistics.delivery.global.common.UserStatus;
 import com.logistics.delivery.global.exception.BusinessException;
 import com.logistics.delivery.global.exception.ErrorCode;
+import com.logistics.delivery.infrastructure.client.HubServiceClient;
 import com.logistics.delivery.infrastructure.client.UserServiceClient;
 import com.logistics.delivery.infrastructure.client.dto.UserServiceUserResponseDto;
 import feign.FeignException;
@@ -28,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DeliveryAgentCommandService {
     private final DeliveryAgentRepository deliveryAgentRepository;
     private final UserServiceClient userServiceClient;
+    private final HubServiceClient hubServiceClient;
 
     private static final int MAX_COUNT = 10;
     private static final Set<UserRole> AGENT_MANAGE_ROLES = EnumSet.of(UserRole.MASTER, UserRole.HUB_MANAGER);
@@ -35,10 +37,9 @@ public class DeliveryAgentCommandService {
     @Transactional
     public CreateDeliveryAgentResponseDto create(CreateDeliveryAgentCommand command, UserRole userRole,
                                                   UUID requesterHubId) {
-        // TODO: hub-service에 허브 존재 검증 API가 생기면 HubServiceClient로 hubId 유효성 확인 후 404 처리
-
         validateRole(userRole);
         validateHubManagerScope(userRole, command.agentType(), command.hubId(), requesterHubId);
+        validateHubExists(command.hubId());
         validateAgentUser(command.agentId());
 
         // (agentType, hubId) 그룹을 잠근 뒤 정원 검증과 배송순번 채번을 한 트랜잭션 안에서 처리->동시 생성 요청으로 인한 정원 초과·순번 중복을 막기
@@ -62,12 +63,12 @@ public class DeliveryAgentCommandService {
     public UpdateDeliveryAgentResponseDto update(UUID agentId, UpdateDeliveryAgentCommand command, UserRole userRole,
                                                   UUID requesterHubId) {
         validateRole(userRole);
-        // TODO: hub-service에 허브 존재 검증 API가 생기면 hubId가 바뀌는 경우에도 HubServiceClient로 유효성 확인 필요
         DeliveryAgent deliveryAgent = findDeliveryAgent(agentId);
         validateHubManagerScope(userRole, deliveryAgent.getAgentType(), deliveryAgent.getHubId(), requesterHubId);
         AgentType effectiveAgentType = command.agentType() != null ? command.agentType() : deliveryAgent.getAgentType();
         UUID effectiveHubId = command.hubId() != null ? command.hubId() : deliveryAgent.getHubId();
         validateHubManagerScope(userRole, effectiveAgentType, effectiveHubId, requesterHubId);
+        validateHubExists(command.hubId());
         deliveryAgent.update(command.hubId(), command.agentType(), command.slackId(), command.isAvailable());
         return UpdateDeliveryAgentResponseDto.from(deliveryAgent);
     }
@@ -78,6 +79,17 @@ public class DeliveryAgentCommandService {
         DeliveryAgent deliveryAgent = findDeliveryAgent(agentId);
         validateHubManagerScope(userRole, deliveryAgent.getAgentType(), deliveryAgent.getHubId(), requesterHubId);
         deliveryAgent.softDelete(requesterId);
+    }
+
+    private void validateHubExists(UUID hubId) {
+        if (hubId == null) {
+            return;
+        }
+        try {
+            hubServiceClient.getHub(hubId);
+        } catch (FeignException.NotFound e) {
+            throw new BusinessException(ErrorCode.DELIVERY_AGENT_HUB_NOT_FOUND);
+        }
     }
 
     private void validateAgentUser(UUID agentId) {

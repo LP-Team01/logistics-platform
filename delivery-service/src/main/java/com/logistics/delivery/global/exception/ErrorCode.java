@@ -31,6 +31,7 @@ public enum ErrorCode {
     DELIVERY_AGENT_FORBIDDEN(HttpStatus.FORBIDDEN, "DELIVERY_403_01", "배송담당자 생성/수정 권한이 없습니다."),
     DELIVERY_AGENT_QUERY_FORBIDDEN(HttpStatus.FORBIDDEN, "DELIVERY_403_02", "배송담당자 조회 권한이 없습니다."),
     DELIVERY_AGENT_USER_NOT_FOUND(HttpStatus.NOT_FOUND, "DELIVERY_404_06", "배송담당자로 등록할 사용자를 찾을 수 없습니다."),
+    DELIVERY_AGENT_HUB_NOT_FOUND(HttpStatus.NOT_FOUND, "DELIVERY_404_07", "배송담당자로 등록할 허브를 찾을 수 없습니다."),
     DELIVERY_AGENT_INVALID_USER_ROLE(HttpStatus.BAD_REQUEST, "DELIVERY_400_07", "해당 사용자는 배송담당자(DELIVERY_MANAGER) 역할이 아닙니다."),
     DELIVERY_AGENT_USER_NOT_APPROVED(HttpStatus.BAD_REQUEST, "DELIVERY_400_08", "승인(APPROVED)되지 않은 사용자는 배송담당자로 등록할 수 없습니다.");
 
