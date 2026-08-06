@@ -81,6 +81,41 @@ public class SlackMessageService {
     }
 
     /**
+     * 동일한 AI 요청의 Slack 메시지를 생성하거나,
+     * 기존 실패 메시지를 다시 발송합니다.
+     */
+    public SlackMessageResponseDto createOrRetrySlackMessage(
+        SlackMessageRequestDto requestDto
+    ) {
+        Optional<SlackMessage> existingMessage =
+            slackMessageRepository
+                .findByAiRequestIdAndRecipientUserIdAndDeletedAtIsNull(
+                    requestDto.aiRequestId(),
+                    requestDto.recipientUserId()
+                );
+
+        if (existingMessage.isEmpty()) {
+            return createSlackMessage(requestDto);
+        }
+
+        SlackMessage slackMessage = existingMessage.get();
+
+        if (slackMessage.getStatus() == SlackMessageStatus.SENT) {
+            return SlackMessageResponseDto.from(slackMessage);
+        }
+
+        if (slackMessage.getStatus() == SlackMessageStatus.FAILED) {
+            return retrySlackMessage(
+                slackMessage.getSlackMessageId()
+            );
+        }
+
+        throw new BusinessException(
+            ErrorCode.SLACK_MESSAGE_RETRY_NOT_ALLOWED
+        );
+    }
+
+    /**
      * Slack 메시지 발송 이력을 단건 조회합니다.
      *
      * @param slackMessageId Slack 메시지 식별자

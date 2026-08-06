@@ -69,7 +69,7 @@ public class AiNotificationEventService {
         }
 
         try {
-            slackMessageService.createSlackMessage(
+            slackMessageService.createOrRetrySlackMessage(
                 eventMapper.toSlackMessageRequestDto(
                     event,
                     aiResponse

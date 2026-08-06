@@ -71,10 +71,11 @@ class AiRequestServiceTest {
             );
 
         when(
-            aiRequestRepository.existsByEventId(
-                requestDto.eventId()
-            )
-        ).thenReturn(false);
+            aiRequestRepository
+                .findByEventIdAndDeletedAtIsNull(
+                    requestDto.eventId()
+                )
+        ).thenReturn(Optional.empty());
 
         when(
             aiPromptService.createPrompt(requestDto)
@@ -131,8 +132,9 @@ class AiRequestServiceTest {
             .thenReturn(eventId);
 
         when(
-            aiRequestRepository.existsByEventId(eventId)
-        ).thenReturn(true);
+            aiRequestRepository
+                .findByEventIdAndDeletedAtIsNull(eventId)
+        ).thenReturn(Optional.of(existingRequest));
 
         when(
             aiRequestRepository
@@ -170,10 +172,11 @@ class AiRequestServiceTest {
             );
 
         when(
-            aiRequestRepository.existsByEventId(
-                requestDto.eventId()
-            )
-        ).thenReturn(false);
+            aiRequestRepository
+                .findByEventIdAndDeletedAtIsNull(
+                    requestDto.eventId()
+                )
+        ).thenReturn(Optional.empty());
 
         when(
             aiPromptService.createPrompt(requestDto)

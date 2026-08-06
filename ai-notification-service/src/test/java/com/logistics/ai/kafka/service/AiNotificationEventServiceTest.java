@@ -17,12 +17,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * Kafka 이벤트 기반 AI 계산 및 Slack 발송 흐름을 검증합니다.
@@ -95,7 +91,7 @@ class AiNotificationEventServiceTest {
             );
 
         verify(slackMessageService)
-            .createSlackMessage(slackRequest);
+            .createOrRetrySlackMessage(slackRequest);
     }
 
     @Test
@@ -137,91 +133,26 @@ class AiNotificationEventServiceTest {
         verify(
             slackMessageService,
             never()
-        ).createSlackMessage(
+        ).createOrRetrySlackMessage(
             org.mockito.ArgumentMatchers.any()
         );
     }
 
     @Test
-    @DisplayName("이미 Slack 메시지가 존재하면 중복 이벤트로 판단하고 정상 종료한다")
-    void ignoreExistingSlackMessage() {
-        // given
-        DeliveryAiNotificationEvent event =
-            org.mockito.Mockito.mock(
-                DeliveryAiNotificationEvent.class
-            );
-
-        AiRequestDto aiRequestDto =
-            org.mockito.Mockito.mock(AiRequestDto.class);
-
-        AiResponseDto aiResponse =
-            org.mockito.Mockito.mock(AiResponseDto.class);
-
-        SlackMessageRequestDto slackRequest =
-            org.mockito.Mockito.mock(
-                SlackMessageRequestDto.class
-            );
-
-        BusinessException duplicateException =
-            new BusinessException(
-                ErrorCode.SLACK_MESSAGE_ALREADY_EXISTS
-            );
-
-        when(eventMapper.toAiRequestDto(event))
-            .thenReturn(aiRequestDto);
-
-        when(aiRequestService.createAiRequest(aiRequestDto))
-            .thenReturn(aiResponse);
-
-        when(aiResponse.status())
-            .thenReturn(AiRequestStatus.SUCCESS);
-
-        when(
-            eventMapper.toSlackMessageRequestDto(
-                event,
-                aiResponse
-            )
-        ).thenReturn(slackRequest);
-
-        when(
-            slackMessageService.createSlackMessage(
-                slackRequest
-            )
-        ).thenThrow(duplicateException);
-
-        // when
-        Throwable throwable =
-            org.assertj.core.api.Assertions
-                .catchThrowable(
-                    () -> eventService.process(event)
-                );
-
-        // then
-        assertThat(throwable).isNull();
-
-        verify(slackMessageService)
-            .createSlackMessage(slackRequest);
-    }
-
-    @Test
-    @DisplayName("Slack 중복 이외의 발송 오류는 호출자에게 전달한다")
+    @DisplayName("Slack 발송 오류는 호출자에게 전달한다")
     void propagateSlackFailure() {
         // given
         DeliveryAiNotificationEvent event =
-            org.mockito.Mockito.mock(
-                DeliveryAiNotificationEvent.class
-            );
+            mock(DeliveryAiNotificationEvent.class);
 
         AiRequestDto aiRequestDto =
-            org.mockito.Mockito.mock(AiRequestDto.class);
+            mock(AiRequestDto.class);
 
         AiResponseDto aiResponse =
-            org.mockito.Mockito.mock(AiResponseDto.class);
+            mock(AiResponseDto.class);
 
         SlackMessageRequestDto slackRequest =
-            org.mockito.Mockito.mock(
-                SlackMessageRequestDto.class
-            );
+            mock(SlackMessageRequestDto.class);
 
         BusinessException slackFailure =
             new BusinessException(
@@ -245,7 +176,7 @@ class AiNotificationEventServiceTest {
         ).thenReturn(slackRequest);
 
         when(
-            slackMessageService.createSlackMessage(
+            slackMessageService.createOrRetrySlackMessage(
                 slackRequest
             )
         ).thenThrow(slackFailure);

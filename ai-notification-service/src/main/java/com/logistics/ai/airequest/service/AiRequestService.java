@@ -126,18 +126,10 @@ public class AiRequestService {
      * @return 기존 처리 결과 또는 null
      */
     private AiResponseDto findExistingResponse(UUID eventId) {
-        if (!aiRequestRepository.existsByEventId(eventId)) {
-            return null;
-        }
-
         return aiRequestRepository
             .findByEventIdAndDeletedAtIsNull(eventId)
             .map(AiResponseDto::from)
-            .orElseThrow(
-                () -> new BusinessException(
-                    ErrorCode.INVALID_AI_REQUEST
-                )
-            );
+            .orElse(null);
     }
 
     /**
