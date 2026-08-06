@@ -5,6 +5,24 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/ai_db}
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:ai-notification-service}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+
+      properties:
+        "[spring.json.use.type.headers]": false
+        "[spring.json.value.default.type]": com.logistics.ai.kafka.event.DeliveryAiNotificationEvent
+        "[spring.json.trusted.packages]": com.logistics.ai.kafka.event
+
+    listener:
+      ack-mode: record
+
   ai:
     model:
       embedding:
@@ -25,11 +43,18 @@ spring:
         index-type: HNSW
         distance-type: COSINE_DISTANCE
 
+# Kafka Topic 설정
+kafka:
+  topic:
+    delivery-ai-notification: ${DELIVERY_AI_NOTIFICATION_TOPIC:delivery-ai-notification}
+
 # Google Gen AI SDK 직접 호출 설정
 gemini:
   api-key: ${GEMINI_API_KEY:}
   model: ${GEMINI_CHAT_MODEL:gemini-3.6-flash}
   temperature: 0.1
+  timeout-ms: ${GEMINI_TIMEOUT_MS:30000}
 
 slack:
   bot-token: ${SLACK_BOT_TOKEN:}
+  pending-recovery-minutes: ${SLACK_PENDING_RECOVERY_MINUTES:5}
