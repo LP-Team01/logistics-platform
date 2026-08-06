@@ -43,7 +43,7 @@ public class BaseEntity {
         this.createdBy = createdBy;
     }
 
-    public void assignUpdatedBy(String system) {
+    public void assignUpdatedBy(String updatedBy) {
         this.updatedBy = updatedBy;
     }
 

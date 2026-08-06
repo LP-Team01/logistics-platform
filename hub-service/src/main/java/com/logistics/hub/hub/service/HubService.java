@@ -78,6 +78,11 @@ public class HubService {
     }
 
     public HubPageResponseDto searchHubs(String keyword, Pageable pageable) {
+        int size = pageable.getPageSize();
+        if (size != 10 && size != 30 && size != 50) {
+            throw new BusinessException(ErrorCode.INVALID_PAGE_SIZE);
+        }
+
         Page<Hub> hubPage = hubRepository.search(keyword, pageable);
         return HubPageResponseDto.from(hubPage);
     }
