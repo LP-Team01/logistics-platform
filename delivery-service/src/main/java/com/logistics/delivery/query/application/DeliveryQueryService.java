@@ -7,6 +7,7 @@ import com.logistics.delivery.domain.repository.CompanyDeliveryRouteRecordReposi
 import com.logistics.delivery.domain.repository.DeliveryRepository;
 import com.logistics.delivery.domain.repository.DeliveryRouteRecordRepository;
 import com.logistics.delivery.domain.repository.DeliverySpecification;
+import com.logistics.delivery.global.common.DeliveryAccessGuard;
 import com.logistics.delivery.global.common.UserRole;
 import com.logistics.delivery.global.exception.BusinessException;
 import com.logistics.delivery.global.exception.ErrorCode;
@@ -49,16 +50,12 @@ public class DeliveryQueryService {
         UUID assignedAgentId = userRole == UserRole.DELIVERY_MANAGER ? requesterId : null;
         UUID hubId = null;
         if (userRole == UserRole.HUB_MANAGER) {
-            if (requesterHubId == null) {
-                throw new BusinessException(ErrorCode.DELIVERY_QUERY_FORBIDDEN);
-            }
+            DeliveryAccessGuard.requireNonNull(requesterHubId, ErrorCode.DELIVERY_QUERY_FORBIDDEN);
             hubId = requesterHubId;
         }
         UUID companyId = null;
         if (userRole == UserRole.COMPANY_MANAGER) {
-            if (requesterCompanyId == null) {
-                throw new BusinessException(ErrorCode.DELIVERY_QUERY_FORBIDDEN);
-            }
+            DeliveryAccessGuard.requireNonNull(requesterCompanyId, ErrorCode.DELIVERY_QUERY_FORBIDDEN);
             companyId = requesterCompanyId;
         }
         Specification<Delivery> spec = DeliverySpecification.withSearchCondition(
@@ -71,35 +68,24 @@ public class DeliveryQueryService {
     private void validateDeliveryAccess(UserRole userRole, UUID requesterId, UUID requesterHubId,
                                          UUID requesterCompanyId, Delivery delivery,
                                          List<DeliveryRouteRecord> routeRecords) {
-        if (userRole == UserRole.DELIVERY_MANAGER && !isAssignedAgent(requesterId, delivery, routeRecords)) {
-            throw new BusinessException(ErrorCode.DELIVERY_QUERY_FORBIDDEN);
+        if (userRole == UserRole.DELIVERY_MANAGER) {
+            List<UUID> routeAgentIds = routeRecords.stream().map(DeliveryRouteRecord::getAgentId).toList();
+            DeliveryAccessGuard.requireAssignedAgent(requesterId, delivery.getCompanyAgentId(), routeAgentIds,
+                ErrorCode.DELIVERY_QUERY_FORBIDDEN);
         }
-        if (userRole == UserRole.HUB_MANAGER && !isWithinHub(requesterHubId, delivery)) {
-            throw new BusinessException(ErrorCode.DELIVERY_QUERY_FORBIDDEN);
+        if (userRole == UserRole.HUB_MANAGER) {
+            DeliveryAccessGuard.requireWithinHub(requesterHubId, ErrorCode.DELIVERY_QUERY_FORBIDDEN,
+                delivery.getDepartureHubId(), delivery.getDestinationHubId());
         }
-        if (userRole == UserRole.COMPANY_MANAGER && !isOwnCompany(requesterCompanyId, delivery)) {
-            throw new BusinessException(ErrorCode.DELIVERY_QUERY_FORBIDDEN);
+        if (userRole == UserRole.COMPANY_MANAGER) {
+            DeliveryAccessGuard.requireOwnCompany(requesterCompanyId, ownCompanyId(delivery),
+                ErrorCode.DELIVERY_QUERY_FORBIDDEN);
         }
     }
 
-    private boolean isAssignedAgent(UUID requesterId, Delivery delivery, List<DeliveryRouteRecord> routeRecords) {
-        return requesterId.equals(delivery.getCompanyAgentId())
-            || routeRecords.stream().anyMatch(record -> requesterId.equals(record.getAgentId()));
-    }
-
-    private boolean isWithinHub(UUID requesterHubId, Delivery delivery) {
-        return requesterHubId != null
-            && (requesterHubId.equals(delivery.getDepartureHubId())
-                || requesterHubId.equals(delivery.getDestinationHubId()));
-    }
-
-    private boolean isOwnCompany(UUID requesterCompanyId, Delivery delivery) {
-        if (requesterCompanyId == null) {
-            return false;
-        }
+    private UUID ownCompanyId(Delivery delivery) {
         return companyDeliveryRouteRecordRepository.findByDeliveryIdAndDeletedAtIsNull(delivery.getId())
             .map(CompanyDeliveryRouteRecord::getReceiverCompanyId)
-            .map(requesterCompanyId::equals)
-            .orElse(false);
+            .orElse(null);
     }
 }

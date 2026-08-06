@@ -5,8 +5,12 @@ import com.logistics.delivery.command.dto.response.UpdateCompanyRouteRecordRespo
 import com.logistics.delivery.domain.entity.CompanyDeliveryRouteRecord;
 import com.logistics.delivery.domain.repository.CompanyDeliveryRouteRecordRepository;
 import com.logistics.delivery.domain.repository.DeliveryRepository;
+import com.logistics.delivery.global.common.DeliveryAccessGuard;
+import com.logistics.delivery.global.common.UserRole;
 import com.logistics.delivery.global.exception.BusinessException;
 import com.logistics.delivery.global.exception.ErrorCode;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,14 +22,27 @@ public class CompanyRouteRecordCommandService {
     private final CompanyDeliveryRouteRecordRepository companyRouteRecordRepository;
     private final DeliveryRepository deliveryRepository;
 
-    // TODO: user-service 연동 후 X-User-Role로 배송 담당자 권한 검증 추가 예정
+    private static final Set<UserRole> COMPANY_ROUTE_RECORD_UPDATE_ROLES =
+        EnumSet.of(UserRole.MASTER, UserRole.DELIVERY_MANAGER);
+
     @Transactional
     public UpdateCompanyRouteRecordResponseDto updateStatus(UUID deliveryId, UUID recordId,
-                                                            UpdateCompanyRouteRecordCommand command) {
+                                                            UpdateCompanyRouteRecordCommand command,
+                                                            UserRole userRole, UUID requesterId) {
         validateDeliveryExists(deliveryId);
         CompanyDeliveryRouteRecord routeRecord = findRouteRecord(deliveryId, recordId);
+        validateAccess(userRole, requesterId, routeRecord);
         routeRecord.update(command.status(), command.actualDistance(), command.actualDuration());
         return UpdateCompanyRouteRecordResponseDto.from(routeRecord);
+    }
+
+    private void validateAccess(UserRole userRole, UUID requesterId, CompanyDeliveryRouteRecord routeRecord) {
+        DeliveryAccessGuard.requireRole(userRole, COMPANY_ROUTE_RECORD_UPDATE_ROLES,
+            ErrorCode.COMPANY_ROUTE_RECORD_FORBIDDEN);
+        if (userRole == UserRole.DELIVERY_MANAGER) {
+            DeliveryAccessGuard.requireOwnAgent(requesterId, routeRecord.getAgentId(),
+                ErrorCode.COMPANY_ROUTE_RECORD_FORBIDDEN);
+        }
     }
 
     private void validateDeliveryExists(UUID deliveryId) {

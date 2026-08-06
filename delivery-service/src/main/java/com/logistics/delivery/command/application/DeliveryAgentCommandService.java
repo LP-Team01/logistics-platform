@@ -7,9 +7,13 @@ import com.logistics.delivery.command.dto.response.UpdateDeliveryAgentResponseDt
 import com.logistics.delivery.domain.entity.AgentType;
 import com.logistics.delivery.domain.entity.DeliveryAgent;
 import com.logistics.delivery.domain.repository.DeliveryAgentRepository;
+import com.logistics.delivery.global.common.DeliveryAccessGuard;
 import com.logistics.delivery.global.common.UserRole;
 import com.logistics.delivery.global.exception.BusinessException;
 import com.logistics.delivery.global.exception.ErrorCode;
+import com.logistics.delivery.infrastructure.client.UserServiceClient;
+import com.logistics.delivery.infrastructure.client.dto.UserServiceUserResponseDto;
+import feign.FeignException;
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.UUID;
@@ -21,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class DeliveryAgentCommandService {
     private final DeliveryAgentRepository deliveryAgentRepository;
+    private final UserServiceClient userServiceClient;
 
     private static final int MAX_COUNT = 10;
     private static final Set<UserRole> AGENT_MANAGE_ROLES = EnumSet.of(UserRole.MASTER, UserRole.HUB_MANAGER);
@@ -32,6 +37,7 @@ public class DeliveryAgentCommandService {
 
         validateRole(userRole);
         validateHubManagerScope(userRole, command.agentType(), command.hubId(), requesterHubId);
+        validateAgentUser(command.agentId());
         validateAgentCapacity(command.agentType(), command.hubId());
         DeliveryAgent deliveryAgent = DeliveryAgent.builder()
                 .agentId(command.agentId())
@@ -67,6 +73,18 @@ public class DeliveryAgentCommandService {
         deliveryAgent.softDelete(requesterId);
     }
 
+    private void validateAgentUser(UUID agentId) {
+        UserServiceUserResponseDto user;
+        try {
+            user = userServiceClient.getUser(agentId);
+        } catch (FeignException.NotFound e) {
+            throw new BusinessException(ErrorCode.DELIVERY_AGENT_USER_NOT_FOUND);
+        }
+        if (user.role() != UserRole.DELIVERY_MANAGER) {
+            throw new BusinessException(ErrorCode.DELIVERY_AGENT_INVALID_USER_ROLE);
+        }
+    }
+
     private void validateAgentCapacity(AgentType agentType, UUID hubId) {
         int count = 0;
         if (agentType == AgentType.HUB_DELIVERY) {
@@ -92,9 +110,7 @@ public class DeliveryAgentCommandService {
     }
 
     private void validateRole(UserRole userRole) {
-        if (!AGENT_MANAGE_ROLES.contains(userRole)) {
-            throw new BusinessException(ErrorCode.DELIVERY_AGENT_FORBIDDEN);
-        }
+        DeliveryAccessGuard.requireRole(userRole, AGENT_MANAGE_ROLES, ErrorCode.DELIVERY_AGENT_FORBIDDEN);
     }
 
     private void validateHubManagerScope(UserRole userRole, AgentType agentType, UUID targetHubId,
@@ -106,8 +122,6 @@ public class DeliveryAgentCommandService {
         if (agentType == AgentType.HUB_DELIVERY) {
             throw new BusinessException(ErrorCode.DELIVERY_AGENT_FORBIDDEN);
         }
-        if (requesterHubId == null || !requesterHubId.equals(targetHubId)) {
-            throw new BusinessException(ErrorCode.DELIVERY_AGENT_FORBIDDEN);
-        }
+        DeliveryAccessGuard.requireWithinHub(requesterHubId, ErrorCode.DELIVERY_AGENT_FORBIDDEN, targetHubId);
     }
 }

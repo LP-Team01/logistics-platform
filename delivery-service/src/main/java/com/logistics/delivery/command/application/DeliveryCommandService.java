@@ -14,6 +14,7 @@ import com.logistics.delivery.domain.repository.CompanyDeliveryRouteRecordReposi
 import com.logistics.delivery.domain.repository.DeliveryRepository;
 import com.logistics.delivery.domain.repository.DeliveryRouteRecordRepository;
 import com.logistics.delivery.domain.service.DeliveryAgentAssignmentService;
+import com.logistics.delivery.global.common.DeliveryAccessGuard;
 import com.logistics.delivery.global.common.UserRole;
 import com.logistics.delivery.global.exception.BusinessException;
 import com.logistics.delivery.global.exception.ErrorCode;
@@ -33,13 +34,14 @@ public class DeliveryCommandService {
     private final CompanyDeliveryRouteRecordRepository companyDeliveryRouteRecordRepository;
     private final DeliveryAgentAssignmentService deliveryAgentAssignmentService;
 
+    private static final Set<UserRole> DELIVERY_CREATE_ROLES = EnumSet.of(UserRole.MASTER);
+    private static final Set<UserRole> DELIVERY_UPDATE_ROLES =
+        EnumSet.of(UserRole.MASTER, UserRole.HUB_MANAGER, UserRole.DELIVERY_MANAGER);
     private static final Set<UserRole> DELIVERY_DELETE_ROLES = EnumSet.of(UserRole.MASTER, UserRole.HUB_MANAGER);
 
     @Transactional
     public CreateDeliveryResponseDto create(UserRole userRole, CreateDeliveryCommand command) {
-        if (userRole != UserRole.MASTER) {
-            throw new BusinessException(ErrorCode.DELIVERY_FORBIDDEN);
-        }
+        DeliveryAccessGuard.requireRole(userRole, DELIVERY_CREATE_ROLES, ErrorCode.DELIVERY_FORBIDDEN);
         validateOrderItem(command.orderItemId());
         Delivery delivery = Delivery.builder()
             .orderId(command.orderId())
@@ -96,12 +98,11 @@ public class DeliveryCommandService {
 
     @Transactional
     public void delete(UserRole userRole, UUID requesterId, UUID requesterHubId, UUID deliveryId) {
-        if (!DELIVERY_DELETE_ROLES.contains(userRole)) {
-            throw new BusinessException(ErrorCode.DELIVERY_FORBIDDEN);
-        }
+        DeliveryAccessGuard.requireRole(userRole, DELIVERY_DELETE_ROLES, ErrorCode.DELIVERY_FORBIDDEN);
         Delivery delivery = findDelivery(deliveryId);
-        if (userRole == UserRole.HUB_MANAGER && !isWithinHub(requesterHubId, delivery)) {
-            throw new BusinessException(ErrorCode.DELIVERY_FORBIDDEN);
+        if (userRole == UserRole.HUB_MANAGER) {
+            DeliveryAccessGuard.requireWithinHub(requesterHubId, ErrorCode.DELIVERY_FORBIDDEN,
+                delivery.getDepartureHubId(), delivery.getDestinationHubId());
         }
         delivery.softDelete(requesterId);
 
@@ -114,26 +115,16 @@ public class DeliveryCommandService {
 
     private void validateDeliveryAccess(UserRole userRole, UUID requesterId, UUID requesterHubId, Delivery delivery,
                                          List<DeliveryRouteRecord> routeRecords) {
-        if (userRole == UserRole.COMPANY_MANAGER) {
-            throw new BusinessException(ErrorCode.DELIVERY_FORBIDDEN);
+        DeliveryAccessGuard.requireRole(userRole, DELIVERY_UPDATE_ROLES, ErrorCode.DELIVERY_FORBIDDEN);
+        if (userRole == UserRole.DELIVERY_MANAGER) {
+            List<UUID> routeAgentIds = routeRecords.stream().map(DeliveryRouteRecord::getAgentId).toList();
+            DeliveryAccessGuard.requireAssignedAgent(requesterId, delivery.getCompanyAgentId(), routeAgentIds,
+                ErrorCode.DELIVERY_FORBIDDEN);
         }
-        if (userRole == UserRole.DELIVERY_MANAGER && !isAssignedAgent(requesterId, delivery, routeRecords)) {
-            throw new BusinessException(ErrorCode.DELIVERY_FORBIDDEN);
+        if (userRole == UserRole.HUB_MANAGER) {
+            DeliveryAccessGuard.requireWithinHub(requesterHubId, ErrorCode.DELIVERY_FORBIDDEN,
+                delivery.getDepartureHubId(), delivery.getDestinationHubId());
         }
-        if (userRole == UserRole.HUB_MANAGER && !isWithinHub(requesterHubId, delivery)) {
-            throw new BusinessException(ErrorCode.DELIVERY_FORBIDDEN);
-        }
-    }
-
-    private boolean isAssignedAgent(UUID requesterId, Delivery delivery, List<DeliveryRouteRecord> routeRecords) {
-        return requesterId.equals(delivery.getCompanyAgentId())
-            || routeRecords.stream().anyMatch(record -> requesterId.equals(record.getAgentId()));
-    }
-
-    private boolean isWithinHub(UUID requesterHubId, Delivery delivery) {
-        return requesterHubId != null
-            && (requesterHubId.equals(delivery.getDepartureHubId())
-                || requesterHubId.equals(delivery.getDestinationHubId()));
     }
 
     private void assignCompanyAgent(Delivery delivery) {

@@ -4,6 +4,7 @@ import com.logistics.delivery.domain.entity.CompanyDeliveryRouteRecord;
 import com.logistics.delivery.domain.entity.DeliveryRouteRecord;
 import com.logistics.delivery.domain.repository.CompanyDeliveryRouteRecordRepository;
 import com.logistics.delivery.domain.repository.DeliveryRouteRecordRepository;
+import com.logistics.delivery.global.common.DeliveryAccessGuard;
 import com.logistics.delivery.global.common.UserRole;
 import com.logistics.delivery.global.exception.BusinessException;
 import com.logistics.delivery.global.exception.ErrorCode;
@@ -11,6 +12,7 @@ import com.logistics.delivery.query.dto.response.DeliveryRouteDetailResponseDto;
 import com.logistics.delivery.query.dto.response.DeliveryRouteResponseDto;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,28 +50,26 @@ public class DeliveryRouteQueryService {
     private void validateRouteAccess(UserRole userRole, UUID requesterId, UUID requesterHubId,
                                       UUID requesterCompanyId, UUID deliveryId,
                                       List<DeliveryRouteRecord> routeRecords) {
-        if (userRole == UserRole.DELIVERY_MANAGER
-                && routeRecords.stream().noneMatch(record -> requesterId.equals(record.getAgentId()))) {
-            throw new BusinessException(ErrorCode.DELIVERY_ROUTE_RECORD_FORBIDDEN);
+        if (userRole == UserRole.DELIVERY_MANAGER) {
+            List<UUID> routeAgentIds = routeRecords.stream().map(DeliveryRouteRecord::getAgentId).toList();
+            DeliveryAccessGuard.requireAssignedAgent(requesterId, null, routeAgentIds,
+                ErrorCode.DELIVERY_ROUTE_RECORD_FORBIDDEN);
         }
-        if (userRole == UserRole.HUB_MANAGER
-                && (requesterHubId == null || routeRecords.stream().noneMatch(record ->
-                    requesterHubId.equals(record.getDepartureHubId())
-                        || requesterHubId.equals(record.getArrivalHubId())))) {
-            throw new BusinessException(ErrorCode.DELIVERY_ROUTE_RECORD_FORBIDDEN);
+        if (userRole == UserRole.HUB_MANAGER) {
+            UUID[] hubIds = routeRecords.stream()
+                .flatMap(record -> Stream.of(record.getDepartureHubId(), record.getArrivalHubId()))
+                .toArray(UUID[]::new);
+            DeliveryAccessGuard.requireWithinHub(requesterHubId, ErrorCode.DELIVERY_ROUTE_RECORD_FORBIDDEN, hubIds);
         }
-        if (userRole == UserRole.COMPANY_MANAGER && !isOwnCompany(requesterCompanyId, deliveryId)) {
-            throw new BusinessException(ErrorCode.DELIVERY_ROUTE_RECORD_FORBIDDEN);
+        if (userRole == UserRole.COMPANY_MANAGER) {
+            DeliveryAccessGuard.requireOwnCompany(requesterCompanyId, ownCompanyId(deliveryId),
+                ErrorCode.DELIVERY_ROUTE_RECORD_FORBIDDEN);
         }
     }
 
-    private boolean isOwnCompany(UUID requesterCompanyId, UUID deliveryId) {
-        if (requesterCompanyId == null) {
-            return false;
-        }
+    private UUID ownCompanyId(UUID deliveryId) {
         return companyDeliveryRouteRecordRepository.findByDeliveryIdAndDeletedAtIsNull(deliveryId)
             .map(CompanyDeliveryRouteRecord::getReceiverCompanyId)
-            .map(requesterCompanyId::equals)
-            .orElse(false);
+            .orElse(null);
     }
 }

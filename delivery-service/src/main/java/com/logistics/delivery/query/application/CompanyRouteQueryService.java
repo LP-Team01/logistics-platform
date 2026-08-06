@@ -2,6 +2,7 @@ package com.logistics.delivery.query.application;
 
 import com.logistics.delivery.domain.entity.CompanyDeliveryRouteRecord;
 import com.logistics.delivery.domain.repository.CompanyDeliveryRouteRecordRepository;
+import com.logistics.delivery.global.common.DeliveryAccessGuard;
 import com.logistics.delivery.global.common.UserRole;
 import com.logistics.delivery.global.exception.BusinessException;
 import com.logistics.delivery.global.exception.ErrorCode;
@@ -23,19 +24,17 @@ public class CompanyRouteQueryService {
                 deliveryId)
             .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_ROUTE_RECORD_NOT_FOUND));
 
-        if (userRole == UserRole.DELIVERY_MANAGER
-                && !requesterId.equals(companyDeliveryRouteRecord.getAgentId())) {
-            throw new BusinessException(ErrorCode.COMPANY_ROUTE_RECORD_FORBIDDEN);
+        if (userRole == UserRole.DELIVERY_MANAGER) {
+            DeliveryAccessGuard.requireOwnAgent(requesterId, companyDeliveryRouteRecord.getAgentId(),
+                ErrorCode.COMPANY_ROUTE_RECORD_FORBIDDEN);
         }
-        if (userRole == UserRole.HUB_MANAGER
-                && (requesterHubId == null
-                    || !requesterHubId.equals(companyDeliveryRouteRecord.getDepartureHubId()))) {
-            throw new BusinessException(ErrorCode.COMPANY_ROUTE_RECORD_FORBIDDEN);
+        if (userRole == UserRole.HUB_MANAGER) {
+            DeliveryAccessGuard.requireWithinHub(requesterHubId, ErrorCode.COMPANY_ROUTE_RECORD_FORBIDDEN,
+                companyDeliveryRouteRecord.getDepartureHubId());
         }
-        if (userRole == UserRole.COMPANY_MANAGER
-                && (requesterCompanyId == null
-                    || !requesterCompanyId.equals(companyDeliveryRouteRecord.getReceiverCompanyId()))) {
-            throw new BusinessException(ErrorCode.COMPANY_ROUTE_RECORD_FORBIDDEN);
+        if (userRole == UserRole.COMPANY_MANAGER) {
+            DeliveryAccessGuard.requireOwnCompany(requesterCompanyId, companyDeliveryRouteRecord.getReceiverCompanyId(),
+                ErrorCode.COMPANY_ROUTE_RECORD_FORBIDDEN);
         }
 
         return CompanyRouteResponseDto.from(companyDeliveryRouteRecord);
