@@ -9,6 +9,7 @@ import com.logistics.hub.hub.dto.HubResponseDto;
 import com.logistics.hub.hub.dto.HubUpdateRequestDto;
 import com.logistics.hub.hub.entity.Hub;
 import com.logistics.hub.hub.repository.HubRepository;
+import com.logistics.hub.hubroute.service.HubRouteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -17,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -25,6 +27,7 @@ import java.util.UUID;
 public class HubService {
 
     private final HubRepository hubRepository;
+    private final HubRouteService hubRouteService;
 
     @Transactional
     public HubResponseDto createHub(HubCreateRequestDto request) {
@@ -73,6 +76,11 @@ public class HubService {
 
         // todo: JWT 인증/게이트웨이 헤더 전달 방식 확정되면 실제 요청자로 교체
         hub.assignDeletedInfo("system"); // 임시값
+
+        List<UUID> relatedRoutesIds = hubRouteService.findRelatedHubRouteIds(hubId);
+        for (UUID routeId : relatedRoutesIds) {
+            hubRouteService.deleteHubRoute(routeId);
+        }
 
         return HubDeleteResponseDto.from(hub);
     }

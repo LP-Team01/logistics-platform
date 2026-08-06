@@ -39,4 +39,13 @@ public class HubRoute extends BaseEntity {
         this.distance = distance;
         this.duration = duration;
     }
+
+    public void updateInfo(Double distance, Integer duration) {
+        if (distance != null) {
+            this.distance = distance;
+        }
+        if (duration != null) {
+            this.duration = duration;
+        }
+    }
 }
