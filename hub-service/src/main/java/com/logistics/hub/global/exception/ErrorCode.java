@@ -8,7 +8,8 @@ public enum ErrorCode {
     HUB_ROUTE_NOT_FOUND(HttpStatus.NOT_FOUND, "HUB_404_02", "허브 이동 경로를 찾을 수 없습니다."),
     DUPLICATE_HUB(HttpStatus.CONFLICT, "HUB_409_01", "이미 등록된 허브입니다."),
     DUPLICATE_HUB_ROUTE(HttpStatus.CONFLICT, "HUB_409_02", "이미 등록된 허브 이동 경로입니다."),
-    SAME_HUB_ROUTE(HttpStatus.BAD_REQUEST, "HUB_400", "출발 허브와 도착 허브는 같을 수 없습니다.");
+    SAME_HUB_ROUTE(HttpStatus.BAD_REQUEST, "HUB_400_01", "출발 허브와 도착 허브는 같을 수 없습니다."),
+    INVALID_PAGE_SIZE(HttpStatus.BAD_REQUEST, "HUB_400_02", "페이지 크기는 10, 30, 50 중 하나여야 합니다.");
 
     private final HttpStatus status;
     private final String code;

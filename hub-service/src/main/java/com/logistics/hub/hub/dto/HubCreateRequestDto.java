@@ -15,6 +15,6 @@ public record HubCreateRequestDto(
     Double latitude,
 
     @NotNull(message = "경도는 필수입니다.")
-    Double longitube
+    Double longitude
 ) {
 }
