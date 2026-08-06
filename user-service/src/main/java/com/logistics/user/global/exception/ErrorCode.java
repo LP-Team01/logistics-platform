@@ -9,7 +9,9 @@ public enum ErrorCode {
     DUPLICATE_SLACK_ID(HttpStatus.CONFLICT, "USER_409_02", "이미 등록된 Slack ID입니다."),
     INVALID_PASSWORD(HttpStatus.UNAUTHORIZED, "AUTH_401_01", "비밀번호가 일치하지 않습니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH_401_02", "인증이 필요합니다."),
-    ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH_403", "접근 권한이 없습니다.");
+    ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH_403", "접근 권한이 없습니다."),
+    BAD_REQUEST(HttpStatus.BAD_REQUEST,"USER_400" , "권한에 맞는 입력이 아닙니다."),
+    ALREADY_PROCESSED_SIGNUP(HttpStatus.CONFLICT, "USER_409_03", "이미 처리된 가입 요청입니다." );
 
     private final HttpStatus status;
     private final String code;
