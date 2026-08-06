@@ -79,7 +79,6 @@ public class OrderOwnershipValidator {
     public void validateCancelAccess(
             Order order,
             String userRole,
-            UUID companyId,
             UUID hubId
     ) {
         if (order == null || userRole == null) {
@@ -91,9 +90,6 @@ public class OrderOwnershipValidator {
 
             case "HUB_MANAGER" ->
                     order.belongsToHub(hubId);
-
-            case "COMPANY_MANAGER" ->
-                    order.belongsToCompany(companyId);
 
             default -> false;
         };
