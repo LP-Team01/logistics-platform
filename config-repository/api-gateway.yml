@@ -30,7 +30,7 @@ spring:
             - id: ai-notification-service
               uri: lb://ai-notification-service
               predicates:
-                - Path=/api/ai/**,/api/slack/**
+                - Path=/api/ai-requests/**,/api/slack-messages/**
 
 management:
   endpoints:

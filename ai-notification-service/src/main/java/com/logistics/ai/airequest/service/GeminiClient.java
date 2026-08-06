@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.genai.Client;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
+import com.google.genai.types.HttpOptions;
 import com.logistics.ai.airequest.dto.responsedto.AiCalculationResult;
 import com.logistics.ai.global.exception.GeminiProcessingException;
 import jakarta.annotation.PreDestroy;
@@ -38,7 +39,9 @@ public class GeminiClient implements DispatchDeadlineAiClient {
         @Value("${gemini.model:gemini-3.6-flash}")
         String model,
         @Value("${gemini.temperature:0.1}")
-        Float temperature
+        Float temperature,
+        @Value("${gemini.timeout-ms:30000}")
+        Integer timeoutMs
     ) {
         if (!StringUtils.hasText(apiKey)) {
             throw new IllegalStateException(
@@ -46,8 +49,20 @@ public class GeminiClient implements DispatchDeadlineAiClient {
             );
         }
 
+        if (timeoutMs == null || timeoutMs <= 0) {
+            throw new IllegalStateException(
+                "Gemini 타임아웃은 0보다 커야 합니다."
+            );
+        }
+
+        HttpOptions httpOptions =
+            HttpOptions.builder()
+                .timeout(timeoutMs)
+                .build();
+
         this.client = Client.builder()
             .apiKey(apiKey)
+            .httpOptions(httpOptions)
             .build();
 
         this.objectMapper = objectMapper;

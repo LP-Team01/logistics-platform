@@ -48,4 +48,10 @@ public interface SlackMessageRepository
     findFirstByAiRequestIdAndDeletedAtIsNullOrderByCreatedAtDesc(
         UUID aiRequestId
     );
+
+    Optional<SlackMessage>
+    findByAiRequestIdAndRecipientUserIdAndDeletedAtIsNull(
+        UUID aiRequestId,
+        UUID recipientUserId
+    );
 }

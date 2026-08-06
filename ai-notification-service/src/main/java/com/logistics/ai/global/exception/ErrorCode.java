@@ -70,6 +70,12 @@ public enum ErrorCode {
         "발송 완료된 Slack 메시지는 수정할 수 없습니다."
     ),
 
+    UNSUPPORTED_EVENT_VERSION(
+        HttpStatus.BAD_REQUEST,
+        "AI_400_02",
+        "지원하지 않는 Kafka 이벤트 버전입니다."
+    ),
+
     SLACK_USER_NOT_FOUND(
         HttpStatus.NOT_FOUND,
         "SLACK_404",

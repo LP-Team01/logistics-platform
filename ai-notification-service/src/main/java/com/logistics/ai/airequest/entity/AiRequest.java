@@ -3,22 +3,14 @@ package com.logistics.ai.airequest.entity;
 import com.logistics.ai.common.entity.BaseEntity;
 import com.logistics.ai.global.exception.BusinessException;
 import com.logistics.ai.global.exception.ErrorCode;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
-import java.time.LocalDateTime;
-import java.util.UUID;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.ColumnDefault;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * 배송 정보를 AI에 전달하고 처리 결과를 기록하는 엔티티입니다.
@@ -31,13 +23,6 @@ import org.hibernate.annotations.ColumnDefault;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
     name = "p_ai_request",
-    uniqueConstraints = {
-        // 동일한 Kafka 이벤트가 중복 처리되는 것을 방지합니다.
-        @UniqueConstraint(
-            name = "uk_ai_request_event",
-            columnNames = "event_id"
-        )
-    },
     indexes = {
         // 주문별 AI 요청 이력 조회에 사용합니다.
         @Index(

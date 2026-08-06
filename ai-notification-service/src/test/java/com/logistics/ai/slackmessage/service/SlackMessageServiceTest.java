@@ -11,6 +11,8 @@ import com.logistics.ai.slackmessage.entity.SlackMessage;
 import com.logistics.ai.slackmessage.entity.SlackMessageStatus;
 import com.logistics.ai.slackmessage.entity.SlackMessageType;
 import com.logistics.ai.slackmessage.repository.SlackMessageRepository;
+
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -20,6 +22,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
@@ -264,6 +267,94 @@ class SlackMessageServiceTest {
     }
 
     @Test
+    @DisplayName("오래된 PENDING Slack 메시지는 다시 발송한다")
+    void recoverStalePendingSlackMessage() {
+        // given
+        SlackMessage slackMessage =
+            createTestSlackMessage();
+
+        SlackMessageRequestDto requestDto =
+            mock(SlackMessageRequestDto.class);
+
+        when(requestDto.aiRequestId())
+            .thenReturn(slackMessage.getAiRequestId());
+
+        when(requestDto.recipientUserId())
+            .thenReturn(slackMessage.getRecipientUserId());
+
+        /*
+         * 테스트에서는 JPA Auditing이 동작하지 않으므로
+         * updatedAt을 직접 오래된 시간으로 설정합니다.
+         */
+        ReflectionTestUtils.setField(
+            slackMessage,
+            "updatedAt",
+            LocalDateTime.now().minusMinutes(10)
+        );
+
+        ReflectionTestUtils.setField(
+            slackMessageService,
+            "pendingRecoveryMinutes",
+            5L
+        );
+
+        SlackNotificationClient.SlackSendResult sendResult =
+            mock(SlackNotificationClient.SlackSendResult.class);
+
+        when(
+            slackMessageRepository
+                .findByAiRequestIdAndRecipientUserIdAndDeletedAtIsNull(
+                    slackMessage.getAiRequestId(),
+                    slackMessage.getRecipientUserId()
+                )
+        ).thenReturn(Optional.of(slackMessage));
+
+        when(
+            slackMessageRepository.save(any(SlackMessage.class))
+        ).thenAnswer(
+            invocation -> invocation.getArgument(0)
+        );
+
+        when(
+            slackNotificationClient.sendMessage(
+                slackMessage.getRecipientSlackId(),
+                slackMessage.getTitle(),
+                slackMessage.getContent()
+            )
+        ).thenReturn(sendResult);
+
+        when(sendResult.slackTimestamp())
+            .thenReturn("1722844800.999999");
+
+        // when
+        SlackMessageResponseDto response =
+            slackMessageService.createOrRetrySlackMessage(
+                requestDto
+            );
+
+        // then
+        assertThat(response).isNotNull();
+
+        assertThat(slackMessage.getStatus())
+            .isEqualTo(SlackMessageStatus.SENT);
+
+        assertThat(slackMessage.getRetryCount())
+            .isEqualTo(1);
+
+        assertThat(slackMessage.getSlackTimestamp())
+            .isEqualTo("1722844800.999999");
+
+        verify(slackNotificationClient).sendMessage(
+            slackMessage.getRecipientSlackId(),
+            slackMessage.getTitle(),
+            slackMessage.getContent()
+        );
+
+        verify(slackMessageRepository, times(2))
+            .save(slackMessage);
+    }
+
+    @Test
     @DisplayName("FAILED 상태가 아닌 Slack 메시지는 재발송할 수 없다")
     void retrySlackMessageNotAllowed() {
         // given
@@ -454,5 +545,69 @@ class SlackMessageServiceTest {
             "최종 발송 시한 안내",
             "최종 발송 시한은 8월 5일 오전 9시입니다."
         );
+    }
+
+    @Test
+    @DisplayName("복구 기준 시간이 지나지 않은 PENDING 메시지는 재발송하지 않는다")
+    void doNotRecoverRecentPendingSlackMessage() {
+        // given
+        SlackMessage slackMessage =
+            createTestSlackMessage();
+
+        SlackMessageRequestDto requestDto =
+            mock(SlackMessageRequestDto.class);
+
+        when(requestDto.aiRequestId())
+            .thenReturn(slackMessage.getAiRequestId());
+
+        when(requestDto.recipientUserId())
+            .thenReturn(slackMessage.getRecipientUserId());
+
+        ReflectionTestUtils.setField(
+            slackMessage,
+            "updatedAt",
+            LocalDateTime.now().minusMinutes(1)
+        );
+
+        ReflectionTestUtils.setField(
+            slackMessageService,
+            "pendingRecoveryMinutes",
+            5L
+        );
+
+        when(
+            slackMessageRepository
+                .findByAiRequestIdAndRecipientUserIdAndDeletedAtIsNull(
+                    slackMessage.getAiRequestId(),
+                    slackMessage.getRecipientUserId()
+                )
+        ).thenReturn(Optional.of(slackMessage));
+
+        // when
+        BusinessException exception =
+            catchThrowableOfType(
+                () -> slackMessageService
+                    .createOrRetrySlackMessage(requestDto),
+                BusinessException.class
+            );
+
+        // then
+        assertThat(exception.getErrorCode())
+            .isEqualTo(
+                ErrorCode.SLACK_MESSAGE_RETRY_NOT_ALLOWED
+            );
+
+        assertThat(slackMessage.getStatus())
+            .isEqualTo(SlackMessageStatus.PENDING);
+
+        assertThat(slackMessage.getRetryCount())
+            .isZero();
+
+        verifyNoInteractions(slackNotificationClient);
+
+        verify(
+            slackMessageRepository,
+            never()
+        ).save(any(SlackMessage.class));
     }
 }
