@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.security.Key;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.Date;
 import java.util.UUID;
@@ -44,14 +45,14 @@ public class JwtUtil {
     }
 
     // Access 토큰 생성
-    public String createAccessToken(UUID userId, String username, UserRole role){
+    public String createAccessToken(UUID userId, UUID hubId, UUID companyId, UserRole role){
         Date date = new Date();
 
-        return BEARER_PREFIX +
-            Jwts.builder()
+        return Jwts.builder()
                 .setSubject(String.valueOf(userId))
                 .claim(AUTHORIZATION_KEY, role)
-                .claim("username", username)
+                .claim("hubId", hubId)
+                .claim("companyId", companyId)
                 .setExpiration(new Date(date.getTime() + ACCESS_TOKEN_TIME))
                 .setIssuedAt(date)
                 .signWith(key, signatureAlgorithm)
@@ -62,8 +63,7 @@ public class JwtUtil {
     public String createRefreshToken(UUID userId, String username, UserRole role){
         Date date = new Date();
 
-        return BEARER_PREFIX +
-            Jwts.builder()
+        return Jwts.builder()
                 .setSubject(String.valueOf(userId))
                 .claim(AUTHORIZATION_KEY, role)
                 .claim("username", username)
@@ -84,9 +84,11 @@ public class JwtUtil {
 
     // 토큰 검증
     public boolean validateToken(String token){
+        return parseClaims(token) != null;
+    }
+    public Claims parseClaims(String token){
         try{
-            Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
-            return true;
+           return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
         }catch (SecurityException | MalformedJwtException e) {
             log.error("Invalid JWT signature, 유효하지 않는 JWT 서명 입니다.");
         } catch (ExpiredJwtException e) {
@@ -96,13 +98,9 @@ public class JwtUtil {
         } catch (IllegalArgumentException e) {
             log.error("JWT claims is empty, 잘못된 JWT 토큰 입니다.");
         }
-        return false;
+        return null;
     }
 
-    // 토큰에서 사용자 정보 가져오기
-    public Claims getUserInfoFromToken(String token){
-        return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
-    }
 
     private String subStringToken(String bearerToken) {
         if(StringUtils.hasText(bearerToken) && bearerToken.startsWith(BEARER_PREFIX)){
