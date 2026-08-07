@@ -38,6 +38,8 @@ management:
       exposure:
         include: health,info,gateway
 
+jwt:
+  secret: ${JWT_SECRET}
 
 gateway:
   security:
