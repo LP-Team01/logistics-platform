@@ -40,8 +40,6 @@ public class OrderCommandService {
     /**
      * 새로운 주문 과 배송 생성을 생성합니다.
      *
-     * 현재는 Company Service 연동 전이므로
-     * 상품명, 단가, 공급업체 ID에 임시값을 사용합니다.
      */
     public OrderCommandResponse createOrder(
         CreateOrderRequest request,
