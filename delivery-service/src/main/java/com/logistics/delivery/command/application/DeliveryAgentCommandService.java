@@ -8,6 +8,7 @@ import com.logistics.delivery.domain.entity.AgentType;
 import com.logistics.delivery.domain.entity.DeliveryAgent;
 import com.logistics.delivery.domain.repository.DeliveryAgentRepository;
 import com.logistics.delivery.global.common.DeliveryAccessGuard;
+import com.logistics.delivery.global.common.FeignExceptionTranslator;
 import com.logistics.delivery.global.common.UserRole;
 import com.logistics.delivery.global.common.UserStatus;
 import com.logistics.delivery.global.exception.BusinessException;
@@ -15,7 +16,6 @@ import com.logistics.delivery.global.exception.ErrorCode;
 import com.logistics.delivery.infrastructure.client.HubServiceClient;
 import com.logistics.delivery.infrastructure.client.UserServiceClient;
 import com.logistics.delivery.infrastructure.client.dto.UserServiceUserResponseDto;
-import feign.FeignException;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -85,11 +85,7 @@ public class DeliveryAgentCommandService {
         if (hubId == null) {
             return;
         }
-        try {
-            hubServiceClient.getHub(hubId);
-        } catch (FeignException.NotFound e) {
-            throw new BusinessException(ErrorCode.DELIVERY_AGENT_HUB_NOT_FOUND);
-        }
+        FeignExceptionTranslator.call(() -> hubServiceClient.getHub(hubId), ErrorCode.DELIVERY_AGENT_HUB_NOT_FOUND);
     }
 
     private String groupLockKey(AgentType agentType, UUID hubId) {
@@ -107,12 +103,8 @@ public class DeliveryAgentCommandService {
     }
 
     private void validateAgentUser(UUID agentId) {
-        UserServiceUserResponseDto user;
-        try {
-            user = userServiceClient.getUser(agentId);
-        } catch (FeignException.NotFound e) {
-            throw new BusinessException(ErrorCode.DELIVERY_AGENT_USER_NOT_FOUND);
-        }
+        UserServiceUserResponseDto user = FeignExceptionTranslator.call(
+            () -> userServiceClient.getUser(agentId), ErrorCode.DELIVERY_AGENT_USER_NOT_FOUND);
         if (user.role() != UserRole.DELIVERY_MANAGER) {
             throw new BusinessException(ErrorCode.DELIVERY_AGENT_INVALID_USER_ROLE);
         }

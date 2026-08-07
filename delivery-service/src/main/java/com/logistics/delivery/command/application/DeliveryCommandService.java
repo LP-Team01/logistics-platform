@@ -15,6 +15,7 @@ import com.logistics.delivery.domain.repository.DeliveryRepository;
 import com.logistics.delivery.domain.repository.DeliveryRouteRecordRepository;
 import com.logistics.delivery.domain.service.DeliveryAgentAssignmentService;
 import com.logistics.delivery.global.common.DeliveryAccessGuard;
+import com.logistics.delivery.global.common.FeignExceptionTranslator;
 import com.logistics.delivery.global.common.UserRole;
 import com.logistics.delivery.global.config.HubInternalServiceProperties;
 import com.logistics.delivery.global.config.InternalServiceProperties;
@@ -22,7 +23,6 @@ import com.logistics.delivery.global.exception.BusinessException;
 import com.logistics.delivery.global.exception.ErrorCode;
 import com.logistics.delivery.infrastructure.client.HubServiceClient;
 import com.logistics.delivery.infrastructure.client.dto.HubServiceRouteSegmentDto;
-import feign.FeignException;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -141,16 +141,14 @@ public class DeliveryCommandService {
     }
 
     private List<HubServiceRouteSegmentDto> findRoutePath(UUID departureHubId, UUID destinationHubId) {
-        try {
-            return hubServiceClient.getRoutePath(
+        return FeignExceptionTranslator.call(
+            () -> hubServiceClient.getRoutePath(
                 internalServiceProperties.name(), hubInternalServiceProperties.key(),
                 departureHubId, destinationHubId
-            ).path();
-        } catch (FeignException.NotFound e) {
-            throw new BusinessException(ErrorCode.DELIVERY_HUB_NOT_FOUND);
-        } catch (FeignException.BadRequest | FeignException.UnprocessableEntity e) {
-            throw new BusinessException(ErrorCode.INVALID_DELIVERY_ROUTE);
-        }
+            ).path(),
+            ErrorCode.DELIVERY_HUB_NOT_FOUND,
+            ErrorCode.INVALID_DELIVERY_ROUTE
+        );
     }
 
     private DeliveryRouteRecord buildAndSaveRouteRecord(UUID deliveryId, HubServiceRouteSegmentDto segment) {
