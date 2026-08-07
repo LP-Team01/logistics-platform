@@ -7,6 +7,7 @@ import com.logistics.delivery.command.dto.request.CreateDeliveryRequestDto;
 import com.logistics.delivery.command.dto.request.UpdateDeliveryRequestDto;
 import com.logistics.delivery.command.dto.response.CreateDeliveryResponseDto;
 import com.logistics.delivery.command.dto.response.UpdateDeliveryResponseDto;
+import com.logistics.delivery.global.common.InternalServiceValidator;
 import com.logistics.delivery.global.common.UserRole;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -27,14 +28,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/deliveries")
 public class DeliveryCommandController {
     private final DeliveryCommandService deliveryCommandService;
+    private final InternalServiceValidator internalServiceValidator;
 
     @PostMapping
     public ResponseEntity<CreateDeliveryResponseDto> create(
-            @RequestHeader("X-User-Role") UserRole userRole,
+            @RequestHeader("X-Internal-Service") String serviceName,
+            @RequestHeader("X-Internal-Service-Key") String serviceKey,
             @RequestBody @Valid CreateDeliveryRequestDto request) {
-        //TODO: HubService 만들어진 후 hubClient로 hub유효성 검사
+        internalServiceValidator.validateOrderService(serviceName, serviceKey);
         CreateDeliveryCommand command = request.toCommand();
-        CreateDeliveryResponseDto result = deliveryCommandService.create(userRole, command);
+        CreateDeliveryResponseDto result = deliveryCommandService.create(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
@@ -58,6 +61,17 @@ public class DeliveryCommandController {
             @RequestHeader("X-User-Id") UUID requesterId,
             @RequestHeader(value = "X-Hub-Id", required = false) UUID requesterHubId) {
         deliveryCommandService.delete(userRole, requesterId, requesterHubId, deliveryId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // Order 서비스의 주문상품 취소 콜백 전용
+    @DeleteMapping("/order-items/{orderItemId}")
+    public ResponseEntity<Void> deleteByOrderItem(
+            @RequestHeader("X-Internal-Service") String serviceName,
+            @RequestHeader("X-Internal-Service-Key") String serviceKey,
+            @PathVariable UUID orderItemId) {
+        internalServiceValidator.validateOrderService(serviceName, serviceKey);
+        deliveryCommandService.deleteByOrderItem(orderItemId);
         return ResponseEntity.noContent().build();
     }
 }

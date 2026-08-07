@@ -60,25 +60,11 @@ public class DeliveryAgent extends BaseUpdatableEntity {
         this.isAvailable = isAvailable != null ? isAvailable : Boolean.TRUE;
     }
 
+    // agentType/hubId는 그룹(정원·순번) 변경이 필요해 여기서 다루지 않음 - 호출 전에 변경 요청이 없는지 검증되어야 함
     public void update(
-        UUID hubId,
-        AgentType agentType,
         String slackId,
         Boolean isAvailable
     ) {
-
-        AgentType targetType = agentType != null ? agentType : this.agentType;
-
-        if (targetType == AgentType.HUB_DELIVERY) {
-            this.hubId = null;
-        } else if (hubId != null) {
-            this.hubId = hubId;
-        }
-
-        validateHubId(targetType, this.hubId);
-        this.agentType = targetType;
-
-        // TODO: agentType/hubId가 바뀌면 deliveryOrder가 이전 그룹 기준 순번이라 새 그룹의 순번 규칙과 어긋날 수 있음 - 재계산 정책 필요
         if (slackId != null) {
             this.slackId = slackId;
         }

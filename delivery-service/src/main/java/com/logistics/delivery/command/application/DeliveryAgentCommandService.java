@@ -8,12 +8,14 @@ import com.logistics.delivery.domain.entity.AgentType;
 import com.logistics.delivery.domain.entity.DeliveryAgent;
 import com.logistics.delivery.domain.repository.DeliveryAgentRepository;
 import com.logistics.delivery.global.common.DeliveryAccessGuard;
+import com.logistics.delivery.global.common.FeignExceptionTranslator;
 import com.logistics.delivery.global.common.UserRole;
+import com.logistics.delivery.global.common.UserStatus;
 import com.logistics.delivery.global.exception.BusinessException;
 import com.logistics.delivery.global.exception.ErrorCode;
+import com.logistics.delivery.infrastructure.client.HubServiceClient;
 import com.logistics.delivery.infrastructure.client.UserServiceClient;
 import com.logistics.delivery.infrastructure.client.dto.UserServiceUserResponseDto;
-import feign.FeignException;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DeliveryAgentCommandService {
     private final DeliveryAgentRepository deliveryAgentRepository;
     private final UserServiceClient userServiceClient;
+    private final HubServiceClient hubServiceClient;
 
     private static final int MAX_COUNT = 10;
     private static final Set<UserRole> AGENT_MANAGE_ROLES = EnumSet.of(UserRole.MASTER, UserRole.HUB_MANAGER);
@@ -34,11 +37,13 @@ public class DeliveryAgentCommandService {
     @Transactional
     public CreateDeliveryAgentResponseDto create(CreateDeliveryAgentCommand command, UserRole userRole,
                                                   UUID requesterHubId) {
-        // TODO: hub-service에 허브 존재 검증 API가 생기면 HubServiceClient로 hubId 유효성 확인 후 404 처리
-
         validateRole(userRole);
         validateHubManagerScope(userRole, command.agentType(), command.hubId(), requesterHubId);
+        validateHubExists(command.hubId());
         validateAgentUser(command.agentId());
+
+        // (agentType, hubId) 그룹 자체를 advisory lock으로 먼저 잠근다 - "빈 그룹 최초 등록" 동시 요청까지 직렬화하기 위함
+        deliveryAgentRepository.lockAgentGroup(groupLockKey(command.agentType(), command.hubId()));
 
         // (agentType, hubId) 그룹을 잠근 뒤 정원 검증과 배송순번 채번을 한 트랜잭션 안에서 처리->동시 생성 요청으로 인한 정원 초과·순번 중복을 막기
         List<DeliveryAgent> lockedAgents = deliveryAgentRepository
@@ -61,13 +66,10 @@ public class DeliveryAgentCommandService {
     public UpdateDeliveryAgentResponseDto update(UUID agentId, UpdateDeliveryAgentCommand command, UserRole userRole,
                                                   UUID requesterHubId) {
         validateRole(userRole);
-        // TODO: hub-service에 허브 존재 검증 API가 생기면 hubId가 바뀌는 경우에도 HubServiceClient로 유효성 확인 필요
         DeliveryAgent deliveryAgent = findDeliveryAgent(agentId);
         validateHubManagerScope(userRole, deliveryAgent.getAgentType(), deliveryAgent.getHubId(), requesterHubId);
-        AgentType effectiveAgentType = command.agentType() != null ? command.agentType() : deliveryAgent.getAgentType();
-        UUID effectiveHubId = command.hubId() != null ? command.hubId() : deliveryAgent.getHubId();
-        validateHubManagerScope(userRole, effectiveAgentType, effectiveHubId, requesterHubId);
-        deliveryAgent.update(command.hubId(), command.agentType(), command.slackId(), command.isAvailable());
+        validateNoGroupChange(deliveryAgent, command.agentType(), command.hubId());
+        deliveryAgent.update(command.slackId(), command.isAvailable());
         return UpdateDeliveryAgentResponseDto.from(deliveryAgent);
     }
 
@@ -79,15 +81,35 @@ public class DeliveryAgentCommandService {
         deliveryAgent.softDelete(requesterId);
     }
 
-    private void validateAgentUser(UUID agentId) {
-        UserServiceUserResponseDto user;
-        try {
-            user = userServiceClient.getUser(agentId);
-        } catch (FeignException.NotFound e) {
-            throw new BusinessException(ErrorCode.DELIVERY_AGENT_USER_NOT_FOUND);
+    private void validateHubExists(UUID hubId) {
+        if (hubId == null) {
+            return;
         }
+        FeignExceptionTranslator.call(() -> hubServiceClient.getHub(hubId), ErrorCode.DELIVERY_AGENT_HUB_NOT_FOUND);
+    }
+
+    private String groupLockKey(AgentType agentType, UUID hubId) {
+        return agentType + ":" + (hubId != null ? hubId : "GLOBAL");
+    }
+
+    // agentType/hubId 변경은 그룹(정원·순번) 재계산이 필요해 update()로 지원하지 않음 -> 그룹을 옮기려면 삭제 후 재등록해야 함
+    private void validateNoGroupChange(DeliveryAgent deliveryAgent, AgentType requestedAgentType, UUID requestedHubId) {
+        if (requestedAgentType != null && requestedAgentType != deliveryAgent.getAgentType()) {
+            throw new BusinessException(ErrorCode.DELIVERY_AGENT_GROUP_CHANGE_NOT_ALLOWED);
+        }
+        if (requestedHubId != null && !requestedHubId.equals(deliveryAgent.getHubId())) {
+            throw new BusinessException(ErrorCode.DELIVERY_AGENT_GROUP_CHANGE_NOT_ALLOWED);
+        }
+    }
+
+    private void validateAgentUser(UUID agentId) {
+        UserServiceUserResponseDto user = FeignExceptionTranslator.call(
+            () -> userServiceClient.getUser(agentId), ErrorCode.DELIVERY_AGENT_USER_NOT_FOUND);
         if (user.role() != UserRole.DELIVERY_MANAGER) {
             throw new BusinessException(ErrorCode.DELIVERY_AGENT_INVALID_USER_ROLE);
+        }
+        if (user.status() != UserStatus.APPROVED) {
+            throw new BusinessException(ErrorCode.DELIVERY_AGENT_USER_NOT_APPROVED);
         }
     }
 

@@ -4,3 +4,9 @@ server:
 spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/hub_db}
+
+internal:
+  service:
+    name: hub-service
+    key: ${HUB_INTERNAL_SERVICE_KEY}
+    allowed-name: delivery-service
