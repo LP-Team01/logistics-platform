@@ -5,6 +5,7 @@ import java.time.OffsetDateTime;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -38,6 +39,19 @@ public class GlobalExceptionHandler {
         log.error("Unhandled exception", exception);
         return response(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_500",
                 "서버 내부 오류가 발생했습니다.", request);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(
+        DataIntegrityViolationException exception, HttpServletRequest request) {
+        String message = exception.getMostSpecificCause().getMessage();
+        if (message != null && message.contains("uq_hub_route_pair")) {
+            ErrorCode errorCode = ErrorCode.DUPLICATE_HUB_ROUTE;
+            return response(errorCode.getStatus(), errorCode.getCode(), errorCode.getMessage(), request);
+        }
+        log.error("Unhandled data integrity violation", exception);
+        return response(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_500",
+            "서버 내부 오류가 발생했습니다.", request);
     }
 
     private ResponseEntity<ErrorResponse> response(
