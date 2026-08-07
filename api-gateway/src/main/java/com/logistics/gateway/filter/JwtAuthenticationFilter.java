@@ -28,7 +28,7 @@ public class JwtAuthenticationFilter implements GlobalFilter , Ordered {
 
     // user-service JwtUtil의 AUTHORIZATION_KEY("auth")와 반드시 일치해야 함
     private static final String ROLE_CLAIM = "auth";
-    private static final List<String> TRUSTED_HEADERS = List.of("X-User-Id", "X-Hub-Id", "X-Company-Id","X-Role");
+    private static final List<String> TRUSTED_HEADERS = List.of("X-User-Id", "X-Hub-Id", "X-Company-Id","X-User-Role");
     private static final PathPatternParser PATTERN_PARSER = new PathPatternParser();
 
     private final JwtUtil jwtUtil;
