@@ -14,9 +14,9 @@ public record HubResponseDto (
     Double latitude,
     Double longitude,
     Instant createdAt,
-    String createdBy,
+    UUID createdBy,
     Instant updatedAt,
-    String updatedBy
+    UUID updatedBy
 ) implements Serializable {
 
     public static HubResponseDto from(Hub hub) {

@@ -8,7 +8,7 @@ import java.util.UUID;
 public record HubDeleteResponseDto(
     UUID hubId,
     Instant deletedAt,
-    String deletedBy
+    UUID deletedBy
 ) {
     public static HubDeleteResponseDto from(Hub hub) {
         return new HubDeleteResponseDto(

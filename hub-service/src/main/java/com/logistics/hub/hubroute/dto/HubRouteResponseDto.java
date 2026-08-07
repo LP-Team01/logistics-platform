@@ -13,9 +13,9 @@ public record HubRouteResponseDto(
     Double distance,
     Integer duration,
     Instant createdAt,
-    String createdBy,
+    UUID createdBy,
     Instant updatedAt,
-    String updatedBy
+    UUID updatedBy
 ) implements Serializable {
 
     public static HubRouteResponseDto from(HubRoute hubRoute) {
