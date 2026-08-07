@@ -36,7 +36,7 @@ public class AuthService {
 
     public TokenResponseDto login(LoginRequestDto requestDto, HttpServletResponse servletResponse) {
         User user = userRepository.findByUsernameAndDeletedAtIsNull(requestDto.username())
-            .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+            .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_PASSWORD_OR_USERNAME));
 
         switch (user.getStatus()){
             case REJECTED -> {
@@ -48,7 +48,7 @@ public class AuthService {
         }
 
         if(!passwordEncoder.matches(requestDto.password(), user.getPassword())){
-            throw new BusinessException(ErrorCode.INVALID_PASSWORD);
+            throw new BusinessException(ErrorCode.INVALID_PASSWORD_OR_USERNAME);
         }
 
         String accessToken = jwtUtil.createAccessToken(
