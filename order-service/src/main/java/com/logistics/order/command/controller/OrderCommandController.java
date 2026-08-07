@@ -57,10 +57,6 @@ public class OrderCommandController {
             @RequestHeader("X-User-Id") UUID userId,
             @RequestHeader("X-User-Role") String userRole,
             @RequestHeader(
-                    value = "X-Company-Id",
-                    required = false
-            ) UUID companyId,
-            @RequestHeader(
                     value = "X-Hub-Id",
                     required = false
             ) UUID hubId,
@@ -71,8 +67,7 @@ public class OrderCommandController {
         roleValidator.validate(
                 userRole,
                 "MASTER",
-                "HUB_MANAGER",
-                "COMPANY_MANAGER"
+                "HUB_MANAGER"
         );
 
         return ResponseEntity.ok(
@@ -81,7 +76,6 @@ public class OrderCommandController {
                         request,
                         userId,
                         userRole,
-                        companyId,
                         hubId
                 )
         );
@@ -100,10 +94,6 @@ public class OrderCommandController {
         @PathVariable UUID orderItemId,
         @RequestHeader("X-User-Id") UUID userId,
         @RequestHeader("X-User-Role") String userRole,
-        @RequestHeader(
-                    value = "X-Company-Id",
-                    required = false
-            ) UUID companyId,
          @RequestHeader(
                 value = "X-Hub-Id",
                 required = false
@@ -115,8 +105,7 @@ public class OrderCommandController {
         roleValidator.validate(
             userRole,
             "MASTER",
-            "HUB_MANAGER",
-            "COMPANY_MANAGER"
+            "HUB_MANAGER"
         );
 
         return ResponseEntity.ok(
@@ -126,7 +115,6 @@ public class OrderCommandController {
                 request,
                 userId,
                 userRole,
-                companyId,
                 hubId
             )
         );

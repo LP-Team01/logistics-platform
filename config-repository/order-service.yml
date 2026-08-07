@@ -7,5 +7,6 @@ spring:
 
 internal:
   service:
+    allowed-name: delivery-service
     name: order-service
     key: ${INTERNAL_SERVICE_KEY}

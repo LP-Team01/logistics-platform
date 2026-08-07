@@ -117,7 +117,8 @@ public class OrderCommandService {
                         savedOrder.getReceiverHubId(),
                         receiverCompany.address(),
                         receiverUser.username(),
-                        receiverUser.slackId()
+                        receiverUser.slackId(),
+                        savedOrder.getReceiverCompanyId()
                     );
 
                 CreateDeliveryResponse deliveryResponse =
@@ -227,7 +228,6 @@ public class OrderCommandService {
             CancelOrderRequest request,
             UUID userId,
             String userRole,
-            UUID companyId,
             UUID hubId
     ) {
         // 삭제되지 않은 주문 조회
@@ -243,7 +243,6 @@ public class OrderCommandService {
         orderOwnershipValidator.validateCancelAccess(
                 order,
                 userRole,
-                companyId,
                 hubId
         );
 
@@ -278,7 +277,6 @@ public class OrderCommandService {
             CancelOrderRequest request,
             UUID userId,
             String userRole,
-            UUID companyId,
             UUID hubId
     ) {
         // 삭제되지 않은 주문 조회
@@ -288,11 +286,10 @@ public class OrderCommandService {
                         new BusinessException(ErrorCode.ORDER_NOT_FOUND)
                 );
 
-        // COMPANY_MANAGER이면 주문 소유 업체 확인
+        // MASTER 또는 담당 HUB_MANAGER 권한 검사
         orderOwnershipValidator.validateCancelAccess(
                 order,
                 userRole,
-                companyId,
                 hubId
         );
 
