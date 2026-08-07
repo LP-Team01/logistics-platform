@@ -35,7 +35,6 @@ public class DeliveryCommandController {
             @RequestHeader("X-Internal-Service") String serviceName,
             @RequestHeader("X-Internal-Service-Key") String serviceKey,
             @RequestBody @Valid CreateDeliveryRequestDto request) {
-        //TODO: HubService 만들어진 후 hubClient로 hub유효성 검사
         internalServiceValidator.validateOrderService(serviceName, serviceKey);
         CreateDeliveryCommand command = request.toCommand();
         CreateDeliveryResponseDto result = deliveryCommandService.create(command);

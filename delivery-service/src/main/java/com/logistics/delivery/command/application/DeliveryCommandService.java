@@ -16,6 +16,7 @@ import com.logistics.delivery.domain.repository.DeliveryRouteRecordRepository;
 import com.logistics.delivery.domain.service.DeliveryAgentAssignmentService;
 import com.logistics.delivery.global.common.DeliveryAccessGuard;
 import com.logistics.delivery.global.common.UserRole;
+import com.logistics.delivery.global.config.HubInternalServiceProperties;
 import com.logistics.delivery.global.config.InternalServiceProperties;
 import com.logistics.delivery.global.exception.BusinessException;
 import com.logistics.delivery.global.exception.ErrorCode;
@@ -40,6 +41,7 @@ public class DeliveryCommandService {
     private final DeliveryAgentAssignmentService deliveryAgentAssignmentService;
     private final HubServiceClient hubServiceClient;
     private final InternalServiceProperties internalServiceProperties;
+    private final HubInternalServiceProperties hubInternalServiceProperties;
 
     private static final Set<UserRole> DELIVERY_UPDATE_ROLES =
         EnumSet.of(UserRole.MASTER, UserRole.HUB_MANAGER, UserRole.DELIVERY_MANAGER);
@@ -141,7 +143,7 @@ public class DeliveryCommandService {
     private List<HubServiceRouteSegmentDto> findRoutePath(UUID departureHubId, UUID destinationHubId) {
         try {
             return hubServiceClient.getRoutePath(
-                internalServiceProperties.name(), internalServiceProperties.key(),
+                internalServiceProperties.name(), hubInternalServiceProperties.key(),
                 departureHubId, destinationHubId
             ).path();
         } catch (FeignException.NotFound e) {

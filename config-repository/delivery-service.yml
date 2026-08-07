@@ -10,3 +10,5 @@ internal:
     name: delivery-service
     key: ${INTERNAL_SERVICE_KEY}
     allowed-name: order-service
+  hub-service:
+    key: ${HUB_INTERNAL_SERVICE_KEY}
