@@ -34,7 +34,8 @@ public enum ErrorCode {
     DELIVERY_AGENT_HUB_NOT_FOUND(HttpStatus.NOT_FOUND, "DELIVERY_404_07", "배송담당자로 등록할 허브를 찾을 수 없습니다."),
     DELIVERY_AGENT_INVALID_USER_ROLE(HttpStatus.BAD_REQUEST, "DELIVERY_400_07", "해당 사용자는 배송담당자(DELIVERY_MANAGER) 역할이 아닙니다."),
     DELIVERY_AGENT_USER_NOT_APPROVED(HttpStatus.BAD_REQUEST, "DELIVERY_400_08", "승인(APPROVED)되지 않은 사용자는 배송담당자로 등록할 수 없습니다."),
-    DELIVERY_AGENT_GROUP_CHANGE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "DELIVERY_400_09", "배송담당자의 소속 허브/타입은 수정할 수 없습니다. 그룹을 변경하려면 삭제 후 다시 등록하세요.");
+    DELIVERY_AGENT_GROUP_CHANGE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "DELIVERY_400_09", "배송담당자의 소속 허브/타입은 수정할 수 없습니다. 그룹을 변경하려면 삭제 후 다시 등록하세요."),
+    DELIVERY_AGENT_ORDER_CONFLICT(HttpStatus.CONFLICT, "DELIVERY_409_05", "배송담당자 순번 처리 중 충돌이 발생했습니다. 다시 시도해주세요.");
 
     private final HttpStatus status;
     private final String code;

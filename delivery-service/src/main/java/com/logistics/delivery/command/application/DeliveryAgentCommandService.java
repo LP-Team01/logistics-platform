@@ -42,6 +42,9 @@ public class DeliveryAgentCommandService {
         validateHubExists(command.hubId());
         validateAgentUser(command.agentId());
 
+        // (agentType, hubId) 그룹 자체를 advisory lock으로 먼저 잠근다 - "빈 그룹 최초 등록" 동시 요청까지 직렬화하기 위함
+        deliveryAgentRepository.lockAgentGroup(groupLockKey(command.agentType(), command.hubId()));
+
         // (agentType, hubId) 그룹을 잠근 뒤 정원 검증과 배송순번 채번을 한 트랜잭션 안에서 처리->동시 생성 요청으로 인한 정원 초과·순번 중복을 막기
         List<DeliveryAgent> lockedAgents = deliveryAgentRepository
             .findByAgentTypeAndHubIdAndDeletedAtIsNullOrderByDeliveryOrderAsc(command.agentType(), command.hubId());
@@ -89,8 +92,11 @@ public class DeliveryAgentCommandService {
         }
     }
 
-    // agentType/hubId 변경은 그룹(정원·순번) 재계산이 필요해 update()로 지원하지 않음
-    // -> 그룹을 옮기려면 삭제 후 재등록해야 함 (docs/concurrency.md 6번)
+    private String groupLockKey(AgentType agentType, UUID hubId) {
+        return agentType + ":" + (hubId != null ? hubId : "GLOBAL");
+    }
+
+    // agentType/hubId 변경은 그룹(정원·순번) 재계산이 필요해 update()로 지원하지 않음 -> 그룹을 옮기려면 삭제 후 재등록해야 함
     private void validateNoGroupChange(DeliveryAgent deliveryAgent, AgentType requestedAgentType, UUID requestedHubId) {
         if (requestedAgentType != null && requestedAgentType != deliveryAgent.getAgentType()) {
             throw new BusinessException(ErrorCode.DELIVERY_AGENT_GROUP_CHANGE_NOT_ALLOWED);
