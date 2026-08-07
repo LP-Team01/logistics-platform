@@ -1,6 +1,7 @@
 package com.logistics.delivery.domain.repository;
 
 import com.logistics.delivery.domain.entity.Delivery;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,4 +13,5 @@ public interface DeliveryRepository extends JpaRepository<Delivery, UUID>, JpaSp
     boolean existsByOrderItemIdAndDeletedAtIsNull(UUID orderItemId);
     Optional<Delivery> findByIdAndDeletedAtIsNull(UUID id);
     Optional<Delivery> findByOrderItemIdAndDeletedAtIsNull(UUID orderItemId);
+    List<Delivery> findByOrderIdAndDeletedAtIsNull(UUID orderId);
 }

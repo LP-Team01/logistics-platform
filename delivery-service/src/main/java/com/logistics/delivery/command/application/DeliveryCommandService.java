@@ -133,6 +133,17 @@ public class DeliveryCommandService {
     public void deleteByOrderItem(UUID orderItemId) {
         Delivery delivery = deliveryRepository.findByOrderItemIdAndDeletedAtIsNull(orderItemId)
             .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOT_FOUND));
+        cancelDelivery(delivery);
+    }
+
+    // Order 서비스의 주문 생성 실패 보상 처리 전용
+    @Transactional
+    public void cancelByOrderId(UUID orderId) {
+        List<Delivery> deliveries = deliveryRepository.findByOrderIdAndDeletedAtIsNull(orderId);
+        deliveries.forEach(this::cancelDelivery);
+    }
+
+    private void cancelDelivery(Delivery delivery) {
         delivery.softDelete(null);
 
         deliveryRouteRecordRepository.findByDeliveryIdAndDeletedAtIsNullOrderBySequenceAsc(delivery.getId())

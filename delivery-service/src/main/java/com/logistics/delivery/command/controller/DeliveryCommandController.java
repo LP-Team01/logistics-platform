@@ -88,4 +88,15 @@ public class DeliveryCommandController {
         deliveryCommandService.deleteByOrderItem(orderItemId);
         return ResponseEntity.noContent().build();
     }
+
+    // Order 서비스의 주문 생성 실패 보상 처리 전용
+    @DeleteMapping("/orders/{orderId}")
+    public ResponseEntity<Void> cancelByOrderId(
+            @RequestHeader("X-Internal-Service") String serviceName,
+            @RequestHeader("X-Internal-Service-Key") String serviceKey,
+            @PathVariable UUID orderId) {
+        internalServiceValidator.validateOrderService(serviceName, serviceKey);
+        deliveryCommandService.cancelByOrderId(orderId);
+        return ResponseEntity.noContent().build();
+    }
 }
