@@ -3,6 +3,8 @@ package com.logistics.ai.airequest.dto.responsedto;
 import com.logistics.ai.airequest.entity.AiRequest;
 import com.logistics.ai.airequest.entity.AiRequestStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -69,13 +71,13 @@ public record AiResponseDto(
     UUID createdBy,
 
     @Schema(description = "생성 일시")
-    LocalDateTime createdAt,
+    Instant createdAt,
 
     @Schema(description = "최종 수정자 식별자")
     UUID updatedBy,
 
     @Schema(description = "최종 수정 일시")
-    LocalDateTime updatedAt
+    Instant updatedAt
 ) {
 
     /**

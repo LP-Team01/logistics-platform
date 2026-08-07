@@ -195,7 +195,7 @@ class AiNotificationEventMapperTest {
             1500L,
             null,
             UUID.randomUUID(),
-            LocalDateTime.of(2026, 8, 5, 12, 30),
+            Instant.parse("2026-08-05T03:30:00Z"),
             null,
             null
         );

@@ -11,8 +11,11 @@ import com.logistics.ai.airequest.repository.AiRequestSpecification;
 import com.logistics.ai.airequest.repository.AiRequestStatisticsProjection;
 import com.logistics.ai.global.exception.BusinessException;
 import com.logistics.ai.global.exception.ErrorCode;
+
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -31,11 +34,14 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AiRequestService {
 
-    private static final LocalDateTime MIN_STATISTICS_DATE_TIME =
-        LocalDateTime.of(1, 1, 1, 0, 0);
+    private static final ZoneId STATISTICS_ZONE =
+        ZoneId.of("Asia/Seoul");
 
-    private static final LocalDateTime MAX_STATISTICS_DATE_TIME =
-        LocalDateTime.of(9999, 12, 31, 0, 0);
+    private static final Instant MIN_STATISTICS_INSTANT =
+        Instant.parse("0001-01-01T00:00:00Z");
+
+    private static final Instant MAX_STATISTICS_INSTANT =
+        Instant.parse("9999-12-31T00:00:00Z");
 
     private final AiRequestRepository aiRequestRepository;
     private final AiPromptService aiPromptService;
@@ -329,15 +335,15 @@ public class AiRequestService {
     ) {
         validateStatisticsPeriod(startDate, endDate);
 
-        LocalDateTime startDateTime =
+        Instant startDateTime =
             startDate == null
-                ? MIN_STATISTICS_DATE_TIME
-                : startDate.atStartOfDay();
+                ? MIN_STATISTICS_INSTANT
+                : startDate.atStartOfDay(STATISTICS_ZONE).toInstant();
 
-        LocalDateTime endDateTime =
+        Instant endDateTime =
             endDate == null
-                ? MAX_STATISTICS_DATE_TIME
-                : endDate.plusDays(1).atStartOfDay();
+                ? MAX_STATISTICS_INSTANT
+                : endDate.plusDays(1).atStartOfDay(STATISTICS_ZONE).toInstant();
 
         AiRequestStatisticsProjection statistics =
             aiRequestRepository.findStatistics(

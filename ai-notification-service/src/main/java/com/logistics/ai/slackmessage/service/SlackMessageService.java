@@ -18,7 +18,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 /**
@@ -121,7 +123,7 @@ public class SlackMessageService {
     private boolean isRecoverablePending(
         SlackMessage slackMessage
     ) {
-        LocalDateTime pendingStartedAt =
+        Instant pendingStartedAt =
             slackMessage.getUpdatedAt() != null
                 ? slackMessage.getUpdatedAt()
                 : slackMessage.getCreatedAt();
@@ -130,9 +132,9 @@ public class SlackMessageService {
             return false;
         }
 
-        LocalDateTime recoveryThreshold =
-            LocalDateTime.now()
-                .minusMinutes(pendingRecoveryMinutes);
+        Instant recoveryThreshold =
+            Instant.now()
+                .minus(pendingRecoveryMinutes, ChronoUnit.MINUTES);
 
         return !pendingStartedAt.isAfter(recoveryThreshold);
     }
