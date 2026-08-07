@@ -71,6 +71,10 @@ public class HubRouteService {
     @Transactional
     @CacheEvict(value = "hubRoutes", key = "#hubRouteId")
     public HubRouteResponseDto updateHubRoute(UUID hubRouteId, HubRouteUpdateRequestDto request) {
+        if (request.distance() == null && request.duration() == null) {
+            throw new BusinessException(ErrorCode.INVALID_UPDATE_REQUEST);
+        }
+
         HubRoute hubRoute = hubRouteRepository.findByHubRouteIdAndDeletedAtIsNull(hubRouteId)
             .orElseThrow(() -> new BusinessException(ErrorCode.HUB_ROUTE_NOT_FOUND));
 
