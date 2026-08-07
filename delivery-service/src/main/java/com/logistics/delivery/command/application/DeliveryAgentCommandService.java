@@ -65,11 +65,8 @@ public class DeliveryAgentCommandService {
         validateRole(userRole);
         DeliveryAgent deliveryAgent = findDeliveryAgent(agentId);
         validateHubManagerScope(userRole, deliveryAgent.getAgentType(), deliveryAgent.getHubId(), requesterHubId);
-        AgentType effectiveAgentType = command.agentType() != null ? command.agentType() : deliveryAgent.getAgentType();
-        UUID effectiveHubId = command.hubId() != null ? command.hubId() : deliveryAgent.getHubId();
-        validateHubManagerScope(userRole, effectiveAgentType, effectiveHubId, requesterHubId);
-        validateHubExists(command.hubId());
-        deliveryAgent.update(command.hubId(), command.agentType(), command.slackId(), command.isAvailable());
+        validateNoGroupChange(deliveryAgent, command.agentType(), command.hubId());
+        deliveryAgent.update(command.slackId(), command.isAvailable());
         return UpdateDeliveryAgentResponseDto.from(deliveryAgent);
     }
 
@@ -89,6 +86,17 @@ public class DeliveryAgentCommandService {
             hubServiceClient.getHub(hubId);
         } catch (FeignException.NotFound e) {
             throw new BusinessException(ErrorCode.DELIVERY_AGENT_HUB_NOT_FOUND);
+        }
+    }
+
+    // agentType/hubId 변경은 그룹(정원·순번) 재계산이 필요해 update()로 지원하지 않음
+    // -> 그룹을 옮기려면 삭제 후 재등록해야 함 (docs/concurrency.md 6번)
+    private void validateNoGroupChange(DeliveryAgent deliveryAgent, AgentType requestedAgentType, UUID requestedHubId) {
+        if (requestedAgentType != null && requestedAgentType != deliveryAgent.getAgentType()) {
+            throw new BusinessException(ErrorCode.DELIVERY_AGENT_GROUP_CHANGE_NOT_ALLOWED);
+        }
+        if (requestedHubId != null && !requestedHubId.equals(deliveryAgent.getHubId())) {
+            throw new BusinessException(ErrorCode.DELIVERY_AGENT_GROUP_CHANGE_NOT_ALLOWED);
         }
     }
 
