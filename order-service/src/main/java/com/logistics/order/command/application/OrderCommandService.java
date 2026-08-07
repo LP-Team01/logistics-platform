@@ -227,13 +227,8 @@ public class OrderCommandService {
             savedOrder.completeDeliveryCreation();
 
         } catch (RuntimeException exception) {
-            /*
-             * 일괄 생성이 일부만 처리됐을 가능성도 있으므로
-             * 모든 주문 상품 ID를 기준으로 배송 취소 요청
-             */
-            requestedOrderItemIds.forEach(
-                    this::compensateDelivery
-            );
+            // 일괄 배송 생성 실패 시 주문 단위로 한 번만 보상 취소
+            compensateDeliveries(savedOrder.getOrderId());
 
             // 예외를 다시 전달하여 주문 DB 트랜잭션 롤백
             throw exception;
@@ -439,20 +434,19 @@ public class OrderCommandService {
     }
 
     /**
-     * 생성된 배송 보상 취소
+     * 주문 생성 실패 시 해당 주문의 배송을 한 번에 보상 취소합니다.
      */
-    private void compensateDelivery(UUID orderItemId) {
+    private void compensateDeliveries(UUID orderId) {
         try {
-            deliveryClient.cancelDeliveryByOrderItemId(
+            deliveryClient.cancelDeliveriesByOrderId(
                     internalServiceProperties.name(),
                     internalServiceProperties.key(),
-                    orderItemId
+                    orderId
             );
         } catch (FeignException exception) {
-            // 원래 주문 생성 오류를 덮어쓰지 않고 기록
             log.error(
-                    "배송 보상 처리 실패. orderItemId={}",
-                    orderItemId,
+                    "배송 보상 취소 실패. orderId={}",
+                    orderId,
                     exception
             );
         }
@@ -537,45 +531,6 @@ public class OrderCommandService {
     }
 
     /**
-     * 상품 정보 조회
-     */
-    private ProductResponse getProduct(UUID productId) {
-        if (productId == null) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_ORDER_REQUEST
-            );
-        }
-
-        try {
-            ProductResponse response =
-                    productClient.getProduct(productId);
-
-            // 필수 응답값 검증
-            if (response == null
-                    || !productId.equals(response.productId())
-                    || response.productName() == null
-                    || response.productName().isBlank()
-                    || response.unitPrice() == null
-                    || response.unitPrice() < 0
-                    || response.supplierCompanyId() == null) {
-                throw new BusinessException(
-                        ErrorCode.INVALID_PRODUCT_RESPONSE
-                );
-            }
-
-            return response;
-        } catch (FeignException.NotFound exception) {
-            throw new BusinessException(
-                    ErrorCode.PRODUCT_NOT_FOUND
-            );
-        } catch (FeignException exception) {
-            throw new BusinessException(
-                    ErrorCode.EXTERNAL_SERVICE_UNAVAILABLE
-            );
-        }
-    }
-
-    /**
      * 주문에 포함된 상품 정보를 한 번의 API 요청으로 조회합니다.
      */
     private List<ProductResponse> getProducts(
@@ -627,56 +582,6 @@ public class OrderCommandService {
         } catch (FeignException exception) {
             throw new BusinessException(
                     ErrorCode.EXTERNAL_SERVICE_UNAVAILABLE
-            );
-        }
-    }
-
-    /**
-     * 배송 생성 요청
-     */
-    private CreateDeliveryResponse createDelivery(
-            CreateDeliveryRequest request
-    ) {
-        // 필수 요청값 검증
-        if (request == null
-                || request.orderId() == null
-                || request.orderItemId() == null
-                || request.departureHubId() == null
-                || request.destinationHubId() == null
-                || request.deliveryAddress() == null
-                || request.deliveryAddress().isBlank()
-                || request.receiver() == null
-                || request.receiver().isBlank()) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_ORDER_REQUEST
-            );
-        }
-
-        try {
-            CreateDeliveryResponse response =
-                    deliveryClient.createDelivery(
-                            internalServiceProperties.name(),
-                            internalServiceProperties.key(),
-                            request
-                    );
-
-            // 배송 ID 응답 검증
-            if (response == null
-                    || response.deliveryId() == null) {
-                throw new BusinessException(
-                        ErrorCode.INVALID_DELIVERY_RESPONSE
-                );
-            }
-
-            return response;
-        } catch (FeignException.Conflict exception) {
-            // 같은 주문 상품의 배송이 이미 생성된 경우
-            throw new BusinessException(
-                    ErrorCode.DELIVERY_ALREADY_ASSIGNED
-            );
-        } catch (FeignException exception) {
-            throw new BusinessException(
-                    ErrorCode.DELIVERY_CREATION_FAILED
             );
         }
     }

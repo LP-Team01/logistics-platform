@@ -21,14 +21,6 @@ import java.util.UUID;
 public interface ProductClient {
 
     /**
-     * 상품 정보 조회
-     */
-    @GetMapping("/{productId}")
-    ProductResponse getProduct(
-            @PathVariable UUID productId
-    );
-
-    /**
      * 주문에 포함된 상품 정보를 한 번의 요청으로 조회합니다.
      */
     @PostMapping("/batch")
