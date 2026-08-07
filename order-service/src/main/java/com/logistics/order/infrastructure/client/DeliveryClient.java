@@ -5,6 +5,7 @@ import com.logistics.order.infrastructure.client.dto.CreateDeliveryResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -29,6 +30,21 @@ public interface DeliveryClient {
 
             @RequestBody
             CreateDeliveryRequest request
+    );
+
+    /**
+     * 주문 상품들의 배송을 한 번의 내부 요청으로 생성합니다.
+     */
+    @PostMapping("/batch")
+    List<CreateDeliveryResponse> createDeliveries(
+            @RequestHeader("X-Internal-Service")
+            String serviceName,
+
+            @RequestHeader("X-Internal-Service-Key")
+            String serviceKey,
+
+            @RequestBody
+            List<CreateDeliveryRequest> requests
     );
 
     /**

@@ -4,6 +4,18 @@ server:
 spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/order_db}
+    hikari:
+      # 커넥션 풀이 가득 찬 경우 최대 3초만 대기
+      connection-timeout: 3000
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            # 외부 서비스 연결은 최대 3초 대기
+            connect-timeout: 3000
+            # 외부 서비스 응답은 최대 10초 대기
+            read-timeout: 10000
 
 internal:
   service:

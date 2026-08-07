@@ -25,8 +25,13 @@ public record CreateOrderRequest(
         )
         String deliveryRequest,
 
+        // 한 주문에 너무 많은 상품이 들어와 외부 API 호출이 폭증하는 것을 방지
         @Valid
         @NotEmpty(message = "주문 상품은 최소 1개 이상이어야 합니다.")
+        @Size(
+                max = 20,
+                message = "한 주문에는 상품을 최대 20개까지 등록할 수 있습니다."
+        )
         List<CreateOrderItemRequest> items
 ) {
 }
