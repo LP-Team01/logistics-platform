@@ -2,7 +2,10 @@ package com.logistics.delivery.command.controller;
 
 import com.logistics.delivery.command.application.CompanyRouteRecordCommandService;
 import com.logistics.delivery.command.dto.command.UpdateCompanyRouteRecordCommand;
+import com.logistics.delivery.command.dto.command.UpdateCompanyRouteRecordPlanCommand;
+import com.logistics.delivery.command.dto.request.UpdateCompanyRouteRecordPlanRequestDto;
 import com.logistics.delivery.command.dto.request.UpdateCompanyRouteRecordRequestDto;
+import com.logistics.delivery.command.dto.response.UpdateCompanyRouteRecordPlanResponseDto;
 import com.logistics.delivery.command.dto.response.UpdateCompanyRouteRecordResponseDto;
 import com.logistics.delivery.global.common.UserRole;
 import jakarta.validation.Valid;
@@ -33,6 +36,21 @@ public class CompanyRouteRecordCommandController {
         UpdateCompanyRouteRecordCommand command = request.toCommand();
         UpdateCompanyRouteRecordResponseDto result = companyRouteRecordCommandService.updateStatus(deliveryId,
             recordId, command, userRole, requesterId);
+        return ResponseEntity.ok(result);
+    }
+
+    // Geocoding/Directions/방문순서 자동 계산 실패 시 수동 보정
+    @PatchMapping("/{deliveryId}/company-route-records/{recordId}/route-plan")
+    public ResponseEntity<UpdateCompanyRouteRecordPlanResponseDto> updateRoutePlan(
+        @RequestHeader("X-User-Role") UserRole userRole,
+        @RequestHeader(value = "X-Hub-Id", required = false) UUID requesterHubId,
+        @PathVariable UUID deliveryId,
+        @PathVariable UUID recordId,
+        @RequestBody UpdateCompanyRouteRecordPlanRequestDto request
+        ) {
+        UpdateCompanyRouteRecordPlanCommand command = request.toCommand();
+        UpdateCompanyRouteRecordPlanResponseDto result = companyRouteRecordCommandService.updateRoutePlan(deliveryId,
+            recordId, command, userRole, requesterHubId);
         return ResponseEntity.ok(result);
     }
 }

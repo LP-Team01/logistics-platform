@@ -14,7 +14,6 @@ import com.logistics.delivery.domain.entity.DeliveryStatus;
 import com.logistics.delivery.domain.repository.CompanyDeliveryRouteRecordRepository;
 import com.logistics.delivery.domain.repository.DeliveryRepository;
 import com.logistics.delivery.domain.repository.DeliveryRouteRecordRepository;
-import com.logistics.delivery.domain.service.DeliveryAgentAssignmentService;
 import com.logistics.delivery.global.common.DeliveryAccessGuard;
 import com.logistics.delivery.global.common.FeignExceptionTranslator;
 import com.logistics.delivery.global.common.UserRole;
@@ -41,6 +40,8 @@ public class DeliveryCommandService {
     private final CompanyDeliveryRouteRecordRepository companyDeliveryRouteRecordRepository;
     private final DeliveryAgentAssignmentService deliveryAgentAssignmentService;
     private final HubServiceClient hubServiceClient;
+    private final CompanyRouteEstimator companyRouteEstimator;
+    private final CompanyRouteSequencingService companyRouteSequencingService;
     private final InternalServiceProperties internalServiceProperties;
     private final HubInternalServiceProperties hubInternalServiceProperties;
 
@@ -86,11 +87,7 @@ public class DeliveryCommandService {
         }
 
         // 목적지 허브 → 수령 업체 구간. 업체배송담당자는 DESTINATION_ARRIVED 도달 시점에 배정(agentId는 null로 시작).
-        CompanyDeliveryRouteRecord companyRouteRecord = CompanyDeliveryRouteRecord.builder()
-            .deliveryId(saved.getId())
-            .departureHubId(command.destinationHubId())
-            .receiverCompanyId(command.receiverCompanyId())
-            .build();
+        CompanyDeliveryRouteRecord companyRouteRecord = buildCompanyRouteRecord(saved.getId(), command);
         companyDeliveryRouteRecordRepository.save(companyRouteRecord);
 
         return CreateDeliveryResponseDto.from(saved, savedRouteRecords);
@@ -178,6 +175,21 @@ public class DeliveryCommandService {
         );
     }
 
+    private CompanyDeliveryRouteRecord buildCompanyRouteRecord(UUID deliveryId, CreateDeliveryCommand command) {
+        CompanyRouteEstimator.CompanyRouteEstimate estimate =
+            companyRouteEstimator.estimate(command.destinationHubId(), command.deliveryAddress());
+
+        return CompanyDeliveryRouteRecord.builder()
+            .deliveryId(deliveryId)
+            .departureHubId(command.destinationHubId())
+            .receiverCompanyId(command.receiverCompanyId())
+            .latitude(estimate.latitude())
+            .longitude(estimate.longitude())
+            .estimatedDistance(estimate.distanceKm())
+            .estimatedDuration(estimate.durationMin())
+            .build();
+    }
+
     private DeliveryRouteRecord buildAndSaveRouteRecord(UUID deliveryId, HubServiceRouteSegmentDto segment) {
         DeliveryRouteRecord routeRecord = DeliveryRouteRecord.builder()
             .deliveryId(deliveryId)
@@ -202,6 +214,7 @@ public class DeliveryCommandService {
             .assignNext(AgentType.COMPANY_DELIVERY, delivery.getDestinationHubId());
         companyRouteRecord.assignAgent(companyAgent.getId());
         delivery.assignCompanyAgent(companyAgent.getId());
+        companyRouteSequencingService.resequence(companyAgent.getId(), delivery.getDestinationHubId());
     }
 
     private Delivery findDelivery(UUID deliveryId) {

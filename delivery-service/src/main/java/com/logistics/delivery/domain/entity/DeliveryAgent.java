@@ -11,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -42,6 +43,13 @@ public class DeliveryAgent extends BaseUpdatableEntity {
     @Column(nullable = false)
     private boolean isAvailable = Boolean.TRUE;
 
+    // 당일 전체 동선(허브→업체1→업체2→...) 총 거리(km)/시간(분) - 방문 순서 재계산 시마다 갱신
+    private Integer totalDistance;
+
+    private Integer totalDuration;
+
+    private Instant routeComputedAt;
+
     @Builder
     public DeliveryAgent(
         UUID agentId,
@@ -72,6 +80,12 @@ public class DeliveryAgent extends BaseUpdatableEntity {
         if (isAvailable != null) {
             this.isAvailable = isAvailable;
         }
+    }
+
+    public void updateRouteSummary(Integer totalDistance, Integer totalDuration, Instant computedAt) {
+        this.totalDistance = totalDistance;
+        this.totalDuration = totalDuration;
+        this.routeComputedAt = computedAt;
     }
 
     @Override

@@ -5,6 +5,7 @@ import com.logistics.delivery.global.common.UserRole;
 import com.logistics.delivery.query.application.DeliveryAgentQueryService;
 import com.logistics.delivery.query.dto.response.DeliveryAgentDetailResponseDto;
 import com.logistics.delivery.query.dto.response.DeliveryAgentResponseDto;
+import com.logistics.delivery.query.dto.response.TodayRouteResponseDto;
 import com.logistics.delivery.query.dto.request.DeliveryAgentSearchRequestDto;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -50,6 +51,19 @@ public class DeliveryAgentQueryController {
         ) {
         DeliveryAgentResponseDto result = deliveryAgentQueryService.searchDeliveryAgents(
             userRole, requesterId, requesterHubId, request, pageable);
+        return ResponseEntity.ok(result);
+    }
+
+    // "매일 아침 6시 발송" 트리거 담당 서비스가 조회할 당일 방문 계획
+    @GetMapping("/{agentId}/today-route")
+    public ResponseEntity<TodayRouteResponseDto> getTodayRoute(
+            @RequestHeader("X-User-Role") UserRole userRole,
+            @RequestHeader("X-User-Id") UUID requesterId,
+            @RequestHeader(value = "X-Hub-Id", required = false) UUID requesterHubId,
+            @PathVariable UUID agentId
+    ) {
+        TodayRouteResponseDto result = deliveryAgentQueryService.getTodayRoute(
+            userRole, requesterId, requesterHubId, agentId);
         return ResponseEntity.ok(result);
     }
 
