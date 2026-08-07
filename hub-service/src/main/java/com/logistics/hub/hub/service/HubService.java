@@ -38,9 +38,6 @@ public class HubService {
             .longitude(request.longitude())
             .build();
 
-        // todo: JWT 인증/게이트웨이 헤더 전달 방식 확정되면 실제 요청자로 교체
-        hub.assignCreatedBy("system"); // 임시값
-
         Hub savedHub = hubRepository.save(hub);
 
         return HubResponseDto.from(savedHub);
@@ -62,24 +59,20 @@ public class HubService {
 
         hub.updateInfo(request.name(),request.address(), request.latitude(), request.longitude());
 
-        // todo: JWT 인증/게이트웨이 헤더 전달 방식 확정되면 실제 요청자로 교체
-        hub.assignUpdatedBy("system"); // 임시값
-
         return HubResponseDto.from(hub);
     }
 
     @Transactional
-    @CacheEvict(value = "hubs", key = "#hubId") // 캐시 비우기
-    public HubDeleteResponseDto deleteHub(UUID hubId) {
+    @CacheEvict(value = "hubs", key = "#hubId")
+    public HubDeleteResponseDto deleteHub(UUID hubId, UUID deletedBy) {
         Hub hub = hubRepository.findByHubIdAndDeletedAtIsNull(hubId)
             .orElseThrow(()->new BusinessException(ErrorCode.HUB_NOT_FOUND));
 
-        // todo: JWT 인증/게이트웨이 헤더 전달 방식 확정되면 실제 요청자로 교체
-        hub.assignDeletedInfo("system"); // 임시값
+        hub.assignDeletedInfo(deletedBy);
 
         List<UUID> relatedRoutesIds = hubRouteService.findRelatedHubRouteIds(hubId);
         for (UUID routeId : relatedRoutesIds) {
-            hubRouteService.deleteHubRoute(routeId);
+            hubRouteService.deleteHubRoute(routeId, deletedBy);
         }
 
         return HubDeleteResponseDto.from(hub);

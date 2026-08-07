@@ -55,8 +55,6 @@ public class HubRouteService {
             .duration(request.duration())
             .build();
 
-        hubRoute.assignCreatedBy("system"); // 임시값
-
         HubRoute savedHubRoute = hubRouteRepository.save(hubRoute);
 
         return HubRouteResponseDto.from(savedHubRoute);
@@ -78,18 +76,16 @@ public class HubRouteService {
 
         hubRoute.updateInfo(request.distance(), request.duration());
 
-        hubRoute.assignUpdatedBy("system"); // 임시값
-
         return HubRouteResponseDto.from(hubRoute);
     }
 
     @Transactional
     @CacheEvict(value = "hubRoutes", key = "#hubRouteId")
-    public HubRouteDeleteResponseDto deleteHubRoute(UUID hubRouteId) {
+    public HubRouteDeleteResponseDto deleteHubRoute(UUID hubRouteId, UUID deletedBy) {
         HubRoute hubRoute = hubRouteRepository.findByHubRouteIdAndDeletedAtIsNull(hubRouteId)
             .orElseThrow(() -> new BusinessException(ErrorCode.HUB_ROUTE_NOT_FOUND));
 
-        hubRoute.assignDeletedInfo("system"); // 임시값
+        hubRoute.assignDeletedInfo(deletedBy);
 
         return HubRouteDeleteResponseDto.from(hubRoute);
     }

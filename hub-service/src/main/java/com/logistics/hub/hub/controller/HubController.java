@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -55,8 +56,11 @@ public class HubController {
     }
 
     @DeleteMapping("/{hubId}")
-    public ResponseEntity<HubDeleteResponseDto> deletedHub(@PathVariable UUID hubId) {
-        HubDeleteResponseDto response = hubService.deleteHub(hubId);
+    public ResponseEntity<HubDeleteResponseDto> deletedHub(
+        @PathVariable UUID hubId,
+        @RequestHeader(value = "X-User-Id", required = false) UUID deletedBy
+    ) {
+        HubDeleteResponseDto response = hubService.deleteHub(hubId, deletedBy);
         return ResponseEntity.ok(response);
     }
 
