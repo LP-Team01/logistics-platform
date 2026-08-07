@@ -8,4 +8,5 @@ spring:
 internal:
   service:
     name: delivery-service
-    key: ${INTERNAL_SERVICE_KEY:temp-internal-service-key} # TODO: 실제 공유 비밀값 받으면 교체
+    key: ${INTERNAL_SERVICE_KEY}
+    allowed-name: order-service
