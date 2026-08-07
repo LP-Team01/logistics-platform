@@ -4,6 +4,8 @@ import com.logistics.ai.slackmessage.entity.SlackMessage;
 import com.logistics.ai.slackmessage.entity.SlackMessageStatus;
 import com.logistics.ai.slackmessage.entity.SlackMessageType;
 import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -50,10 +52,10 @@ public record SlackMessageResponseDto(
     String errorMessage,
 
     @Schema(description = "이력 생성 시각")
-    LocalDateTime createdAt,
+    Instant createdAt,
 
     @Schema(description = "마지막 수정 시각")
-    LocalDateTime updatedAt
+    Instant updatedAt
 
 ) {
 

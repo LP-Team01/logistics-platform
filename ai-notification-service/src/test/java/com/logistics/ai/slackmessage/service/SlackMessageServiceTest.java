@@ -12,6 +12,7 @@ import com.logistics.ai.slackmessage.entity.SlackMessageStatus;
 import com.logistics.ai.slackmessage.entity.SlackMessageType;
 import com.logistics.ai.slackmessage.repository.SlackMessageRepository;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -289,7 +290,7 @@ class SlackMessageServiceTest {
         ReflectionTestUtils.setField(
             slackMessage,
             "updatedAt",
-            LocalDateTime.now().minusMinutes(10)
+            Instant.now().minusSeconds(10 * 60)
         );
 
         ReflectionTestUtils.setField(
@@ -566,7 +567,7 @@ class SlackMessageServiceTest {
         ReflectionTestUtils.setField(
             slackMessage,
             "updatedAt",
-            LocalDateTime.now().minusMinutes(1)
+            Instant.now().minusSeconds(60)
         );
 
         ReflectionTestUtils.setField(

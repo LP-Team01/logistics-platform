@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -92,9 +92,9 @@ public interface AiRequestRepository
         AiRequestStatus failedStatus,
 
         @Param("startDateTime")
-        LocalDateTime startDateTime,
+        Instant startDateTime,
 
         @Param("endDateTime")
-        LocalDateTime endDateTime
+        Instant endDateTime
     );
 }
