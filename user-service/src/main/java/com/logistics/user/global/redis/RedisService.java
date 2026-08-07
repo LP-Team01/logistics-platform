@@ -13,8 +13,8 @@ public class RedisService {
 
     private final RedisTemplate<String, String> redisTemplate;
 
-    public void setValueTtl(UUID userId, String refreshToken, int day){
-        redisTemplate.opsForValue().set(invertToKey(userId), refreshToken, Duration.ofDays(day));
+    public void setValueTtl(UUID userId, String refreshToken, Duration ttl){
+        redisTemplate.opsForValue().set(invertToKey(userId), refreshToken, ttl);
     }
 
     public String getValue(UUID userId){

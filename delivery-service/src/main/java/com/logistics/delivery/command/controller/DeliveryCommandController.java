@@ -7,6 +7,7 @@ import com.logistics.delivery.command.dto.request.CreateDeliveryRequestDto;
 import com.logistics.delivery.command.dto.request.UpdateDeliveryRequestDto;
 import com.logistics.delivery.command.dto.response.CreateDeliveryResponseDto;
 import com.logistics.delivery.command.dto.response.UpdateDeliveryResponseDto;
+import com.logistics.delivery.global.common.UserRole;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -28,27 +29,35 @@ public class DeliveryCommandController {
     private final DeliveryCommandService deliveryCommandService;
 
     @PostMapping
-    public ResponseEntity<CreateDeliveryResponseDto> create(@RequestBody @Valid CreateDeliveryRequestDto request) {
+    public ResponseEntity<CreateDeliveryResponseDto> create(
+            @RequestHeader("X-User-Role") UserRole userRole,
+            @RequestBody @Valid CreateDeliveryRequestDto request) {
         //TODO: HubService 만들어진 후 hubClient로 hub유효성 검사
         CreateDeliveryCommand command = request.toCommand();
-        CreateDeliveryResponseDto result = deliveryCommandService.create(command);
+        CreateDeliveryResponseDto result = deliveryCommandService.create(userRole, command);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
     @PatchMapping("/{deliveryId}/status")
     public ResponseEntity<UpdateDeliveryResponseDto> update(
+            @RequestHeader("X-User-Role") UserRole userRole,
+            @RequestHeader("X-User-Id") UUID requesterId,
+            @RequestHeader(value = "X-Hub-Id", required = false) UUID requesterHubId,
             @PathVariable UUID deliveryId,
             @RequestBody @Valid UpdateDeliveryRequestDto request) {
         UpdateDeliveryCommand command = request.toCommand();
-        UpdateDeliveryResponseDto result = deliveryCommandService.update(deliveryId, command);
+        UpdateDeliveryResponseDto result = deliveryCommandService.update(
+            userRole, requesterId, requesterHubId, deliveryId, command);
         return ResponseEntity.ok(result);
     }
 
     @DeleteMapping("/{deliveryId}")
     public ResponseEntity<Void> delete(
+            @RequestHeader("X-User-Role") UserRole userRole,
             @PathVariable UUID deliveryId,
-            @RequestHeader("X-User-Id") UUID requesterId) {
-        deliveryCommandService.delete(requesterId, deliveryId);
+            @RequestHeader("X-User-Id") UUID requesterId,
+            @RequestHeader(value = "X-Hub-Id", required = false) UUID requesterHubId) {
+        deliveryCommandService.delete(userRole, requesterId, requesterHubId, deliveryId);
         return ResponseEntity.noContent().build();
     }
 }

@@ -7,8 +7,16 @@ import com.logistics.delivery.command.dto.response.UpdateDeliveryAgentResponseDt
 import com.logistics.delivery.domain.entity.AgentType;
 import com.logistics.delivery.domain.entity.DeliveryAgent;
 import com.logistics.delivery.domain.repository.DeliveryAgentRepository;
+import com.logistics.delivery.global.common.DeliveryAccessGuard;
+import com.logistics.delivery.global.common.UserRole;
 import com.logistics.delivery.global.exception.BusinessException;
 import com.logistics.delivery.global.exception.ErrorCode;
+import com.logistics.delivery.infrastructure.client.UserServiceClient;
+import com.logistics.delivery.infrastructure.client.dto.UserServiceUserResponseDto;
+import feign.FeignException;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,20 +26,31 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class DeliveryAgentCommandService {
     private final DeliveryAgentRepository deliveryAgentRepository;
+    private final UserServiceClient userServiceClient;
 
     private static final int MAX_COUNT = 10;
+    private static final Set<UserRole> AGENT_MANAGE_ROLES = EnumSet.of(UserRole.MASTER, UserRole.HUB_MANAGER);
 
     @Transactional
-    public CreateDeliveryAgentResponseDto create(CreateDeliveryAgentCommand command) {
+    public CreateDeliveryAgentResponseDto create(CreateDeliveryAgentCommand command, UserRole userRole,
+                                                  UUID requesterHubId) {
         // TODO: hub-service에 허브 존재 검증 API가 생기면 HubServiceClient로 hubId 유효성 확인 후 404 처리
 
-        validateAgentCapacity(command.agentType(), command.hubId());
+        validateRole(userRole);
+        validateHubManagerScope(userRole, command.agentType(), command.hubId(), requesterHubId);
+        validateAgentUser(command.agentId());
+
+        // (agentType, hubId) 그룹을 잠근 뒤 정원 검증과 배송순번 채번을 한 트랜잭션 안에서 처리->동시 생성 요청으로 인한 정원 초과·순번 중복을 막기
+        List<DeliveryAgent> lockedAgents = deliveryAgentRepository
+            .findByAgentTypeAndHubIdAndDeletedAtIsNullOrderByDeliveryOrderAsc(command.agentType(), command.hubId());
+        validateAgentCapacity(lockedAgents);
+
         DeliveryAgent deliveryAgent = DeliveryAgent.builder()
                 .agentId(command.agentId())
                 .hubId(command.hubId())
                 .agentType(command.agentType())
                 .slackId(command.slackId())
-                .deliveryOrder(nextDeliveryOrder(command.agentType(), command.hubId()))
+                .deliveryOrder(nextDeliveryOrder(lockedAgents))
                 .build();
 
         DeliveryAgent saved = deliveryAgentRepository.save(deliveryAgent);
@@ -39,27 +58,41 @@ public class DeliveryAgentCommandService {
     }
 
     @Transactional
-    public UpdateDeliveryAgentResponseDto update(UUID agentId, UpdateDeliveryAgentCommand command) {
+    public UpdateDeliveryAgentResponseDto update(UUID agentId, UpdateDeliveryAgentCommand command, UserRole userRole,
+                                                  UUID requesterHubId) {
+        validateRole(userRole);
         // TODO: hub-service에 허브 존재 검증 API가 생기면 hubId가 바뀌는 경우에도 HubServiceClient로 유효성 확인 필요
         DeliveryAgent deliveryAgent = findDeliveryAgent(agentId);
+        validateHubManagerScope(userRole, deliveryAgent.getAgentType(), deliveryAgent.getHubId(), requesterHubId);
+        AgentType effectiveAgentType = command.agentType() != null ? command.agentType() : deliveryAgent.getAgentType();
+        UUID effectiveHubId = command.hubId() != null ? command.hubId() : deliveryAgent.getHubId();
+        validateHubManagerScope(userRole, effectiveAgentType, effectiveHubId, requesterHubId);
         deliveryAgent.update(command.hubId(), command.agentType(), command.slackId(), command.isAvailable());
         return UpdateDeliveryAgentResponseDto.from(deliveryAgent);
     }
 
     @Transactional
-    public void delete(UUID agentId, UUID requesterId) {
+    public void delete(UUID agentId, UUID requesterId, UserRole userRole, UUID requesterHubId) {
+        validateRole(userRole);
         DeliveryAgent deliveryAgent = findDeliveryAgent(agentId);
+        validateHubManagerScope(userRole, deliveryAgent.getAgentType(), deliveryAgent.getHubId(), requesterHubId);
         deliveryAgent.softDelete(requesterId);
     }
 
-    private void validateAgentCapacity(AgentType agentType, UUID hubId) {
-        int count = 0;
-        if (agentType == AgentType.HUB_DELIVERY) {
-            count = deliveryAgentRepository.countByAgentTypeAndDeletedAtIsNull(agentType);
-        } else if (agentType == AgentType.COMPANY_DELIVERY) {
-            count = deliveryAgentRepository.countByAgentTypeAndHubIdAndDeletedAtIsNull(agentType,hubId);
+    private void validateAgentUser(UUID agentId) {
+        UserServiceUserResponseDto user;
+        try {
+            user = userServiceClient.getUser(agentId);
+        } catch (FeignException.NotFound e) {
+            throw new BusinessException(ErrorCode.DELIVERY_AGENT_USER_NOT_FOUND);
         }
-        if (count >= MAX_COUNT) {
+        if (user.role() != UserRole.DELIVERY_MANAGER) {
+            throw new BusinessException(ErrorCode.DELIVERY_AGENT_INVALID_USER_ROLE);
+        }
+    }
+
+    private void validateAgentCapacity(List<DeliveryAgent> lockedAgents) {
+        if (lockedAgents.size() >= MAX_COUNT) {
             throw new BusinessException(ErrorCode.DELIVERY_AGENT_LIMIT_EXCEEDED);
         }
     }
@@ -69,10 +102,25 @@ public class DeliveryAgentCommandService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_PERSON_NOT_FOUND));
     }
 
-    private int nextDeliveryOrder(AgentType agentType, UUID hubId) {
-        return deliveryAgentRepository
-                .findFirstByAgentTypeAndHubIdAndDeletedAtIsNullOrderByDeliveryOrderDesc(agentType, hubId)
-                .map(agent -> agent.getDeliveryOrder() + 1)
-                .orElse(0);
+    private int nextDeliveryOrder(List<DeliveryAgent> lockedAgents) {
+        return lockedAgents.isEmpty()
+            ? 0
+            : lockedAgents.get(lockedAgents.size() - 1).getDeliveryOrder() + 1;
+    }
+
+    private void validateRole(UserRole userRole) {
+        DeliveryAccessGuard.requireRole(userRole, AGENT_MANAGE_ROLES, ErrorCode.DELIVERY_AGENT_FORBIDDEN);
+    }
+
+    private void validateHubManagerScope(UserRole userRole, AgentType agentType, UUID targetHubId,
+                                          UUID requesterHubId) {
+        if (userRole != UserRole.HUB_MANAGER) {
+            return;
+        }
+        // 허브 배송 담당자는 특정 허브에 속하지 않는 시스템 전체 풀이라 HUB_MANAGER 관리 범위 밖(MASTER 전용)
+        if (agentType == AgentType.HUB_DELIVERY) {
+            throw new BusinessException(ErrorCode.DELIVERY_AGENT_FORBIDDEN);
+        }
+        DeliveryAccessGuard.requireWithinHub(requesterHubId, ErrorCode.DELIVERY_AGENT_FORBIDDEN, targetHubId);
     }
 }

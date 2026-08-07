@@ -1,7 +1,12 @@
 package com.logistics.hub.hubroute.entity;
 
 import com.logistics.hub.global.entity.BaseEntity;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -38,5 +43,14 @@ public class HubRoute extends BaseEntity {
         this.arrivalHubId = arrivalHubId;
         this.distance = distance;
         this.duration = duration;
+    }
+
+    public void updateInfo(Double distance, Integer duration) {
+        if (distance != null) {
+            this.distance = distance;
+        }
+        if (duration != null) {
+            this.duration = duration;
+        }
     }
 }

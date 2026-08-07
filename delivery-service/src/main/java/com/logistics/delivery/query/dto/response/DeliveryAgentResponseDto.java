@@ -1,8 +1,7 @@
-package com.logistics.delivery.query.dto.reponse;
+package com.logistics.delivery.query.dto.response;
 
 import com.logistics.delivery.domain.entity.AgentType;
 import com.logistics.delivery.domain.entity.DeliveryAgent;
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;

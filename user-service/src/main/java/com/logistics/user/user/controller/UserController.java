@@ -7,8 +7,6 @@ import com.logistics.user.user.dto.request.UserSearchCondition;
 import com.logistics.user.user.dto.response.UserResponseDto;
 import com.logistics.user.user.dto.response.UserStatusResponse;
 import com.logistics.user.user.dto.response.UserUpdateResponseDto;
-import com.logistics.user.user.entity.UserRole;
-import com.logistics.user.user.entity.UserStatus;
 import com.logistics.user.user.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -50,15 +48,10 @@ public class UserController {
 
     @GetMapping
     public ResponseEntity<Page<UserResponseDto>> searchUsers(
-        @RequestParam(required = false) UserRole role,
-        @RequestParam(required = false) UserStatus status,
-        @RequestParam(required = false) UUID hubId,
-        @RequestParam(required = false) UUID companyId,
-        @RequestParam(required = false) String username,
+        @ModelAttribute UserSearchCondition searchCondition,
         @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ){
-        UserSearchCondition condition = new UserSearchCondition(role, status, hubId, companyId, username);
-        Page<UserResponseDto> response = userService.searchUsers(condition, pageable);
+        Page<UserResponseDto> response = userService.searchUsers(searchCondition, pageable);
         return ResponseEntity.ok(response);
     }
 
