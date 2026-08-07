@@ -6,17 +6,13 @@ import com.logistics.gateway.global.exception.BusinessException;
 import com.logistics.gateway.global.exception.ErrorCode;
 import com.logistics.gateway.util.JwtUtil;
 import io.jsonwebtoken.Claims;
-
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.core.Ordered;
 import org.springframework.http.server.PathContainer;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.ReactiveSecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.util.pattern.PathPattern;
@@ -28,11 +24,11 @@ import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
-public class JwtAuthenticationFilter implements GlobalFilter {
+public class JwtAuthenticationFilter implements GlobalFilter , Ordered {
 
     // user-service JwtUtil의 AUTHORIZATION_KEY("auth")와 반드시 일치해야 함
     private static final String ROLE_CLAIM = "auth";
-    private static final List<String> TRUSTED_HEADERS = List.of("X-User-Id", "X-Hub-Id", "X-Company-Id");
+    private static final List<String> TRUSTED_HEADERS = List.of("X-User-Id", "X-Hub-Id", "X-Company-Id","X-Role");
     private static final PathPatternParser PATTERN_PARSER = new PathPatternParser();
 
     private final JwtUtil jwtUtil;
@@ -73,9 +69,7 @@ public class JwtAuthenticationFilter implements GlobalFilter {
         // JWT 유효성 검사
         String accessToken = jwtUtil.getJwtFromHeader(exchange.getRequest());
         Claims claims = jwtUtil.parseClaim(accessToken);
-        if (claims == null) {
-            return Mono.error(new BusinessException(ErrorCode.INVALID_TOKEN));
-        }
+
 
         String userId = claims.getSubject();
         String role = claims.get(ROLE_CLAIM, String.class);
@@ -126,6 +120,11 @@ public class JwtAuthenticationFilter implements GlobalFilter {
         if (value != null) {
             builder.header(headerName, value.toString());
         }
+    }
+
+    @Override
+    public int getOrder() {
+        return -1;
     }
 
 
