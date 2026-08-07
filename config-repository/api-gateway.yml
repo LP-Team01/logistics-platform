@@ -91,6 +91,9 @@ gateway:
       - path: /api/hub-routes
         methods: [POST]
         roles: [MASTER]
+      - path: /api/hub-routes
+        methods: [GET]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
       - path: /api/hub-routes/*
         methods: [GET]
         roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
