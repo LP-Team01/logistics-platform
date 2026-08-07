@@ -12,6 +12,8 @@ public enum ErrorCode {
     DELIVERY_QUERY_FORBIDDEN(HttpStatus.FORBIDDEN, "DELIVERY_403_06", "본인이 배정된 배송만 조회할 수 있습니다."),
     DELIVERY_INTERNAL_FORBIDDEN(HttpStatus.FORBIDDEN, "DELIVERY_403_07", "내부 서비스 호출만 허용됩니다."),
     DELIVERY_HUB_NOT_FOUND(HttpStatus.NOT_FOUND, "DELIVERY_404_08", "배송 생성에 필요한 허브를 찾을 수 없습니다."),
+    DELIVERY_BATCH_REQUEST_EMPTY(HttpStatus.BAD_REQUEST, "DELIVERY_400_10", "배송 일괄 생성 요청 목록은 비어 있을 수 없습니다."),
+    DELIVERY_BATCH_REQUEST_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "DELIVERY_400_11", "배송 일괄 생성 요청은 최대 20건까지 가능합니다."),
 
     //DELIVERY_ROUTE & COMPANY_ROUTE
     INVALID_DELIVERY_ROUTE(HttpStatus.BAD_REQUEST, "DELIVERY_400", "유효하지 않은 배송 경로입니다."),

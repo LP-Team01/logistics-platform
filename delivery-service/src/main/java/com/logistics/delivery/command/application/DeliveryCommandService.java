@@ -2,6 +2,7 @@ package com.logistics.delivery.command.application;
 
 import com.logistics.delivery.command.dto.command.CreateDeliveryCommand;
 import com.logistics.delivery.command.dto.command.UpdateDeliveryCommand;
+import com.logistics.delivery.command.dto.response.BatchCreateDeliveryResponseDto;
 import com.logistics.delivery.command.dto.response.CreateDeliveryResponseDto;
 import com.logistics.delivery.command.dto.response.UpdateDeliveryResponseDto;
 import com.logistics.delivery.domain.entity.AgentType;
@@ -46,9 +47,24 @@ public class DeliveryCommandService {
     private static final Set<UserRole> DELIVERY_UPDATE_ROLES =
         EnumSet.of(UserRole.MASTER, UserRole.HUB_MANAGER, UserRole.DELIVERY_MANAGER);
     private static final Set<UserRole> DELIVERY_DELETE_ROLES = EnumSet.of(UserRole.MASTER, UserRole.HUB_MANAGER);
+    private static final int MAX_BATCH_SIZE = 20;
 
     @Transactional
     public CreateDeliveryResponseDto create(CreateDeliveryCommand command) {
+        return createOne(command);
+    }
+
+    // Order 서비스가 주문 1건의 상품별 배송을 반복 호출 없이 한 번에 생성하기 위한 API.
+    @Transactional
+    public List<BatchCreateDeliveryResponseDto> createBatch(List<CreateDeliveryCommand> commands) {
+        validateBatchSize(commands);
+        return commands.stream()
+            .map(this::createOne)
+            .map(BatchCreateDeliveryResponseDto::from)
+            .toList();
+    }
+
+    private CreateDeliveryResponseDto createOne(CreateDeliveryCommand command) {
         validateOrderItem(command.orderItemId());
         Delivery delivery = Delivery.builder()
             .orderId(command.orderId())
@@ -186,6 +202,15 @@ public class DeliveryCommandService {
         boolean exists = deliveryRepository.existsByOrderItemIdAndDeletedAtIsNull(orderItemId);
         if (exists) {
             throw new BusinessException(ErrorCode.DELIVERY_ORDER_ALREADY_EXISTS);
+        }
+    }
+
+    private void validateBatchSize(List<CreateDeliveryCommand> commands) {
+        if (commands.isEmpty()) {
+            throw new BusinessException(ErrorCode.DELIVERY_BATCH_REQUEST_EMPTY);
+        }
+        if (commands.size() > MAX_BATCH_SIZE) {
+            throw new BusinessException(ErrorCode.DELIVERY_BATCH_REQUEST_SIZE_EXCEEDED);
         }
     }
 }

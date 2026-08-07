@@ -5,11 +5,13 @@ import com.logistics.delivery.command.dto.command.CreateDeliveryCommand;
 import com.logistics.delivery.command.dto.command.UpdateDeliveryCommand;
 import com.logistics.delivery.command.dto.request.CreateDeliveryRequestDto;
 import com.logistics.delivery.command.dto.request.UpdateDeliveryRequestDto;
+import com.logistics.delivery.command.dto.response.BatchCreateDeliveryResponseDto;
 import com.logistics.delivery.command.dto.response.CreateDeliveryResponseDto;
 import com.logistics.delivery.command.dto.response.UpdateDeliveryResponseDto;
 import com.logistics.delivery.global.common.InternalServiceValidator;
 import com.logistics.delivery.global.common.UserRole;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -38,6 +40,18 @@ public class DeliveryCommandController {
         internalServiceValidator.validateOrderService(serviceName, serviceKey);
         CreateDeliveryCommand command = request.toCommand();
         CreateDeliveryResponseDto result = deliveryCommandService.create(command);
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    }
+
+    // Order 서비스가 주문 1건의 상품별 배송을 반복 호출 없이 한 번에 생성하기 위한 내부 전용 API
+    @PostMapping("/batch")
+    public ResponseEntity<List<BatchCreateDeliveryResponseDto>> createBatch(
+            @RequestHeader("X-Internal-Service") String serviceName,
+            @RequestHeader("X-Internal-Service-Key") String serviceKey,
+            @RequestBody @Valid List<CreateDeliveryRequestDto> requests) {
+        internalServiceValidator.validateOrderService(serviceName, serviceKey);
+        List<CreateDeliveryCommand> commands = requests.stream().map(CreateDeliveryRequestDto::toCommand).toList();
+        List<BatchCreateDeliveryResponseDto> result = deliveryCommandService.createBatch(commands);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
