@@ -12,6 +12,7 @@ public record CreateDeliveryRequest(
         UUID destinationHubId,
         String deliveryAddress,
         String receiver,
-        String receiverSlackId
+        String receiverSlackId,
+        UUID receiverCompanyId
 ) {
 }

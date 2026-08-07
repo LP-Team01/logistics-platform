@@ -7,6 +7,7 @@ x-app-common: &app-common
     SPRING_PROFILES_ACTIVE: local
     EUREKA_URL: http://eureka-server:8761/eureka
     CONFIG_SERVER_URL: http://config-server:8888
+    INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY}
     POSTGRES_USER: ${POSTGRES_USER:-logistics}
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-logistics}
     POSTGRES_HOST: ${POSTGRES_HOST:-postgres}

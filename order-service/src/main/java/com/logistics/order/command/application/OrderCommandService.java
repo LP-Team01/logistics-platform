@@ -117,7 +117,8 @@ public class OrderCommandService {
                         savedOrder.getReceiverHubId(),
                         receiverCompany.address(),
                         receiverUser.username(),
-                        receiverUser.slackId()
+                        receiverUser.slackId(),
+                        savedOrder.getReceiverCompanyId()
                     );
 
                 CreateDeliveryResponse deliveryResponse =
