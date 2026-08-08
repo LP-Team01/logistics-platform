@@ -11,6 +11,7 @@ import com.logistics.delivery.command.dto.response.UpdateDeliveryResponseDto;
 import com.logistics.delivery.global.common.InternalServiceValidator;
 import com.logistics.delivery.global.common.UserRole;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -48,7 +49,7 @@ public class DeliveryCommandController {
     public ResponseEntity<List<BatchCreateDeliveryResponseDto>> createBatch(
             @RequestHeader("X-Internal-Service") String serviceName,
             @RequestHeader("X-Internal-Service-Key") String serviceKey,
-            @RequestBody @Valid List<CreateDeliveryRequestDto> requests) {
+            @RequestBody @Valid List<@NotNull @Valid CreateDeliveryRequestDto> requests) {
         internalServiceValidator.validateOrderService(serviceName, serviceKey);
         List<CreateDeliveryCommand> commands = requests.stream().map(CreateDeliveryRequestDto::toCommand).toList();
         List<BatchCreateDeliveryResponseDto> result = deliveryCommandService.createBatch(commands);
