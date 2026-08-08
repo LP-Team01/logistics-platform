@@ -2,10 +2,11 @@ package com.logistics.company.product.dto;
 
 import com.logistics.company.product.domain.Product;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-public record ResponseDto (
+public record ProductResponseDto(
 
     UUID productId,
     UUID companyId,
@@ -13,11 +14,11 @@ public record ResponseDto (
     String name,
     Integer quantity,
     Integer price,
-    LocalDateTime createdAt,
+    Instant createdAt,
     String createdBy
 ){
-    public static ResponseDto from(Product product) {
-        return new ResponseDto(
+    public static ProductResponseDto from(Product product) {
+        return new ProductResponseDto(
             product.getProductId(),
             product.getCompanyId(),
             product.getHubId(),

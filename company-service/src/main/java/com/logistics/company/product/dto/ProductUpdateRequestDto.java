@@ -4,7 +4,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-public record UpdateRequestDto (
+public record ProductUpdateRequestDto(
 
     @NotBlank(message = "상품명은 필수입니다.")
     String name,

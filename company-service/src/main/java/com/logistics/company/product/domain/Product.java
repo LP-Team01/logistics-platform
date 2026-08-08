@@ -1,8 +1,10 @@
 package com.logistics.company.product.domain;
 
+import com.logistics.company.global.jpa.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
@@ -10,17 +12,16 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "p_products")
-public class Product {
+public class Product extends BaseEntity {
 
     @Id
-    @GeneratedValue(generator = "UUID")
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "product_id", updatable = false, nullable = false)
     private UUID productId;
 
@@ -39,45 +40,18 @@ public class Product {
     @Column(name = "price", nullable = false)
     private Integer price;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "created_by", nullable = false, length = 100, updatable = false)
-    private String createdBy;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
-    @Column(name = "updated_by", length = 100)
-    private String updatedBy;
-
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
-
-    @Column(name = "deleted_by", length = 100)
-    private String deletedBy;
-
     @Builder
-    public Product(UUID companyId, UUID hubId, String name, Integer quantity, Integer price, String createdBy) {
+    public Product(UUID companyId, UUID hubId, String name, Integer quantity, Integer price) {
         this.companyId = companyId;
         this.hubId = hubId;
         this.name = name;
         this.quantity = quantity;
         this.price = price;
-        this.createdBy = createdBy;
-        this.createdAt = LocalDateTime.now();
     }
 
-    public void update(String name, Integer quantity, Integer price, String updatedBy) {
+    public void update(String name, Integer quantity, Integer price) {
         this.name = name;
         this.quantity = quantity;
         this.price = price;
-        this.updatedBy = updatedBy;
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    public void delete(String deletedBy) {
-        this.deletedBy = deletedBy;
-        this.deletedAt = LocalDateTime.now();
     }
 }

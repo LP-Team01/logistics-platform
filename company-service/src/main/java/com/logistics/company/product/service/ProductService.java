@@ -3,9 +3,9 @@ package com.logistics.company.product.service;
 import com.logistics.company.global.exception.BusinessException;
 import com.logistics.company.global.exception.ErrorCode;
 import com.logistics.company.product.domain.Product;
-import com.logistics.company.product.dto.CreateRequestDto;
-import com.logistics.company.product.dto.ResponseDto;
-import com.logistics.company.product.dto.UpdateRequestDto;
+import com.logistics.company.product.dto.ProductCreateRequestDto;
+import com.logistics.company.product.dto.ProductResponseDto;
+import com.logistics.company.product.dto.ProductUpdateRequestDto;
 import com.logistics.company.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,13 +16,13 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class ProductService  {
+public class ProductService {
 
     private final ProductRepository productRepository;
     // TODO : 추후 OpenFeign을 통한 허브 및 업체 존재 유효성 검증 추가 위치
 
     @Transactional
-    public ResponseDto createProduct(CreateRequestDto request, String userId) {
+    public ProductResponseDto createProduct(ProductCreateRequestDto request, UUID userId) {
         validateHubAndCompanyExists(request.hubId(), request.companyId());
 
         Product product = Product.builder()
@@ -31,35 +31,31 @@ public class ProductService  {
             .name(request.name())
             .quantity(request.quantity())
             .price(request.price())
-            .createdBy(userId)
             .build();
 
         Product savedProduct = productRepository.save(product);
-        return ResponseDto.from(product);
+        return ProductResponseDto.from(savedProduct);
     }
 
-    public ResponseDto getProduct(UUID productId) {
+    public ProductResponseDto getProduct(UUID productId) {
         Product product = productRepository.findByProductIdAndDeletedAtIsNull(productId)
             .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
-
-        return ResponseDto.from(product);
-    }
-
-    @Transactional
-    public ResponseDto updateProduct (UUID productId, UpdateRequestDto request, String userId) {
-        Product product = productRepository.findByProductIdAndDeletedAtIsNull(productId)
-            .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
-
-        product.update(request.name(), request.quantity(), request.price(), userId);
-        return ResponseDto.from(product);
+        return ProductResponseDto.from(product);
     }
 
     @Transactional
-    public void deleteProduct(UUID productId, String userId) {
+    public ProductResponseDto updateProduct(UUID productId, ProductUpdateRequestDto request, UUID userId) {
         Product product = productRepository.findByProductIdAndDeletedAtIsNull(productId)
             .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
+        product.update(request.name(), request.quantity(), request.price());
+        return ProductResponseDto.from(product);
+    }
 
-        product.delete(userId);
+    @Transactional
+    public void deleteProduct(UUID productId, UUID userId) {
+        Product product = productRepository.findByProductIdAndDeletedAtIsNull(productId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
+        product.delete(userId.toString());
     }
 
     private void validateHubAndCompanyExists(UUID hubId, UUID companyId) {
