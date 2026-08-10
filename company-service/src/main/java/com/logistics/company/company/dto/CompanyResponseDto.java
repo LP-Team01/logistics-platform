@@ -2,6 +2,7 @@ package com.logistics.company.company.dto;
 
 import com.logistics.company.company.domain.Company;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -11,7 +12,7 @@ public record CompanyResponseDto(
     String name,
     String type,
     String address,
-    LocalDateTime createdAt,
+    Instant createdAt,
     String createdBy
 ) {
     // Entity -> DTO 변환 정적 팩토리 메서드

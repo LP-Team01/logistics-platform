@@ -30,9 +30,9 @@ public class CompanyController {
     @PostMapping
     public ResponseEntity<CompanyResponseDto> createCompany(
         @Valid @RequestBody CompanyCreateRequestDto request,
-        @RequestHeader(value = "X-User-Passport", required = false, defaultValue = "anonymousUser") String passportUserHeader
+        @RequestHeader(value = "X-User-Id") UUID userId
     ) {
-        CompanyResponseDto response = companyService.createCompany(request, passportUserHeader);
+        CompanyResponseDto response = companyService.createCompany(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -46,18 +46,18 @@ public class CompanyController {
     public ResponseEntity<CompanyResponseDto> updateCompany(
         @PathVariable("companyId") UUID companyId,
         @Valid @RequestBody CompanyUpdateRequestDto request,
-        @RequestHeader(value = "X-User-Passport", required = false, defaultValue = "anonymousUser") String passportUserHeader
+        @RequestHeader(value = "X-User-Id") UUID userId
     ) {
-        CompanyResponseDto response = companyService.updateCompany(companyId, request, passportUserHeader);
+        CompanyResponseDto response = companyService.updateCompany(companyId, request, userId);
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{companyId}")
     public ResponseEntity<Void> deleteCompany(
         @PathVariable("companyId") UUID companyId,
-        @RequestHeader(value = "X-User-Passport", required = false, defaultValue = "anonymousUser") String passportUserHeader
+        @RequestHeader(value = "X-User-Id") UUID userId
     ) {
-        companyService.deleteCompany(companyId, passportUserHeader);
+        companyService.deleteCompany(companyId, userId);
         return ResponseEntity.noContent().build();
     }
 }

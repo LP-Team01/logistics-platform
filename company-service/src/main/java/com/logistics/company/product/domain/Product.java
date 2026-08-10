@@ -1,4 +1,4 @@
-package com.logistics.company.company.domain;
+package com.logistics.company.product.domain;
 
 import com.logistics.company.global.jpa.BaseEntity;
 import jakarta.persistence.Column;
@@ -17,12 +17,15 @@ import java.util.UUID;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(name = "p_companies")
-public class Company extends BaseEntity {
+@Table(name = "p_products")
+public class Product extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "company_id", updatable = false, nullable = false)
+    @Column(name = "product_id", updatable = false, nullable = false)
+    private UUID productId;
+
+    @Column(name = "company_id", nullable = false)
     private UUID companyId;
 
     @Column(name = "hub_id", nullable = false)
@@ -31,25 +34,24 @@ public class Company extends BaseEntity {
     @Column(name = "name", nullable = false, length = 100)
     private String name;
 
-    @Column(name = "type", nullable = false, length = 50)
-    private String type;
+    @Column(name = "quantity", nullable = false)
+    private Integer quantity;
 
-    @Column(name = "address", nullable = false, length = 255)
-    private String address;
+    @Column(name = "price", nullable = false)
+    private Integer price;
 
     @Builder
-    public Company(UUID hubId, String name, String type, String address) {
+    public Product(UUID companyId, UUID hubId, String name, Integer quantity, Integer price) {
+        this.companyId = companyId;
         this.hubId = hubId;
         this.name = name;
-        this.type = type;
-        this.address = address;
+        this.quantity = quantity;
+        this.price = price;
     }
 
-    public void update(UUID hubId, String name, String type, String address) {
-        this.hubId = hubId;
+    public void update(String name, Integer quantity, Integer price) {
         this.name = name;
-        this.type = type;
-        this.address = address;
-
+        this.quantity = quantity;
+        this.price = price;
     }
 }
