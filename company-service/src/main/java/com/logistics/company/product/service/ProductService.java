@@ -1,5 +1,7 @@
 package com.logistics.company.product.service;
 
+import com.logistics.company.company.domain.Company;
+import com.logistics.company.company.repository.CompanyRepository;
 import com.logistics.company.global.exception.BusinessException;
 import com.logistics.company.global.exception.ErrorCode;
 import com.logistics.company.product.domain.Product;
@@ -19,7 +21,7 @@ import java.util.UUID;
 public class ProductService {
 
     private final ProductRepository productRepository;
-    // TODO : 추후 OpenFeign을 통한 허브 및 업체 존재 유효성 검증 추가 위치
+    private final CompanyRepository companyRepository;
 
     @Transactional
     public ProductResponseDto createProduct(ProductCreateRequestDto request, UUID userId) {
@@ -59,6 +61,13 @@ public class ProductService {
     }
 
     private void validateHubAndCompanyExists(UUID hubId, UUID companyId) {
-        // TODO : OpenFeign 통신으로 허브 및 업체 존재 여부 검증 로직 작성 예정
+        Company company = companyRepository.findByCompanyIdAndDeletedAtIsNull(companyId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        if (!company.getHubId().equals(hubId)) {
+            throw new BusinessException(ErrorCode.INVALID_HUB_MISMATCH);
+        }
+
+        // TODO : 추후 OpenFeign 통신으로 hub-service에 hubId 실제 존재 여부 확인 추가 예정
     }
 }
