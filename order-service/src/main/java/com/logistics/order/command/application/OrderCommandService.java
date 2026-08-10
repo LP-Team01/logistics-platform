@@ -15,11 +15,14 @@ import com.logistics.order.infrastructure.client.DeliveryClient;
 import com.logistics.order.infrastructure.client.ProductClient;
 import com.logistics.order.infrastructure.client.UserClient;
 import com.logistics.order.infrastructure.client.dto.*;
+import com.logistics.order.outbox.DeliveryCompensationOutboxService;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.*;
 
@@ -36,22 +39,25 @@ public class OrderCommandService {
     private final UserClient userClient;
     private final DeliveryClient deliveryClient;
     private final InternalServiceProperties internalServiceProperties;
+    private final DeliveryCompensationOutboxService compensationOutboxService;
 
     /**
      * 새로운 주문 과 배송 생성을 생성합니다.
      *
      */
     public OrderCommandResponse createOrder(
-        CreateOrderRequest request,
-        UUID userId
+            CreateOrderRequest request,
+            UUID userId
     ) {
-        // 수령업체와 주문자 조회
+        // 수령 업체 정보 조회
         CompanyResponse receiverCompany =
                 getCompany(request.receiverCompanyId());
 
+        // 배송 수령인 정보 조회
         UserResponse receiverUser =
                 getUser(userId);
 
+        // 주문 기본 정보 생성
         Order order = Order.create(
                 receiverCompany.companyId(),
                 receiverCompany.hubId(),
@@ -59,22 +65,77 @@ public class OrderCommandService {
                 userId
         );
 
-        Set<UUID> productIds = new HashSet<>();
+        // 요청에 포함된 상품 ID 목록 추출
+        List<UUID> requestedProductIds = request.items().stream()
+                .map(CreateOrderItemRequest::productId)
+                .toList();
 
-        for (CreateOrderItemRequest itemRequest : request.items()) {
-            // 상품 중복 방지
-            if (!productIds.add(itemRequest.productId())) {
+        // 동일한 상품이 주문에 중복 포함됐는지 검사
+        Set<UUID> uniqueProductIds =
+                new HashSet<>(requestedProductIds);
+
+        if (uniqueProductIds.size()
+                != requestedProductIds.size()) {
+            throw new BusinessException(
+                    ErrorCode.DUPLICATE_ORDER_PRODUCT
+            );
+        }
+
+        // 상품 서비스에 한 번만 요청하여 전체 상품 조회
+        List<ProductResponse> products =
+                getProducts(requestedProductIds);
+
+        // 반복문에서 상품 ID로 빠르게 조회할 수 있도록 Map으로 변환
+        Map<UUID, ProductResponse> productMap =
+                new HashMap<>();
+
+        for (ProductResponse product : products) {
+            /*
+             * 요청하지 않은 상품이 응답되거나
+             * 동일한 상품이 중복 응답되면 잘못된 응답으로 처리
+             */
+            if (!uniqueProductIds.contains(product.productId())
+                    || productMap.put(
+                            product.productId(),
+                            product
+                    ) != null) {
                 throw new BusinessException(
-                        ErrorCode.DUPLICATE_ORDER_PRODUCT
+                        ErrorCode.INVALID_PRODUCT_RESPONSE
+                );
+            }
+        }
+
+        // 요청한 상품 중 응답에서 누락된 상품이 있는지 검사
+        if (productMap.size() != requestedProductIds.size()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PRODUCT_RESPONSE
+            );
+        }
+
+        // 같은 공급업체를 반복 조회하지 않기 위한 요청 범위 캐시
+        Map<UUID, CompanyResponse> supplierCompanyCache =
+                new HashMap<>();
+
+        // 조회한 상품 정보를 이용하여 주문 상품 생성
+        for (CreateOrderItemRequest itemRequest : request.items()) {
+            // 일괄 조회 결과에서 현재 주문 상품 조회
+            ProductResponse product =
+                    productMap.get(itemRequest.productId());
+
+            if (product == null) {
+                throw new BusinessException(
+                        ErrorCode.PRODUCT_NOT_FOUND
                 );
             }
 
-            ProductResponse product =
-                    getProduct(itemRequest.productId());
-
+            // 같은 공급업체는 최초 한 번만 조회하고 이후에는 캐시 사용
             CompanyResponse supplierCompany =
-                    getCompany(product.supplierCompanyId());
+                    supplierCompanyCache.computeIfAbsent(
+                            product.supplierCompanyId(),
+                            this::getCompany
+                    );
 
+            // 주문 당시의 상품명과 단가를 주문 상품에 저장
             OrderItem orderItem = OrderItem.create(
                     product.productId(),
                     product.productName(),
@@ -89,53 +150,94 @@ public class OrderCommandService {
             order.addItem(orderItem);
         }
 
-        // 배송 요청에 사용할 주문·상품 UUID 생성
+        // 주문 및 주문 상품을 저장하고 UUID를 확정
         Order savedOrder =
                 orderRepository.saveAndFlush(order);
 
-        // 배송 생성이 요청된 상품 ID 기록
-        List<UUID> requestedOrderItemIds =
+        // 배송 생성 요청 목록
+        List<CreateDeliveryRequest> deliveryRequests =
                 new ArrayList<>();
 
-        // 주문 상품별 배송 생성
-        try {
-            for (OrderItem orderItem : savedOrder.getOrderItems()) {
-                /*
-                 * 응답을 받기 전에 통신이 끊길 수도 있으므로
-                 * 배송 요청 전에 상품 ID를 기록합니다.
-                 */
-                requestedOrderItemIds.add(
+        // 배송 응답 검증과 실패 보상에 사용할 주문 상품 ID
+        Set<UUID> requestedOrderItemIds =
+                new HashSet<>();
+
+        // 주문 상품별 배송 요청 정보 생성
+        for (OrderItem orderItem : savedOrder.getOrderItems()) {
+            requestedOrderItemIds.add(
                     orderItem.getOrderItemId()
-                );
-                CreateDeliveryRequest deliveryRequest =
+            );
+
+            deliveryRequests.add(
                     new CreateDeliveryRequest(
-                        savedOrder.getOrderId(),
-                        orderItem.getOrderItemId(),
-                        orderItem.getSupplierHubId(),
-                        savedOrder.getReceiverHubId(),
-                        receiverCompany.address(),
-                        receiverUser.username(),
-                        receiverUser.slackId(),
-                        savedOrder.getReceiverCompanyId()
+                            savedOrder.getOrderId(),
+                            orderItem.getOrderItemId(),
+                            orderItem.getSupplierHubId(),
+                            savedOrder.getReceiverHubId(),
+                            receiverCompany.address(),
+                            receiverUser.username(),
+                            receiverUser.slackId(),
+                            savedOrder.getReceiverCompanyId()
+                    )
+            );
+        }
+
+        try {
+            // 모든 주문 상품의 배송을 한 번의 API 요청으로 생성
+            List<CreateDeliveryResponse> deliveryResponses =
+                    createDeliveries(deliveryRequests);
+
+            // 메서드 반환 후 주문 커밋이 실패해도 배송 보상이 누락되지 않도록 등록
+            registerRollbackCompensation(savedOrder.getOrderId());
+
+            // 주문 상품 ID로 배송 응답을 찾기 위한 Map
+            Map<UUID, CreateDeliveryResponse> deliveryResponseMap =
+                    new HashMap<>();
+
+            for (CreateDeliveryResponse response : deliveryResponses) {
+                /*
+                 * 요청하지 않은 주문 상품이 응답되거나
+                 * 동일한 주문 상품 응답이 중복되면 잘못된 응답으로 처리
+                 */
+                if (!requestedOrderItemIds.contains(
+                            response.orderItemId()
+                        )
+                        || deliveryResponseMap.put(
+                            response.orderItemId(),
+                            response
+                        ) != null) {
+                    throw new BusinessException(
+                            ErrorCode.INVALID_DELIVERY_RESPONSE
                     );
+                }
+            }
 
+            // 각 주문 상품에 생성된 배송 ID 연결
+            for (OrderItem orderItem : savedOrder.getOrderItems()) {
                 CreateDeliveryResponse deliveryResponse =
-                    createDelivery(deliveryRequest);
+                        deliveryResponseMap.get(
+                                orderItem.getOrderItemId()
+                        );
 
-                // 반환받은 배송 ID 연결
+                if (deliveryResponse == null) {
+                    throw new BusinessException(
+                            ErrorCode.INVALID_DELIVERY_RESPONSE
+                    );
+                }
+
                 orderItem.assignDelivery(
-                    deliveryResponse.deliveryId()
+                        deliveryResponse.deliveryId()
                 );
             }
 
-            // 모든 배송 연결 확인 후 주문 확정
+            // 모든 배송이 정상적으로 연결되면 주문 확정
             savedOrder.completeDeliveryCreation();
+
         } catch (RuntimeException exception) {
-            // 생성됐을 가능성이 있는 배송 모두 취소
-            requestedOrderItemIds.forEach(
-                    this::compensateDelivery
-            );
-            // 주문 DB 트랜잭션 롤백
+            // 일괄 배송 생성 실패 시 주문 단위로 한 번만 보상 취소
+            compensateDeliveries(savedOrder.getOrderId());
+
+            // 예외를 다시 전달하여 주문 DB 트랜잭션 롤백
             throw exception;
         }
 
@@ -180,45 +282,6 @@ public class OrderCommandService {
     }
 
     /**
-     * 상품 정보 조회
-     */
-    private ProductResponse getProduct(UUID productId) {
-        if (productId == null) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_ORDER_REQUEST
-            );
-        }
-
-        try {
-            ProductResponse response =
-                    productClient.getProduct(productId);
-
-            // 필수 응답값 검증
-            if (response == null
-                    || !productId.equals(response.productId())
-                    || response.productName() == null
-                    || response.productName().isBlank()
-                    || response.unitPrice() == null
-                    || response.unitPrice() < 0
-                    || response.supplierCompanyId() == null) {
-                throw new BusinessException(
-                        ErrorCode.INVALID_PRODUCT_RESPONSE
-                );
-            }
-
-            return response;
-        } catch (FeignException.NotFound exception) {
-            throw new BusinessException(
-                    ErrorCode.PRODUCT_NOT_FOUND
-            );
-        } catch (FeignException exception) {
-            throw new BusinessException(
-                    ErrorCode.EXTERNAL_SERVICE_UNAVAILABLE
-            );
-        }
-    }
-
-    /**
      * 주문 상품 전체 취소
      */
     public OrderCommandResponse cancelOrder(
@@ -247,14 +310,8 @@ public class OrderCommandService {
         // 외부 배송 API 호출 전에 전체 취소 가능 여부 검사
         order.validateCancellation();
 
-        // 취소 대상 상품의 배송부터 취소
-        order.getOrderItems().stream()
-                .filter(item -> !item.isDeleted())
-                .filter(item ->
-                        item.getStatus()
-                                != OrderItemStatus.CANCELLED
-                )
-                .forEach(this::cancelDelivery);
+        // 주문에 포함된 배송을 한 번에 취소
+        cancelDeliveriesByOrderId(orderId);
 
         // 배송 취소 성공 후 주문과 상품 상태 변경
         order.cancel(
@@ -378,71 +435,56 @@ public class OrderCommandService {
     }
 
     /**
-     * 배송 생성 요청
+     * 주문 생성 실패 시 해당 주문의 배송을 한 번에 보상 취소합니다.
      */
-    private CreateDeliveryResponse createDelivery(
-            CreateDeliveryRequest request
-    ) {
-        // 필수 요청값 검증
-        if (request == null
-                || request.orderId() == null
-                || request.orderItemId() == null
-                || request.departureHubId() == null
-                || request.destinationHubId() == null
-                || request.deliveryAddress() == null
-                || request.deliveryAddress().isBlank()
-                || request.receiver() == null
-                || request.receiver().isBlank()) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_ORDER_REQUEST
-            );
-        }
-
+    private void compensateDeliveries(UUID orderId) {
         try {
-            CreateDeliveryResponse response =
-                    deliveryClient.createDelivery(
-                            internalServiceProperties.name(),
-                            internalServiceProperties.key(),
-                            request
-                    );
-
-            // 배송 ID 응답 검증
-            if (response == null
-                    || response.deliveryId() == null) {
-                throw new BusinessException(
-                        ErrorCode.INVALID_DELIVERY_RESPONSE
-                );
-            }
-
-            return response;
-        } catch (FeignException.Conflict exception) {
-            // 같은 주문 상품의 배송이 이미 생성된 경우
-            throw new BusinessException(
-                    ErrorCode.DELIVERY_ALREADY_ASSIGNED
+            deliveryClient.cancelDeliveriesByOrderId(
+                    internalServiceProperties.name(),
+                    internalServiceProperties.key(),
+                    orderId
             );
         } catch (FeignException exception) {
-            throw new BusinessException(
-                    ErrorCode.DELIVERY_CREATION_FAILED
+            compensationOutboxService.save(orderId);
+            log.error(
+                    "배송 보상 취소 실패. orderId={}",
+                    orderId,
+                    exception
             );
         }
     }
 
+    /** 주문 트랜잭션이 커밋되지 않으면 별도 트랜잭션으로 보상 Outbox를 저장합니다. */
+    private void registerRollbackCompensation(UUID orderId) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCompletion(int status) {
+                        if (status != STATUS_COMMITTED) {
+                            compensationOutboxService.save(orderId);
+                        }
+                    }
+                }
+        );
+    }
+
     /**
-     * 생성된 배송 보상 취소
+     * 주문 전체 삭제
      */
-    private void compensateDelivery(UUID orderItemId) {
+    private void cancelDeliveriesByOrderId(UUID orderId) {
         try {
-            deliveryClient.cancelDeliveryByOrderItemId(
+            deliveryClient.cancelDeliveriesByOrderId(
                     internalServiceProperties.name(),
                     internalServiceProperties.key(),
-                    orderItemId
+                    orderId
             );
         } catch (FeignException exception) {
-            // 원래 주문 생성 오류를 덮어쓰지 않고 기록
-            log.error(
-                    "배송 보상 처리 실패. orderItemId={}",
-                    orderItemId,
-                    exception
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_CANCELLATION_FAILED
             );
         }
     }
@@ -523,6 +565,119 @@ public class OrderCommandService {
 
         // 상품 완료 및 주문 완료 상태 반영
         order.completeItem(orderItemId);
+    }
+
+    /**
+     * 주문에 포함된 상품 정보를 한 번의 API 요청으로 조회합니다.
+     */
+    private List<ProductResponse> getProducts(
+            List<UUID> productIds
+    ) {
+        if (productIds == null
+                || productIds.isEmpty()
+                || productIds.stream().anyMatch(Objects::isNull)) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_ORDER_REQUEST
+            );
+        }
+
+        try {
+            List<ProductResponse> responses =
+                    productClient.getProducts(productIds);
+
+            // 응답이 없거나 요청한 상품 수와 다르면 잘못된 응답으로 처리
+            if (responses == null
+                    || responses.size() != productIds.size()) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_PRODUCT_RESPONSE
+                );
+            }
+
+            // 상품별 필수 응답값 검증
+            boolean invalidResponse = responses.stream()
+                    .anyMatch(product ->
+                            product == null
+                                    || product.productId() == null
+                                    || product.productName() == null
+                                    || product.productName().isBlank()
+                                    || product.unitPrice() == null
+                                    || product.unitPrice() < 0
+                                    || product.supplierCompanyId() == null
+                    );
+
+            if (invalidResponse) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_PRODUCT_RESPONSE
+                );
+            }
+
+            return responses;
+        } catch (FeignException.NotFound exception) {
+            throw new BusinessException(
+                    ErrorCode.PRODUCT_NOT_FOUND
+            );
+        } catch (FeignException exception) {
+            throw new BusinessException(
+                    ErrorCode.EXTERNAL_SERVICE_UNAVAILABLE
+            );
+        }
+    }
+
+    /**
+     * 주문 상품들의 배송을 한 번의 내부 API 요청으로 생성합니다.
+     */
+    private List<CreateDeliveryResponse> createDeliveries(
+            List<CreateDeliveryRequest> requests
+    ) {
+        if (requests == null || requests.isEmpty()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_ORDER_REQUEST
+            );
+        }
+
+        try {
+            List<CreateDeliveryResponse> responses =
+                    deliveryClient.createDeliveries(
+                            internalServiceProperties.name(),
+                            internalServiceProperties.key(),
+                            requests
+                    );
+
+            // 응답이 없거나 요청한 배송 수와 다르면 잘못된 응답으로 처리
+            if (responses == null
+                    || responses.size() != requests.size()) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_DELIVERY_RESPONSE
+                );
+            }
+
+            // 배송 ID와 주문 상품 ID가 모두 반환됐는지 검사
+            boolean invalidResponse = responses.stream()
+                    .anyMatch(response ->
+                            response == null
+                                    || response.deliveryId() == null
+                                    || response.orderItemId() == null
+                    );
+
+            if (invalidResponse) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_DELIVERY_RESPONSE
+                );
+            }
+
+            return responses;
+
+        } catch (FeignException.Conflict exception) {
+            // 주문 상품 중 하나라도 이미 배송이 생성된 경우
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_ALREADY_ASSIGNED
+            );
+
+        } catch (FeignException exception) {
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_CREATION_FAILED
+            );
+        }
     }
 
 }

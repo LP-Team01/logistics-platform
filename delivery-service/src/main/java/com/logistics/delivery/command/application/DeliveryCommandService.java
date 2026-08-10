@@ -12,6 +12,7 @@ import com.logistics.delivery.domain.entity.DeliveryAgent;
 import com.logistics.delivery.domain.entity.DeliveryRouteRecord;
 import com.logistics.delivery.domain.entity.DeliveryStatus;
 import com.logistics.delivery.domain.repository.CompanyDeliveryRouteRecordRepository;
+import com.logistics.delivery.domain.repository.DeliveryOrderCoordinationRepository;
 import com.logistics.delivery.domain.repository.DeliveryRepository;
 import com.logistics.delivery.domain.repository.DeliveryRouteRecordRepository;
 import com.logistics.delivery.domain.service.DeliveryAgentAssignmentService;
@@ -37,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class DeliveryCommandService {
     private final DeliveryRepository deliveryRepository;
+    private final DeliveryOrderCoordinationRepository deliveryOrderCoordinationRepository;
     private final DeliveryRouteRecordRepository deliveryRouteRecordRepository;
     private final CompanyDeliveryRouteRecordRepository companyDeliveryRouteRecordRepository;
     private final DeliveryAgentAssignmentService deliveryAgentAssignmentService;
@@ -65,6 +67,7 @@ public class DeliveryCommandService {
     }
 
     private CreateDeliveryResponseDto createOne(CreateDeliveryCommand command) {
+        validateOrderNotCancelled(command.orderId());
         validateOrderItem(command.orderItemId());
         Delivery delivery = Delivery.builder()
             .orderId(command.orderId())
@@ -139,17 +142,22 @@ public class DeliveryCommandService {
     // Order 서비스의 주문 생성 실패 보상 처리 전용
     @Transactional
     public void cancelByOrderId(UUID orderId) {
+        deliveryOrderCoordinationRepository.ensureExists(orderId);
+        deliveryOrderCoordinationRepository.findByOrderIdForUpdate(orderId)
+            .orElseThrow(() -> new IllegalStateException("배송 주문 조정 정보가 없습니다."))
+            .cancel();
+
         List<Delivery> deliveries = deliveryRepository.findByOrderIdAndDeletedAtIsNull(orderId);
         deliveries.forEach(this::cancelDelivery);
     }
 
     private void cancelDelivery(Delivery delivery) {
         delivery.softDelete(null);
-
-        deliveryRouteRecordRepository.findByDeliveryIdAndDeletedAtIsNullOrderBySequenceAsc(delivery.getId())
+        deliveryRouteRecordRepository
+            .findByDeliveryIdAndDeletedAtIsNullOrderBySequenceAsc(delivery.getId())
             .forEach(routeRecord -> routeRecord.softDelete(null));
-
-        companyDeliveryRouteRecordRepository.findByDeliveryIdAndDeletedAtIsNull(delivery.getId())
+        companyDeliveryRouteRecordRepository
+            .findByDeliveryIdAndDeletedAtIsNull(delivery.getId())
             .ifPresent(companyRouteRecord -> companyRouteRecord.softDelete(null));
     }
 
@@ -213,6 +221,19 @@ public class DeliveryCommandService {
         boolean exists = deliveryRepository.existsByOrderItemIdAndDeletedAtIsNull(orderItemId);
         if (exists) {
             throw new BusinessException(ErrorCode.DELIVERY_ORDER_ALREADY_EXISTS);
+        }
+    }
+
+    /** 취소가 먼저 접수된 주문은 이후 도착한 배송 생성 요청을 거부합니다. */
+    private void validateOrderNotCancelled(UUID orderId) {
+        deliveryOrderCoordinationRepository.ensureExists(orderId);
+        boolean cancelled = deliveryOrderCoordinationRepository
+            .findByOrderIdForUpdate(orderId)
+            .orElseThrow(() -> new IllegalStateException("배송 주문 조정 정보가 없습니다."))
+            .isCancelled();
+
+        if (cancelled) {
+            throw new BusinessException(ErrorCode.DELIVERY_ORDER_CANCELLED);
         }
     }
 

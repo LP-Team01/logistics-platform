@@ -5,6 +5,7 @@ import com.logistics.order.infrastructure.client.dto.CreateDeliveryResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -17,10 +18,10 @@ import java.util.UUID;
 public interface DeliveryClient {
 
     /**
-     * 주문 상품 배송 생성
+     * 주문 상품들의 배송을 한 번의 내부 요청으로 생성합니다.
      */
-    @PostMapping
-    CreateDeliveryResponse createDelivery(
+    @PostMapping("/batch")
+    List<CreateDeliveryResponse> createDeliveries(
             @RequestHeader("X-Internal-Service")
             String serviceName,
 
@@ -28,7 +29,7 @@ public interface DeliveryClient {
             String serviceKey,
 
             @RequestBody
-            CreateDeliveryRequest request
+            List<CreateDeliveryRequest> requests
     );
 
     /**
@@ -44,4 +45,19 @@ public interface DeliveryClient {
 
             @PathVariable UUID orderItemId
     );
+
+    /**
+     * 주문에 생성된 모든 배송을 한 번에 취소합니다.
+     */
+    @DeleteMapping("/orders/{orderId}")
+    void cancelDeliveriesByOrderId(
+            @RequestHeader("X-Internal-Service")
+            String serviceName,
+
+            @RequestHeader("X-Internal-Service-Key")
+            String serviceKey,
+
+            @PathVariable UUID orderId
+    );
+
 }

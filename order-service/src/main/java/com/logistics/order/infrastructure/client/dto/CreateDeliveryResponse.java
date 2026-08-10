@@ -7,6 +7,7 @@ import java.util.UUID;
  */
 public record CreateDeliveryResponse(
         UUID deliveryId,
+        UUID orderItemId,
         String status
 ) {
 }
