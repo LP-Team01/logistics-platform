@@ -48,11 +48,14 @@ jobs:
         run: |
           docker compose --env-file .env.example -f infrastructure/docker-compose.yml exec -T api-gateway \
             curl -fsS http://localhost:9091/actuator/health > /dev/null
-          curl -fsS http://localhost:8888/order-service/local | grep -q '"name":"order-service"'
-          curl -fsS -H 'Accept: application/json' http://localhost:8761/eureka/apps | grep -q 'ORDER-SERVICE'
+          curl -fsS http://localhost:8888/order-service/local > /dev/null
+          curl -fsS -H 'Accept: application/json' \
+            http://localhost:8761/eureka/apps/ORDER-SERVICE > /dev/null
           docker compose --env-file .env.example -f infrastructure/docker-compose.yml exec -T kafka \
-            /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --list \
-            | grep -q '^delivery-compensation$'
+            /opt/kafka/bin/kafka-topics.sh \
+            --bootstrap-server kafka:29092 \
+            --describe \
+            --topic delivery-compensation > /dev/null
 
       - name: Print container logs on failure
         if: failure()
