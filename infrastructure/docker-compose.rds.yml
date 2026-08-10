@@ -1,6 +1,6 @@
 # RDS overlay: excludes the local PostgreSQL container and makes its dependency optional.
 # Usage:
-# docker compose --env-file .env \
+# docker compose --env-file .env.prod \
 #   -f infrastructure/docker-compose.yml \
 #   -f infrastructure/docker-compose.rds.yml up --build -d
 

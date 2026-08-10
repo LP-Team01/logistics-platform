@@ -36,7 +36,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,gateway
+        include: health,info,prometheus,gateway
 
 jwt:
   secret: ${JWT_SECRET}
@@ -51,6 +51,7 @@ gateway:
       - /api/users/signup
       - /actuator/health
       - /actuator/info
+      - /actuator/prometheus
 
     # 경로별 필요 role 매핑. 위에서부터 순서대로 첫 매치 규칙을 적용하니
     # 더 구체적인 경로를 먼저, 넓은 경로(**)를 나중에 적는다.
