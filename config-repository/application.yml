@@ -49,3 +49,10 @@ eureka:
 logging:
   pattern:
     correlation: '[%X{requestId:-}] '
+
+# Gateway와 각 서비스의 API 문서 활성화 여부를 동일하게 제어합니다.
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:true}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:true}

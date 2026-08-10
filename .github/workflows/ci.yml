@@ -36,6 +36,7 @@ jobs:
         run: |
           docker compose --env-file .env.example -f infrastructure/docker-compose.yml config --quiet
           docker compose --env-file .env.example -f infrastructure/docker-compose.yml -f infrastructure/docker-compose.rds.yml config --quiet
+          docker compose --env-file .env.prod.example -f infrastructure/docker-compose.yml -f infrastructure/docker-compose.prod.yml config --quiet
           docker compose --profile monitoring --env-file .env.example -f infrastructure/docker-compose.yml config --quiet
 
       - name: Build Docker images
