@@ -37,3 +37,184 @@ management:
     web:
       exposure:
         include: health,info,gateway
+
+jwt:
+  secret: ${JWT_SECRET}
+
+gateway:
+  security:
+    # JWT 검증 자체를 건너뛰는 경로 (로그인 전이거나, Access Token이 아니라
+    permit-all:
+      - /api/auth/login
+      - /api/auth/re-issue
+      - /api/auth/logout
+      - /api/users/signup
+      - /actuator/health
+      - /actuator/info
+
+    # 경로별 필요 role 매핑. 위에서부터 순서대로 첫 매치 규칙을 적용하니
+    # 더 구체적인 경로를 먼저, 넓은 경로(**)를 나중에 적는다.
+    # 아무 규칙에도 안 걸리면 기본은 "거부"로 처리할 예정 (신규 API 추가 시 규칙 누락 방지).
+    # 팀원별로 담당 서비스 섹션에 규칙 추가해주세요.
+
+    rules:
+      # --- user-service ---
+      - path: /api/users/*/approved
+        methods: [PATCH]
+        roles: [MASTER]
+      - path: /api/users/*/rejected
+        methods: [PATCH]
+        roles: [MASTER]
+      - path: /api/users/me
+        methods: [GET]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
+      - path: /api/users/*
+        methods: [PATCH, DELETE]
+        roles: [MASTER]
+      - path: /api/users
+        methods: [GET, POST]
+        roles: [MASTER]
+
+      # --- hub-service ---
+      - path: /api/hubs
+        methods: [POST]
+        roles: [MASTER]
+      - path: /api/hubs
+        methods: [GET]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
+      - path: /api/hubs/*
+        methods: [GET]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
+      - path: /api/hubs/*
+        methods: [PATCH, DELETE]
+        roles: [MASTER]
+      - path: /api/hub-routes
+        methods: [POST]
+        roles: [MASTER]
+      - path: /api/hub-routes
+        methods: [GET]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
+      - path: /api/hub-routes/*
+        methods: [GET]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
+      - path: /api/hub-routes/*
+        methods: [PATCH, DELETE]
+        roles: [MASTER]
+
+      # --- company-service ---
+      - path: /api/companies/*
+        methods: [GET]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER]
+      - path: /api/companies/*
+        methods: [DELETE]
+        roles: [MASTER, HUB_MANAGER]
+      - path: /api/products
+        methods: [GET, POST]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER]
+      - path: /api/products/*
+        methods: [GET]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
+      - path: /api/products/*
+        methods: [PUT, DELETE]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER]
+
+      # --- order-service ---
+      - path: /api/orders
+        methods: [POST]
+        roles: [COMPANY_MANAGER]
+      - path: /api/orders
+        methods: [GET]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
+      - path: /api/orders/*/cancel
+        methods: [PATCH]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER]
+      - path: /api/orders/*/items/*/cancel
+        methods: [PATCH]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER]
+      - path: /api/orders/*/items/*
+        methods: [PUT]
+        roles: [MASTER, HUB_MANAGER]
+      - path: /api/orders/*/item/*/status
+        methods: [PATCH]
+        roles: [MASTER, HUB_MANAGER]
+      - path: /api/orders/*
+        methods: [GET]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER]
+      - path: /api/orders/*
+        methods: [PUT]
+        roles: [MASTER, HUB_MANAGER]
+      - path: /api/orders/*
+        methods: [DELETE]
+        roles: [MASTER]
+
+      # --- delivery-service ---
+      # /next처럼 더 구체적인 경로는 반드시 /* 같은 넓은 패턴보다 앞에 와야 함
+      # (안 그러면 내부 전용 엔드포인트가 넓은 규칙에 걸려서 실수로 열릴 수 있음)
+      - path: /api/delivery-agents/next
+        methods: [GET]
+        roles: []
+      - path: /api/delivery-agents
+        methods: [POST]
+        roles: [MASTER, HUB_MANAGER]
+      - path: /api/delivery-agents
+        methods: [GET]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
+      - path: /api/delivery-agents/*
+        methods: [GET]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
+      - path: /api/delivery-agents/*
+        methods: [PATCH, DELETE]
+        roles: [MASTER, HUB_MANAGER]
+      - path: /api/deliveries/*/route-records/*/status
+        methods: [PATCH]
+        roles: [MASTER, HUB_MANAGER, DELIVERY_MANAGER]
+      - path: /api/deliveries/*/route-records/*
+        methods: [GET]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
+      - path: /api/deliveries/*/route-records
+        methods: [GET]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
+      - path: /api/deliveries/*/company-route-records/*/status
+        methods: [PATCH]
+        roles: [MASTER, DELIVERY_MANAGER]
+      - path: /api/deliveries/*/company-route-records
+        methods: [GET]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
+      - path: /api/deliveries/*/status
+        methods: [PATCH]
+        roles: [MASTER, HUB_MANAGER, DELIVERY_MANAGER]
+      - path: /api/deliveries/*
+        methods: [GET]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
+      - path: /api/deliveries
+        methods: [GET]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
+
+      # --- ai-notification-service ---
+      - path: /api/ai-requests/statistics
+        methods: [GET]
+        roles: [MASTER]
+      - path: /api/ai-requests/*/retry
+        methods: [POST]
+        roles: [MASTER]
+      - path: /api/ai-requests/*
+        methods: [GET, DELETE]
+        roles: [MASTER]
+      - path: /api/ai-requests
+        methods: [GET]
+        roles: [MASTER]
+      - path: /api/slack-messages/retry
+        methods: [POST]
+        roles: [MASTER]
+      - path: /api/slack-messages/*/retry
+        methods: [POST]
+        roles: [MASTER]
+      - path: /api/slack-messages/*
+        methods: [GET, PATCH, DELETE]
+        roles: [MASTER]
+      - path: /api/slack-messages
+        methods: [GET]
+        roles: [MASTER, DELIVERY_MANAGER]
+      - path: /api/slack-messages
+        methods: [POST]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]

@@ -2,6 +2,7 @@ package com.logistics.delivery.command.application;
 
 import com.logistics.delivery.command.dto.command.CreateDeliveryCommand;
 import com.logistics.delivery.command.dto.command.UpdateDeliveryCommand;
+import com.logistics.delivery.command.dto.response.BatchCreateDeliveryResponseDto;
 import com.logistics.delivery.command.dto.response.CreateDeliveryResponseDto;
 import com.logistics.delivery.command.dto.response.UpdateDeliveryResponseDto;
 import com.logistics.delivery.domain.entity.AgentType;
@@ -15,9 +16,15 @@ import com.logistics.delivery.domain.repository.DeliveryRepository;
 import com.logistics.delivery.domain.repository.DeliveryRouteRecordRepository;
 import com.logistics.delivery.domain.service.DeliveryAgentAssignmentService;
 import com.logistics.delivery.global.common.DeliveryAccessGuard;
+import com.logistics.delivery.global.common.FeignExceptionTranslator;
 import com.logistics.delivery.global.common.UserRole;
+import com.logistics.delivery.global.config.HubInternalServiceProperties;
+import com.logistics.delivery.global.config.InternalServiceProperties;
 import com.logistics.delivery.global.exception.BusinessException;
 import com.logistics.delivery.global.exception.ErrorCode;
+import com.logistics.delivery.infrastructure.client.HubServiceClient;
+import com.logistics.delivery.infrastructure.client.dto.HubServiceRouteSegmentDto;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -33,15 +40,31 @@ public class DeliveryCommandService {
     private final DeliveryRouteRecordRepository deliveryRouteRecordRepository;
     private final CompanyDeliveryRouteRecordRepository companyDeliveryRouteRecordRepository;
     private final DeliveryAgentAssignmentService deliveryAgentAssignmentService;
+    private final HubServiceClient hubServiceClient;
+    private final InternalServiceProperties internalServiceProperties;
+    private final HubInternalServiceProperties hubInternalServiceProperties;
 
-    private static final Set<UserRole> DELIVERY_CREATE_ROLES = EnumSet.of(UserRole.MASTER);
     private static final Set<UserRole> DELIVERY_UPDATE_ROLES =
         EnumSet.of(UserRole.MASTER, UserRole.HUB_MANAGER, UserRole.DELIVERY_MANAGER);
     private static final Set<UserRole> DELIVERY_DELETE_ROLES = EnumSet.of(UserRole.MASTER, UserRole.HUB_MANAGER);
+    private static final int MAX_BATCH_SIZE = 20;
 
     @Transactional
-    public CreateDeliveryResponseDto create(UserRole userRole, CreateDeliveryCommand command) {
-        DeliveryAccessGuard.requireRole(userRole, DELIVERY_CREATE_ROLES, ErrorCode.DELIVERY_FORBIDDEN);
+    public CreateDeliveryResponseDto create(CreateDeliveryCommand command) {
+        return createOne(command);
+    }
+
+    // Order 서비스가 주문 1건의 상품별 배송을 반복 호출 없이 한 번에 생성하기 위한 API.
+    @Transactional
+    public List<BatchCreateDeliveryResponseDto> createBatch(List<CreateDeliveryCommand> commands) {
+        validateBatchSize(commands);
+        return commands.stream()
+            .map(this::createOne)
+            .map(BatchCreateDeliveryResponseDto::from)
+            .toList();
+    }
+
+    private CreateDeliveryResponseDto createOne(CreateDeliveryCommand command) {
         validateOrderItem(command.orderItemId());
         Delivery delivery = Delivery.builder()
             .orderId(command.orderId())
@@ -55,20 +78,12 @@ public class DeliveryCommandService {
 
         Delivery saved = deliveryRepository.save(delivery);
 
-        // TODO: Hub 연동(거리/소요시간 조회, 허브 간 다구간 분할) 붙기 전까지의 임시 구현.->예측 거리와 시간은 not null->0으로 임시설정
-        DeliveryRouteRecord routeRecord = DeliveryRouteRecord.builder()
-            .deliveryId(saved.getId())
-            .sequence(1)
-            .departureHubId(command.departureHubId())
-            .arrivalHubId(command.destinationHubId())
-            .estimatedDistance(0)
-            .estimatedDuration(0)
-            .build();
-
-        // 허브 배송 담당자는 허브 구분 없이 전체 10명 풀에서 순번대로 배정
-        DeliveryAgent hubAgent = deliveryAgentAssignmentService.assignNext(AgentType.HUB_DELIVERY, null);
-        routeRecord.assignAgent(hubAgent.getId());
-        List<DeliveryRouteRecord> savedRouteRecords = deliveryRouteRecordRepository.saveAll(List.of(routeRecord));
+        List<HubServiceRouteSegmentDto> path = findRoutePath(command.departureHubId(), command.destinationHubId());
+        // 구간마다 즉시 저장 - assignNext()가 직전 구간의 배정 결과를 이어서 조회하므로 배치 저장하면 순번이 꼬임
+        List<DeliveryRouteRecord> savedRouteRecords = new ArrayList<>();
+        for (HubServiceRouteSegmentDto segment : path) {
+            savedRouteRecords.add(buildAndSaveRouteRecord(saved.getId(), segment));
+        }
 
         // 목적지 허브 → 수령 업체 구간. 업체배송담당자는 DESTINATION_ARRIVED 도달 시점에 배정(agentId는 null로 시작).
         CompanyDeliveryRouteRecord companyRouteRecord = CompanyDeliveryRouteRecord.builder()
@@ -113,10 +128,19 @@ public class DeliveryCommandService {
             .ifPresent(companyRouteRecord -> companyRouteRecord.softDelete(requesterId));
     }
 
+    // Order 서비스의 주문 취소 콜백 전용. 호출자가 사람이 아니라 deletedBy(감사 정보)는 null
+    @Transactional
+    public void deleteByOrderItem(UUID orderItemId) {
+        Delivery delivery = deliveryRepository.findByOrderItemIdAndDeletedAtIsNull(orderItemId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOT_FOUND));
+        cancelDelivery(delivery);
+    }
+
+    // Order 서비스의 주문 생성 실패 보상 처리 전용
     @Transactional
     public void cancelByOrderId(UUID orderId) {
-        deliveryRepository.findByOrderIdAndDeletedAtIsNull(orderId)
-            .forEach(this::cancelDelivery);
+        List<Delivery> deliveries = deliveryRepository.findByOrderIdAndDeletedAtIsNull(orderId);
+        deliveries.forEach(this::cancelDelivery);
     }
 
     private void cancelDelivery(Delivery delivery) {
@@ -143,6 +167,33 @@ public class DeliveryCommandService {
         }
     }
 
+    private List<HubServiceRouteSegmentDto> findRoutePath(UUID departureHubId, UUID destinationHubId) {
+        return FeignExceptionTranslator.call(
+            () -> hubServiceClient.getRoutePath(
+                internalServiceProperties.name(), hubInternalServiceProperties.key(),
+                departureHubId, destinationHubId
+            ).path(),
+            ErrorCode.DELIVERY_HUB_NOT_FOUND,
+            ErrorCode.INVALID_DELIVERY_ROUTE
+        );
+    }
+
+    private DeliveryRouteRecord buildAndSaveRouteRecord(UUID deliveryId, HubServiceRouteSegmentDto segment) {
+        DeliveryRouteRecord routeRecord = DeliveryRouteRecord.builder()
+            .deliveryId(deliveryId)
+            .sequence(segment.sequence() + 1)
+            .departureHubId(segment.departureHubId())
+            .arrivalHubId(segment.arrivalHubId())
+            .estimatedDistance((int) Math.round(segment.distance()))
+            .estimatedDuration(segment.duration())
+            .build();
+
+        // 허브 배송 담당자는 허브 구분 없이 전체 10명 풀에서 구간마다 순번대로 배정
+        DeliveryAgent hubAgent = deliveryAgentAssignmentService.assignNext(AgentType.HUB_DELIVERY, null);
+        routeRecord.assignAgent(hubAgent.getId());
+        return deliveryRouteRecordRepository.save(routeRecord);
+    }
+
     private void assignCompanyAgent(Delivery delivery) {
         CompanyDeliveryRouteRecord companyRouteRecord = companyDeliveryRouteRecordRepository
             .findByDeliveryIdAndDeletedAtIsNull(delivery.getId())
@@ -162,6 +213,15 @@ public class DeliveryCommandService {
         boolean exists = deliveryRepository.existsByOrderItemIdAndDeletedAtIsNull(orderItemId);
         if (exists) {
             throw new BusinessException(ErrorCode.DELIVERY_ORDER_ALREADY_EXISTS);
+        }
+    }
+
+    private void validateBatchSize(List<CreateDeliveryCommand> commands) {
+        if (commands.isEmpty()) {
+            throw new BusinessException(ErrorCode.DELIVERY_BATCH_REQUEST_EMPTY);
+        }
+        if (commands.size() > MAX_BATCH_SIZE) {
+            throw new BusinessException(ErrorCode.DELIVERY_BATCH_REQUEST_SIZE_EXCEEDED);
         }
     }
 }
