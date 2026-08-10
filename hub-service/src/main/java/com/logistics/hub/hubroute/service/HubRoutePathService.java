@@ -3,8 +3,6 @@ package com.logistics.hub.hubroute.service;
 import com.logistics.hub.global.exception.BusinessException;
 import com.logistics.hub.global.exception.ErrorCode;
 import com.logistics.hub.hub.repository.HubRepository;
-import com.logistics.hub.hubroute.entity.HubRoute;
-import com.logistics.hub.hubroute.repository.HubRouteRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -17,30 +15,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+
 @Service
 @RequiredArgsConstructor
 public class HubRoutePathService {
 
-    private final HubRouteRepository hubRouteRepository;
     private final HubRepository hubRepository;
+    private final HubRouteGraphService hubRouteGraphService;
 
-    // 허브 ID를 key로, 그 허브와 연결된 이웃 정보 목록을 value로 갖는 인접 리스트 만든다.
-    // 각 HubRoute 한 건을 양방향 간선으로 취급한다.
-    private Map<UUID, List<Edge>> buildGraph() {
-        List<HubRoute> routes = hubRouteRepository.findByDeletedAtIsNull();
-
-        Map<UUID, List<Edge>> graph = new HashMap<>();
-        for (HubRoute route : routes) {
-            graph.computeIfAbsent(route.getDepartureHubId(), k -> new ArrayList<>())
-                .add(new Edge(route.getArrivalHubId(), route.getDistance(), route.getDuration()));
-
-            graph.computeIfAbsent(route.getArrivalHubId(), k -> new ArrayList<>())
-                .add(new Edge(route.getDepartureHubId(), route.getDistance(), route.getDuration()));
-        }
-        return graph;
-    }
-
-    private DijkstraResult dijkstra(Map<UUID, List<Edge>> graph, UUID startHubId, String criteria) {
+    private DijkstraResult dijkstra(Map<UUID, List<HubRouteGraphService.Edge>> graph, UUID startHubId, String criteria) {
         Map<UUID, Double> shortestDistance = new HashMap<>();
         Map<UUID, UUID> previousHub = new HashMap<>();
         Set<UUID> confirmed = new HashSet<>(); // 확정된 허브 ID들
@@ -57,7 +40,7 @@ public class HubRoutePathService {
             }
             confirmed.add(current);
 
-            for (Edge edge : graph.getOrDefault(current, List.of())) {
+            for (HubRouteGraphService.Edge edge : graph.getOrDefault(current, List.of())) {
                 if (confirmed.contains(edge.neighborHubId())) { // 이미 확정 허브라면 건너뛰기
                     continue;
                 }
@@ -108,13 +91,13 @@ public class HubRoutePathService {
     }
 
     // 각 구간의 원본 거리/시간 정보를 다시 찾아 채우는 메서드
-    private List<PathSegment> buildSegments(Map<UUID, List<Edge>> graph, List<UUID> hubIdOrder) {
+    private List<PathSegment> buildSegments(Map<UUID, List<HubRouteGraphService.Edge>> graph, List<UUID> hubIdOrder) {
         List<PathSegment> segments = new ArrayList<>();
         for (int i = 0; i < hubIdOrder.size() - 1; i++) {
             UUID from = hubIdOrder.get(i);
             UUID to = hubIdOrder.get(i + 1); // 경로를 두 허브씩 짝지어 순회
 
-            Edge edge = graph.get(from).stream()
+            HubRouteGraphService.Edge edge = graph.get(from).stream()
                 .filter(e -> e.neighborHubId().equals(to))
                 .findFirst()
                 .orElseThrow(); // from-to는 이미 연결이 확인된 구간이라 못 찾으면 버그 발생
@@ -135,7 +118,7 @@ public class HubRoutePathService {
         hubRepository.findByHubIdAndDeletedAtIsNull(endHubId)
             .orElseThrow(() -> new BusinessException(ErrorCode.HUB_NOT_FOUND));
 
-        Map<UUID, List<Edge>> graph = buildGraph();
+        Map<UUID, List<HubRouteGraphService.Edge>> graph = hubRouteGraphService.buildGraph();
         DijkstraResult result = dijkstra(graph, startHubId, criteria);
         List<UUID> hubIdOrder = reconstructPath(result.previousHub(), startHubId, endHubId);
 
@@ -151,8 +134,7 @@ public class HubRoutePathService {
         return new PathResult(segments, totalDistance, totalDuration);
     }
 
-    private record Edge(UUID neighborHubId, double distance, int duration) {
-    }
+
 
     private record DijkstraResult(Map<UUID, Double> shortestDistance, Map<UUID, UUID> previousHub) {
     }
