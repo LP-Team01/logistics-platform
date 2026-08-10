@@ -15,6 +15,7 @@ import com.logistics.order.infrastructure.client.DeliveryClient;
 import com.logistics.order.infrastructure.client.ProductClient;
 import com.logistics.order.infrastructure.client.UserClient;
 import com.logistics.order.infrastructure.client.dto.*;
+import com.logistics.order.outbox.DeliveryCompensationOutboxService;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +37,7 @@ public class OrderCommandService {
     private final UserClient userClient;
     private final DeliveryClient deliveryClient;
     private final InternalServiceProperties internalServiceProperties;
+    private final DeliveryCompensationOutboxService compensationOutboxService;
 
     /**
      * 새로운 주문 과 배송 생성을 생성합니다.
@@ -303,14 +305,8 @@ public class OrderCommandService {
         // 외부 배송 API 호출 전에 전체 취소 가능 여부 검사
         order.validateCancellation();
 
-        // 취소 대상 상품의 배송부터 취소
-        order.getOrderItems().stream()
-                .filter(item -> !item.isDeleted())
-                .filter(item ->
-                        item.getStatus()
-                                != OrderItemStatus.CANCELLED
-                )
-                .forEach(this::cancelDelivery);
+        // 주문에 포함된 배송을 한 번에 취소
+        cancelDeliveriesByOrderId(orderId);
 
         // 배송 취소 성공 후 주문과 상품 상태 변경
         order.cancel(
@@ -444,10 +440,28 @@ public class OrderCommandService {
                     orderId
             );
         } catch (FeignException exception) {
+            compensationOutboxService.save(orderId);
             log.error(
                     "배송 보상 취소 실패. orderId={}",
                     orderId,
                     exception
+            );
+        }
+    }
+
+    /**
+     * 주문 전체 삭제
+     */
+    private void cancelDeliveriesByOrderId(UUID orderId) {
+        try {
+            deliveryClient.cancelDeliveriesByOrderId(
+                    internalServiceProperties.name(),
+                    internalServiceProperties.key(),
+                    orderId
+            );
+        } catch (FeignException exception) {
+            throw new BusinessException(
+                    ErrorCode.DELIVERY_CANCELLATION_FAILED
             );
         }
     }

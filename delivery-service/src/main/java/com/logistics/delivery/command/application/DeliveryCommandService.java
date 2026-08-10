@@ -113,6 +113,22 @@ public class DeliveryCommandService {
             .ifPresent(companyRouteRecord -> companyRouteRecord.softDelete(requesterId));
     }
 
+    @Transactional
+    public void cancelByOrderId(UUID orderId) {
+        deliveryRepository.findByOrderIdAndDeletedAtIsNull(orderId)
+            .forEach(this::cancelDelivery);
+    }
+
+    private void cancelDelivery(Delivery delivery) {
+        delivery.softDelete(null);
+        deliveryRouteRecordRepository
+            .findByDeliveryIdAndDeletedAtIsNullOrderBySequenceAsc(delivery.getId())
+            .forEach(routeRecord -> routeRecord.softDelete(null));
+        companyDeliveryRouteRecordRepository
+            .findByDeliveryIdAndDeletedAtIsNull(delivery.getId())
+            .ifPresent(companyRouteRecord -> companyRouteRecord.softDelete(null));
+    }
+
     private void validateDeliveryAccess(UserRole userRole, UUID requesterId, UUID requesterHubId, Delivery delivery,
                                          List<DeliveryRouteRecord> routeRecords) {
         DeliveryAccessGuard.requireRole(userRole, DELIVERY_UPDATE_ROLES, ErrorCode.DELIVERY_FORBIDDEN);

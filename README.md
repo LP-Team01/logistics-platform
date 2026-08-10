@@ -6,6 +6,7 @@
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5.16-6DB33F?logo=springboot&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7.4-DC382D?logo=redis&logoColor=white)
+![Kafka](https://img.shields.io/badge/Apache_Kafka-3.9.2-231F20?logo=apachekafka&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI-2088FF?logo=githubactions&logoColor=white)
 
@@ -15,7 +16,7 @@
 
 서비스별 책임과 데이터베이스를 분리한 MSA 구조를 사용하며, API Gateway를 통해 외부 요청을 단일 진입점으로 관리합니다. 기본 기능은 REST 기반 동기 통신으로 구현하고, AI 알림 서비스에서는 Spring AI와 Gemini, pgvector 기반 RAG 및 Slack 알림 연동을 지원할 예정입니다.
 
-Kafka와 AWS 배포는 기본 기능 완료 후 일정에 따라 적용하는 선택 사항입니다.
+주문 생성 실패 후 배송 보상 취소가 실패하는 경우를 대비해 Outbox와 Kafka 기반 재처리를 적용했습니다. AWS 배포는 기본 기능 완료 후 일정에 따라 적용하는 선택 사항입니다.
 
 ## 🎯 주요 목표
 
@@ -25,6 +26,7 @@ Kafka와 AWS 배포는 기본 기능 완료 후 일정에 따라 적용하는 �
 - Config Server를 이용한 서비스 설정 중앙 관리
 - PostgreSQL 및 pgvector를 이용한 서비스 데이터와 RAG 데이터 관리
 - Redis를 이용한 캐시 및 인증 보조 데이터 관리
+- Outbox와 Kafka를 이용한 배송 보상 실패 이벤트 영속화 및 재처리
 - Spring AI와 Gemini를 이용한 AI 기능 구현
 - Slack을 이용한 주요 업무 알림 전송
 - Docker Compose를 이용한 동일한 로컬 개발 환경 제공
@@ -49,6 +51,7 @@ Kafka와 AWS 배포는 기본 기능 완료 후 일정에 따라 적용하는 �
 | Order Service | `8084` | 주문 생성 및 상태 관리 |
 | Delivery Service | `8085` | 배송 및 배송 담당자 관리 |
 | AI Notification Service | `8086` | Spring AI, RAG, Gemini 및 Slack 알림 연동 |
+| Kafka | `9092` | 배송 보상 실패 이벤트 전달 및 재처리 |
 
 ## 🛠️ 기술 스택
 
@@ -69,6 +72,7 @@ Kafka와 AWS 배포는 기본 기능 완료 후 일정에 따라 적용하는 �
 - PostgreSQL 17
 - pgvector
 - Redis 7.4
+- Apache Kafka 3.9.2
 - Spring AI 1.1.8
 - Google Gemini
 - Slack API
@@ -79,7 +83,7 @@ Kafka와 AWS 배포는 기본 기능 완료 후 일정에 따라 적용하는 �
 - Git, GitHub
 - GitHub Actions
 - AWS ECR, ECS Fargate — 향후 선택 적용
-- Kafka — 확장성만 고려하며 현재 구현 범위에서 제외
+- Kafka — 배송 보상 실패 이벤트 재처리에 적용
 
 ## 🔄 요청 흐름
 
@@ -150,6 +154,8 @@ cp .env.example .env
 POSTGRES_USER=logistics
 POSTGRES_PASSWORD=change-me
 JWT_SECRET=replace-with-at-least-32-byte-secret
+INTERNAL_SERVICE_KEY=replace-with-random-secret
+HUB_INTERNAL_SERVICE_KEY=replace-with-random-secret
 
 GEMINI_API_KEY=
 GEMINI_CHAT_MODEL=gemini-2.5-flash
@@ -186,6 +192,14 @@ docker compose --env-file .env -f infrastructure/docker-compose.yml up --build -
 docker compose --env-file .env -f infrastructure/docker-compose.yml ps
 ```
 
+Kafka Topic 확인:
+
+```bash
+docker compose --env-file .env -f infrastructure/docker-compose.yml exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+```
+
+출력에 `delivery-compensation`이 있으면 정상입니다. Topic을 생성한 `kafka-init` 컨테이너는 `Exited (0)` 상태가 정상입니다.
+
 종료:
 
 ```bash
@@ -208,6 +222,7 @@ docker compose --env-file .env -f infrastructure/docker-compose.yml down -v
 | Config Server Health Check | <http://localhost:8888/actuator/health> |
 | PostgreSQL | `localhost:5432` |
 | Redis | `localhost:6379` |
+| Kafka | `localhost:9092` |
 
 ## 📖 API 문서
 
@@ -218,13 +233,13 @@ docker compose --env-file .env -f infrastructure/docker-compose.yml down -v
 먼저 Docker Compose로 전체 서비스를 실행합니다.
 
 ```bash
-docker compose -f infrastructure/docker-compose.yml up --build -d
+docker compose --env-file .env -f infrastructure/docker-compose.yml up --build -d
 ```
 
 컨테이너가 정상적으로 실행 중인지 확인합니다.
 
 ```bash
-docker compose -f infrastructure/docker-compose.yml ps
+docker compose --env-file .env -f infrastructure/docker-compose.yml ps
 ```
 
 브라우저에서 담당 서비스의 Swagger UI 주소를 엽니다.
@@ -315,19 +330,45 @@ GitHub Actions는 `main`, `dev` 브랜치에 대한 Push 및 Pull Request에서 
 Feature Branch → Pull Request → GitHub Actions → AWS ECR → AWS ECS Fargate
 ```
 
-### Kafka 도입 검토
+## 📬 배송 보상 Outbox와 Kafka
 
-Kafka는 현재 구현하지 않습니다. 주문·배송·알림 기능의 기본 구현이 완료되고 이벤트 분리 필요성이 확인될 때 도입 여부를 결정합니다.
+Order Service는 주문 생성 실패 시 Delivery Service에 주문 단위 배송 취소를 먼저 동기로 요청합니다. 동기 취소까지 실패하면 주문 트랜잭션과 별개인 새 트랜잭션으로 `p_delivery_compensation_outbox`에 보상 작업을 저장합니다.
 
-도입 후보 이벤트:
+```text
+주문 생성 실패
+  → Delivery 동기 취소 요청
+      ├─ 성공: 종료
+      └─ 실패: Outbox 저장
+          → 5초 간격 Publisher가 Kafka 발행
+          → Delivery Consumer가 orderId 기준 배송 취소
+          → 실패 시 Retry Topic에서 최대 5회 처리
+          → 최종 실패 시 DLT 이동
+```
 
-| 이벤트 | 발행 서비스 | 구독 서비스 | 목적 |
-|---|---|---|---|
-| `OrderCreated` | Order | Delivery | 주문 이후 배송 생성 비동기화 |
-| `DeliveryStatusChanged` | Delivery | AI Notification | 배송 상태 변경 알림 |
-| `SlackMessageRequested` | Domain Services | AI Notification | Slack 발송 책임 분리 |
+| 항목 | 값 |
+|---|---|
+| 기본 Topic | `delivery-compensation` |
+| Producer | Order Service |
+| Consumer Group | `delivery-service` |
+| Consumer | Delivery Service |
+| 이벤트 키 | `orderId` |
+| 발행 주기 | 5초 |
+| 재시도 | 최대 5회, 지수 백오프 |
+| 최종 실패 | `delivery-compensation-dlt` |
 
-Kafka 도입 시 중복 처리 방지, 재시도, Dead Letter Topic 및 Transactional Outbox 적용 여부를 함께 검토합니다.
+Kafka 발행이 실패하면 Outbox의 `published_at`을 비워두어 다음 스케줄에서 다시 시도합니다. Delivery의 주문 단위 취소는 같은 이벤트가 중복 전달돼도 같은 결과가 나오도록 멱등하게 처리합니다.
+
+Consumer 처리 상태 확인:
+
+```bash
+docker compose --env-file .env -f infrastructure/docker-compose.yml exec kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group delivery-service
+```
+
+`CURRENT-OFFSET`과 `LOG-END-OFFSET`이 같고 `LAG`가 `0`이면 모든 이벤트가 처리된 상태입니다.
+
+### 향후 Kafka 적용 후보
+
+현재 Kafka는 배송 보상 실패 재처리에만 사용합니다. 주문 생성과 일반 서비스 통신은 REST/OpenFeign을 유지합니다. 일정이 허용되면 `OrderCreated`, `DeliveryStatusChanged`, `SlackMessageRequested` 이벤트의 비동기 전환을 검토합니다.
 
 ## 📚 관련 문서
 
