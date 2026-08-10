@@ -35,9 +35,17 @@ public class OrderCommandController {
     @PostMapping
     public ResponseEntity<OrderCommandResponse> createOrder(
             @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader("X-User-Role") String userRole,
             @Valid @RequestBody CreateOrderRequest request
     ) {
         OrderCommandResponse response = orderCommandService.createOrder(request, userId);
+
+        // 접근 가능한 역할 검사
+        roleValidator.validate(
+            userRole,
+            "MASTER",
+            "HUB_MANAGER"
+        );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

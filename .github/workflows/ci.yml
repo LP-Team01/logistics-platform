@@ -31,3 +31,36 @@ jobs:
 
       - name: Build boot jars
         run: ./gradlew bootJar
+
+      - name: Validate Docker Compose
+        run: |
+          docker compose --env-file .env.example -f infrastructure/docker-compose.yml config --quiet
+          docker compose --env-file .env.example -f infrastructure/docker-compose.yml -f infrastructure/docker-compose.rds.yml config --quiet
+          docker compose --profile monitoring --env-file .env.example -f infrastructure/docker-compose.yml config --quiet
+
+      - name: Build Docker images
+        run: docker compose --env-file .env.example -f infrastructure/docker-compose.yml build
+
+      - name: Start integration environment
+        run: docker compose --env-file .env.example -f infrastructure/docker-compose.yml up -d --wait --wait-timeout 240
+
+      - name: Smoke test infrastructure
+        run: |
+          docker compose --env-file .env.example -f infrastructure/docker-compose.yml exec -T api-gateway \
+            curl -fsS http://localhost:9091/actuator/health > /dev/null
+          curl -fsS http://localhost:8888/order-service/local > /dev/null
+          curl -fsS -H 'Accept: application/json' \
+            http://localhost:8761/eureka/apps/ORDER-SERVICE > /dev/null
+          docker compose --env-file .env.example -f infrastructure/docker-compose.yml exec -T kafka \
+            /opt/kafka/bin/kafka-topics.sh \
+            --bootstrap-server kafka:29092 \
+            --describe \
+            --topic delivery-compensation > /dev/null
+
+      - name: Print container logs on failure
+        if: failure()
+        run: docker compose --env-file .env.example -f infrastructure/docker-compose.yml logs --no-color --tail=200
+
+      - name: Stop integration environment
+        if: always()
+        run: docker compose --env-file .env.example -f infrastructure/docker-compose.yml down -v --remove-orphans
