@@ -20,6 +20,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class HubRoutePathService {
 
+    private static final Set<String> VALID_CRITERIA = Set.of("distance", "duration");
+
     private final HubRepository hubRepository;
     private final HubRouteGraphService hubRouteGraphService;
 
@@ -109,6 +111,9 @@ public class HubRoutePathService {
 
     // 최단 경로 계산해서 결과 돌려주는 메서드
     public PathResult findShortestPath(UUID startHubId, UUID endHubId, String criteria) {
+        if (!VALID_CRITERIA.contains(criteria)) {
+            throw new BusinessException(ErrorCode.INVALID_CRITERIA);
+        }
         if (startHubId.equals(endHubId)) {
             throw new BusinessException(ErrorCode.SAME_HUB_ROUTE);
         }

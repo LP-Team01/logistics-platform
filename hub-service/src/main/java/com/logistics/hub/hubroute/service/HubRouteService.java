@@ -43,10 +43,11 @@ public class HubRouteService {
             .orElseThrow(() -> new BusinessException(ErrorCode.HUB_NOT_FOUND));
         hubRepository.findByHubIdAndDeletedAtIsNull(request.arrivalHubId())
             .orElseThrow(() -> new BusinessException(ErrorCode.HUB_NOT_FOUND));
-
         // 중복 경로 존재 검증
         if (hubRouteRepository.existsByDepartureHubIdAndArrivalHubIdAndDeletedAtIsNull(
-            request.departureHubId(), request.arrivalHubId())) {
+                request.departureHubId(), request.arrivalHubId())
+            || hubRouteRepository.existsByDepartureHubIdAndArrivalHubIdAndDeletedAtIsNull(
+                request.arrivalHubId(), request.departureHubId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_HUB_ROUTE);
         }
 
