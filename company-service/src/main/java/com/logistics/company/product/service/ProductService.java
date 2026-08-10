@@ -5,6 +5,7 @@ import com.logistics.company.company.repository.CompanyRepository;
 import com.logistics.company.global.exception.BusinessException;
 import com.logistics.company.global.exception.ErrorCode;
 import com.logistics.company.product.domain.Product;
+import com.logistics.company.product.dto.ProductBatchResponseDto;
 import com.logistics.company.product.dto.ProductCreateRequestDto;
 import com.logistics.company.product.dto.ProductResponseDto;
 import com.logistics.company.product.dto.ProductUpdateRequestDto;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -43,6 +45,28 @@ public class ProductService {
         Product product = productRepository.findByProductIdAndDeletedAtIsNull(productId)
             .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
         return ProductResponseDto.from(product);
+    }
+
+
+    public List<ProductBatchResponseDto> getProductsBatch(List<UUID> productIds) {
+        if (productIds == null || productIds.isEmpty() || productIds.size() > 20) {
+            throw new BusinessException(ErrorCode.INVALID_BATCH_SIZE);
+        }
+
+        long uniqueCount = productIds.stream().distinct().count();
+        if (uniqueCount != productIds.size()) {
+            throw new BusinessException(ErrorCode.DUPLICATE_PRODUCT_ID);
+        }
+
+        List<Product> products = productRepository.findAllByProductIdInAndDeletedAtIsNull(productIds);
+
+        if (products.size() != productIds.size()) {
+            throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND);
+        }
+
+        return products.stream()
+            .map(ProductBatchResponseDto::from)
+            .toList();
     }
 
     @Transactional
