@@ -16,6 +16,8 @@ import com.logistics.user.user.entity.UserStatus;
 import com.logistics.user.user.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -62,6 +64,7 @@ public class UserService {
         return UserResponseDto.from(savedUser);
     }
 
+    @Cacheable(value = "users", key = "#userId")
     public UserResponseDto getUser(UUID userId) {
         User user = userRepository.findByUserIdAndDeletedAtIsNull(userId).orElseThrow(
             () -> new BusinessException(ErrorCode.USER_NOT_FOUND)
@@ -73,7 +76,7 @@ public class UserService {
         Pageable resolved = resolvePageable(pageable);
         return userRepository.search(condition, resolved).map(UserResponseDto::from);
     }
-
+    @CacheEvict(value = "users", key = "#userId")
     @Transactional
     public UserUpdateResponseDto updateUser(UUID userId, UpdateRequestDto requestDto) {
         User user = userRepository.findByUserIdAndDeletedAtIsNull(userId).orElseThrow(
@@ -91,7 +94,7 @@ public class UserService {
 
         return UserUpdateResponseDto.from(user);
     }
-
+    @CacheEvict(value = "users", key = "#userId")
     @Transactional
     public void deleteUser(UUID userId, UUID deletedBy) {
         User user = userRepository.findByUserIdAndDeletedAtIsNull(userId).orElseThrow(
@@ -101,7 +104,7 @@ public class UserService {
         user.softDelete(deletedBy);
     }
 
-
+    @CacheEvict(value = "users", key = "#userId")
     @Transactional
     public UserStatusResponse rejectUser(UUID userId) {
         User user = userRepository.findByUserIdAndDeletedAtIsNull(userId).orElseThrow(
@@ -116,7 +119,7 @@ public class UserService {
 
         return UserStatusResponse.from(user);
     }
-
+    @CacheEvict(value = "users", key = "#userId")
     @Transactional
     public UserStatusResponse approvedUser(UUID userId, DeliveryAgentRequestDto requestDto) {
         User user = userRepository.findByUserIdAndDeletedAtIsNull(userId).orElseThrow(
