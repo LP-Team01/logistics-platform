@@ -46,7 +46,8 @@ jobs:
 
       - name: Smoke test infrastructure
         run: |
-          curl -fsS http://localhost:8080/actuator/health | grep -q '"status":"UP"'
+          docker compose --env-file .env.example -f infrastructure/docker-compose.yml exec -T api-gateway \
+            curl -fsS http://localhost:9091/actuator/health | grep -q '"status":"UP"'
           curl -fsS http://localhost:8888/order-service/local | grep -q '"name":"order-service"'
           curl -fsS -H 'Accept: application/json' http://localhost:8761/eureka/apps | grep -q 'ORDER-SERVICE'
           docker compose --env-file .env.example -f infrastructure/docker-compose.yml exec -T kafka \

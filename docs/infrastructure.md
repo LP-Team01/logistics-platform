@@ -91,7 +91,8 @@ docker compose --profile monitoring --env-file .env -f infrastructure/docker-com
 
 주요 확인 주소:
 
-- Gateway Health: <http://localhost:8080/actuator/health>
+- Gateway Health: Docker 내부 `http://api-gateway:9091/actuator/health`
+- Gateway Metrics: Docker 내부 `http://api-gateway:9091/actuator/prometheus`
 - Eureka: <http://localhost:8761>
 - Config Server: <http://localhost:8888/order-service/local>
 

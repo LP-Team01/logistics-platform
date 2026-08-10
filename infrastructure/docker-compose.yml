@@ -148,11 +148,12 @@ services:
       dockerfile: infrastructure/Dockerfile
       args: { SERVICE: api-gateway }
     ports: ["8080:8080"]
+    expose: ["9091"]
     depends_on:
       config-server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:9091/actuator/health"]
       interval: 15s
       timeout: 5s
       retries: 10

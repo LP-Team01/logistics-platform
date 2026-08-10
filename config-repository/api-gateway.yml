@@ -33,6 +33,9 @@ spring:
                 - Path=/api/ai-requests/**,/api/slack-messages/**
 
 management:
+  server:
+    # 외부 요청 포트(8080)와 분리된 Docker 내부 관리 포트
+    port: 9091
   endpoints:
     web:
       exposure:
@@ -49,9 +52,6 @@ gateway:
       - /api/auth/re-issue
       - /api/auth/logout
       - /api/users/signup
-      - /actuator/health
-      - /actuator/info
-      - /actuator/prometheus
 
     # 경로별 필요 role 매핑. 위에서부터 순서대로 첫 매치 규칙을 적용하니
     # 더 구체적인 경로를 먼저, 넓은 경로(**)를 나중에 적는다.

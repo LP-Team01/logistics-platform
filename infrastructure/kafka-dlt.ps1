@@ -20,18 +20,57 @@ $sourceTopic = "delivery-compensation"
 if ($Action -eq "status") {
     Write-Host "DLT end offsets:"
     & docker @composeArgs exec -T kafka /opt/kafka/bin/kafka-get-offsets.sh --bootstrap-server kafka:29092 --topic $dltTopic
-    Write-Host "Replay consumer lag:"
-    & docker @composeArgs exec -T kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kafka:29092 --group delivery-compensation-dlt-replay --describe
     exit 0
 }
 
-Write-Host "Replaying up to $MaxMessages message(s): $dltTopic -> $sourceTopic"
-
-& docker @composeArgs exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka:29092 --topic $dltTopic --group delivery-compensation-dlt-replay --from-beginning --max-messages $MaxMessages |
-    & docker @composeArgs exec -T kafka /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server kafka:29092 --topic $sourceTopic
-
-if ($LASTEXITCODE -ne 0) {
-    throw "DLT replay failed."
+$offsetLines = @(
+    & docker @composeArgs exec -T kafka /opt/kafka/bin/kafka-get-offsets.sh `
+        --bootstrap-server kafka:29092 `
+        --topic $dltTopic
+)
+$offsetExitCode = $LASTEXITCODE
+if ($offsetExitCode -ne 0) {
+    throw "Failed to read DLT offsets. exitCode=$offsetExitCode"
 }
 
-Write-Host "Replay request completed. Check Delivery Service logs and DLT status."
+$availableMessages = ($offsetLines | ForEach-Object {
+    $parts = $_ -split ":"
+    if ($parts.Length -eq 3) { [long]$parts[2] } else { 0 }
+} | Measure-Object -Sum).Sum
+
+if (-not $availableMessages) {
+    Write-Host "No DLT messages to replay."
+    exit 0
+}
+
+$replayCount = [Math]::Min([long]$MaxMessages, [long]$availableMessages)
+Write-Host "Replaying $replayCount message(s): $dltTopic -> $sourceTopic"
+
+# Consumer Group을 사용하지 않아 Producer 실패 시 DLT 원본과 offset이 유지됩니다.
+$messages = @(
+    & docker @composeArgs exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh `
+        --bootstrap-server kafka:29092 `
+        --topic $dltTopic `
+        --from-beginning `
+        --max-messages $replayCount
+)
+$consumerExitCode = $LASTEXITCODE
+if ($consumerExitCode -ne 0) {
+    throw "DLT consumer failed. exitCode=$consumerExitCode"
+}
+
+if ($messages.Count -ne $replayCount) {
+    throw "Expected $replayCount DLT messages but read $($messages.Count)."
+}
+
+$messages |
+    & docker @composeArgs exec -T kafka /opt/kafka/bin/kafka-console-producer.sh `
+        --bootstrap-server kafka:29092 `
+        --topic $sourceTopic
+
+$producerExitCode = $LASTEXITCODE
+if ($producerExitCode -ne 0) {
+    throw "DLT producer failed. DLT messages remain available for retry. exitCode=$producerExitCode"
+}
+
+Write-Host "Replay completed. DLT originals were retained, so rerunning may produce duplicates."
