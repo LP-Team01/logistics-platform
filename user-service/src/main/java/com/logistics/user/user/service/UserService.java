@@ -71,7 +71,11 @@ public class UserService {
         );
         return UserResponseDto.from(user);
     }
+    public Page<UserResponseDto> getPendingUserByHub(UUID hubId, Pageable pageable) {
 
+        return userRepository.findAllByHubIdAndDeletedAtIsNullAndStatus(hubId,UserStatus.PENDING, pageable)
+            .map(UserResponseDto::from);
+    }
     public Page<UserResponseDto> searchUsers(UserSearchCondition condition, Pageable pageable) {
         Pageable resolved = resolvePageable(pageable);
         return userRepository.search(condition, resolved).map(UserResponseDto::from);

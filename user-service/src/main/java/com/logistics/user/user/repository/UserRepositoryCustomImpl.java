@@ -59,6 +59,33 @@ public class UserRepositoryCustomImpl implements UserRepositoryCustom {
         return new PageImpl<>(content, pageable, total == null ? 0 : total);
     }
 
+    @Override
+    public Page<User> findAllByHubIdAndDeletedAtIsNullAndStatus(UUID hubId, UserStatus status, Pageable pageable){
+        List<User> content = queryFactory
+            .selectFrom(user)
+            .where(
+                user.deletedAt.isNull(),
+                statusEq(status),
+                hubIdEq(hubId)
+            )
+            .offset(pageable.getOffset())
+            .limit(pageable.getPageSize())
+            .orderBy(resolveOrders(pageable.getSort()))
+            .fetch();
+
+        Long count = queryFactory
+            .select(user.count())
+            .from(user)
+            .where(
+                user.deletedAt.isNull(),
+                statusEq(status),
+                hubIdEq(hubId)
+            )
+            .fetchOne();
+
+        return new PageImpl<>(content, pageable, count == null ? 0 : count);
+    }
+
     private BooleanExpression roleEq(UserRole role) {
         return role != null ? user.role.eq(role) : null;
     }

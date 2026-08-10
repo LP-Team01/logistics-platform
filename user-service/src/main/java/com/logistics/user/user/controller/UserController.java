@@ -45,6 +45,14 @@ public class UserController {
         UserResponseDto responseDto = userService.getUser(userId);
         return ResponseEntity.ok(responseDto);
     }
+    @GetMapping("/hubs/{hubId}/pending")
+    public ResponseEntity<Page<UserResponseDto>> getPendingUserByHub(
+        @PathVariable UUID hubId,
+        @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ){
+        Page<UserResponseDto> response = userService.getPendingUserByHub(hubId, pageable);
+        return ResponseEntity.ok(response);
+    }
 
     @GetMapping
     public ResponseEntity<Page<UserResponseDto>> searchUsers(

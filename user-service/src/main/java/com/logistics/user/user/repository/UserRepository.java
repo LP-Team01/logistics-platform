@@ -2,7 +2,6 @@ package com.logistics.user.user.repository;
 
 import com.logistics.user.user.entity.User;
 import com.logistics.user.user.entity.UserStatus;
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
