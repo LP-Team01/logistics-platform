@@ -40,7 +40,7 @@ public class CompanyRouteSequencingService {
 
     // 배송 용도에 맞는 옵션 값(실시간 빠른 길)
     private static final String NAVER_DIRECTIONS_OPTION = "trafast";
-    // Naver 호출 실패 시 정책: 최대 3회 재시도, 3회 모두 실패하면 총 동선 갱신을 건너뜀
+    // Naver 호출 실패 시 정책: 구간(leg)당 최대 3회 재시도, 3회 모두 실패하면 총 동선 갱신을 건너뜀
     private static final int MAX_ATTEMPTS = 3;
 
     @Transactional
@@ -117,7 +117,8 @@ public class CompanyRouteSequencingService {
         }
     }
 
-    // NN 순서 그대로 "허브 → 업체1 → 업체2 → ..." 전체 경로를 waypoints로 한 번에 조회해 당일 총 거리/시간을 DeliveryAgent에 저장
+    // NN 순서 그대로 "허브 → 업체1 → 업체2 → ..." 각 구간을 구간별로 나눠 조회한 뒤 합산해 당일 총 거리/시간을 DeliveryAgent에 저장
+    // waypoints 한 번 호출 대신 구간(leg)마다 start/goal만 있는 단순 호출을 반복 - Directions의 경유지 개수 상한과 무관해짐
     private void updateTotalRoute(UUID agentId, HubServiceHubResponseDto hub,
                                    Map<UUID, CompanyDeliveryRouteRecord> recordsById, List<UUID> ordered) {
         List<String> points = new ArrayList<>();
@@ -131,33 +132,45 @@ public class CompanyRouteSequencingService {
             points.add(NaverCoordinateFormatter.format(record.getLatitude(), record.getLongitude()));
         }
 
-        String start = points.get(0);
-        String goal = points.get(points.size() - 1);
-        String waypoints = points.size() > 2
-            ? String.join("|", points.subList(1, points.size() - 1))
-            : null;
+        int totalDistanceMeters = 0;
+        long totalDurationMillis = 0;
+        for (int i = 0; i < points.size() - 1; i++) {
+            NaverDirectionsResponseDto.Summary legSummary = fetchLegSummary(agentId, points.get(i), points.get(i + 1));
+            if (legSummary == null) {
+                // 구간 하나라도 실패하면 부분 합산은 의미가 없으므로 총 동선 계산 자체를 건너뜀 (개별 sequence는 이미 저장됨)
+                return;
+            }
+            totalDistanceMeters += legSummary.distance();
+            totalDurationMillis += legSummary.duration();
+        }
 
+        int finalTotalDistanceMeters = totalDistanceMeters;
+        long finalTotalDurationMillis = totalDurationMillis;
+        deliveryAgentRepository.findByIdAndDeletedAtIsNull(agentId).ifPresent(agent -> agent.updateRouteSummary(
+            (int) Math.round(finalTotalDistanceMeters / 1000.0),
+            (int) Math.round(finalTotalDurationMillis / 60000.0),
+            Instant.now()
+        ));
+    }
+
+    // 구간 하나(start→goal, 경유지 없음)를 최대 3회 재시도로 조회 - 계속 실패하면 null
+    private NaverDirectionsResponseDto.Summary fetchLegSummary(UUID agentId, String start, String goal) {
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
                 NaverDirectionsResponseDto response =
-                    naverDirectionsClient.getDirections(start, goal, waypoints, NAVER_DIRECTIONS_OPTION);
+                    naverDirectionsClient.getDirections(start, goal, null, NAVER_DIRECTIONS_OPTION);
                 List<NaverDirectionsResponseDto.Route> routes =
                     response.route() == null ? null : response.route().get(NAVER_DIRECTIONS_OPTION);
                 if (routes == null || routes.isEmpty()) {
-                    return;
+                    return null;
                 }
-                NaverDirectionsResponseDto.Summary summary = routes.get(0).summary();
-                deliveryAgentRepository.findByIdAndDeletedAtIsNull(agentId).ifPresent(agent -> agent.updateRouteSummary(
-                    (int) Math.round(summary.distance() / 1000.0),
-                    (int) Math.round(summary.duration() / 60000.0),
-                    Instant.now()
-                ));
-                return;
+                return routes.get(0).summary();
             } catch (FeignException e) {
-                log.warn("Naver Directions(waypoints) 호출 실패 ({}/{}회) - agentId={}, status={}",
-                    attempt, MAX_ATTEMPTS, agentId, e.status(), e);
+                log.warn("Naver Directions(구간별) 호출 실패 ({}/{}회) - agentId={}, start={}, goal={}, status={}",
+                    attempt, MAX_ATTEMPTS, agentId, start, goal, e.status(), e);
             }
         }
+        return null;
     }
 
     private HubServiceHubResponseDto fetchHub(UUID hubId) {

@@ -46,7 +46,7 @@ public class CompanyRouteRecordCommandController {
         @RequestHeader(value = "X-Hub-Id", required = false) UUID requesterHubId,
         @PathVariable UUID deliveryId,
         @PathVariable UUID recordId,
-        @RequestBody UpdateCompanyRouteRecordPlanRequestDto request
+        @RequestBody @Valid UpdateCompanyRouteRecordPlanRequestDto request
         ) {
         UpdateCompanyRouteRecordPlanCommand command = request.toCommand();
         UpdateCompanyRouteRecordPlanResponseDto result = companyRouteRecordCommandService.updateRoutePlan(deliveryId,
