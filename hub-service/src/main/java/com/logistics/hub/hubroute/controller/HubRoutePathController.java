@@ -29,7 +29,7 @@ public class HubRoutePathController {
         @RequestParam UUID arrivalHubId,
         @RequestParam(defaultValue = "distance") String criteria
     ) {
-        internalServiceValidator.validate(serviceName,serviceKey); // 다익스트라 로직 시작 전, 검증부터
+        internalServiceValidator.validate(serviceName, serviceKey); // 다익스트라 로직 시작 전, 검증부터
 
         HubRoutePathService.PathResult result =
             hubRoutePathService.findShortestPath(departureHubId, arrivalHubId, criteria);

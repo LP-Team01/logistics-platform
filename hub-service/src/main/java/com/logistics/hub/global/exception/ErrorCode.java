@@ -11,7 +11,7 @@ public enum ErrorCode {
     SAME_HUB_ROUTE(HttpStatus.BAD_REQUEST, "HUB_400_01", "출발 허브와 도착 허브는 같을 수 없습니다."),
     INVALID_PAGE_SIZE(HttpStatus.BAD_REQUEST, "HUB_400_02", "페이지 크기는 10, 30, 50 중 하나여야 합니다."),
     INVALID_UPDATE_REQUEST(HttpStatus.BAD_REQUEST, "HUB_400_03", "수정할 값이 없습니다. distance 또는 duration 중 하나는 입력해야 합니다."),
-    PATH_NOT_FOUND(HttpStatus.UNPROCESSABLE_ENTITY, "HUB_422_01", "출발 허브에서 도착 허브까지 도달 가능한 경로가 없습니다"),
+    PATH_NOT_FOUND(HttpStatus.UNPROCESSABLE_ENTITY, "HUB_422_01", "출발 허브에서 도착 허브까지 도달 가능한 경로가 없습니다."),
     INTERNAL_ACCESS_DENIED(HttpStatus.FORBIDDEN, "HUB_403_01", "내부 서비스 인증에 실패했습니다.");
 
     private final HttpStatus status;
