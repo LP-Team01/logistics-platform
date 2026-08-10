@@ -13,6 +13,7 @@ import com.logistics.hub.hubroute.repository.HubRouteRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class HubRouteService {
     private final HubRepository hubRepository;
 
     @Transactional
+    @CacheEvict(value = "hubRouteGraph", key = "'all'")
     public HubRouteResponseDto createHubRoute(HubRouteCreateRequestDto request) {
         // 출발 허브와 도착 허브 같은지 검증
         if (request.departureHubId().equals(request.arrivalHubId())) {
@@ -69,7 +71,10 @@ public class HubRouteService {
     }
 
     @Transactional
-    @CacheEvict(value = "hubRoutes", key = "#hubRouteId")
+    @Caching(evict = {
+        @CacheEvict(value = "hubRoutes", key = "#hubRouteId"),
+        @CacheEvict(value = "hubRouteGraph", key = "'all'")
+    })
     public HubRouteResponseDto updateHubRoute(UUID hubRouteId, HubRouteUpdateRequestDto request) {
         if (request.distance() == null && request.duration() == null) {
             throw new BusinessException(ErrorCode.INVALID_UPDATE_REQUEST);
@@ -84,7 +89,10 @@ public class HubRouteService {
     }
 
     @Transactional
-    @CacheEvict(value = "hubRoutes", key = "#hubRouteId")
+    @Caching(evict = {
+        @CacheEvict(value = "hubRoutes", key = "#hubRouteId"),
+        @CacheEvict(value = "hubRouteGraph", key = "'all'")
+    })
     public HubRouteDeleteResponseDto deleteHubRoute(UUID hubRouteId, UUID deletedBy) {
         HubRoute hubRoute = hubRouteRepository.findByHubRouteIdAndDeletedAtIsNull(hubRouteId)
             .orElseThrow(() -> new BusinessException(ErrorCode.HUB_ROUTE_NOT_FOUND));
