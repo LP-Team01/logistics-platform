@@ -23,6 +23,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.util.List;
@@ -272,5 +274,31 @@ class OrderCommandServiceBatchTest {
         );
 
         verify(compensationOutboxService).save(orderId);
+    }
+
+    /** 주문 트랜잭션이 커밋되지 않으면 보상 Outbox를 저장합니다. */
+    @Test
+    void savesOutboxWhenOrderTransactionRollsBack() {
+        UUID orderId = UUID.randomUUID();
+        TransactionSynchronizationManager.initSynchronization();
+
+        try {
+            ReflectionTestUtils.invokeMethod(
+                    orderCommandService,
+                    "registerRollbackCompensation",
+                    orderId
+            );
+
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(synchronization ->
+                            synchronization.afterCompletion(
+                                    TransactionSynchronization.STATUS_ROLLED_BACK
+                            )
+                    );
+
+            verify(compensationOutboxService).save(orderId);
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 }

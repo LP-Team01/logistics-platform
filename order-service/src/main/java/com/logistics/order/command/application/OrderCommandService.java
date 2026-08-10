@@ -21,6 +21,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.*;
 
@@ -184,6 +186,9 @@ public class OrderCommandService {
             // 모든 주문 상품의 배송을 한 번의 API 요청으로 생성
             List<CreateDeliveryResponse> deliveryResponses =
                     createDeliveries(deliveryRequests);
+
+            // 메서드 반환 후 주문 커밋이 실패해도 배송 보상이 누락되지 않도록 등록
+            registerRollbackCompensation(savedOrder.getOrderId());
 
             // 주문 상품 ID로 배송 응답을 찾기 위한 Map
             Map<UUID, CreateDeliveryResponse> deliveryResponseMap =
@@ -447,6 +452,24 @@ public class OrderCommandService {
                     exception
             );
         }
+    }
+
+    /** 주문 트랜잭션이 커밋되지 않으면 별도 트랜잭션으로 보상 Outbox를 저장합니다. */
+    private void registerRollbackCompensation(UUID orderId) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCompletion(int status) {
+                        if (status != STATUS_COMMITTED) {
+                            compensationOutboxService.save(orderId);
+                        }
+                    }
+                }
+        );
     }
 
     /**

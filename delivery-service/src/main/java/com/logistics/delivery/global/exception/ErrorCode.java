@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 public enum ErrorCode {
 
     //DELIVERY
+    DELIVERY_ORDER_CANCELLED(HttpStatus.CONFLICT, "DELIVERY_409_06", "이미 취소된 주문의 배송은 생성할 수 없습니다."),
     DELIVERY_NOT_FOUND(HttpStatus.NOT_FOUND, "DELIVERY_404_01", "배송 정보를 찾을 수 없습니다."),
     DELIVERY_STATUS_NOT_CHANGEABLE(HttpStatus.BAD_REQUEST, "DELIVERY_400_01", "유효하지 않은 상태 전이입니다."),
     DELIVERY_ORDER_ALREADY_EXISTS(HttpStatus.CONFLICT, "DELIVERY_409_04", "주문아이템 1개에 배송 1개 생성 가능합니다."),
