@@ -53,6 +53,11 @@ public class CompanyDeliveryRouteRecord extends BaseUpdatableEntity {
 
     private Integer deliverySequence;
 
+    // 배송지 주소를 Naver Geocoding한 결과 - 생성 시점 1회만 조회해 캐싱
+    private Double latitude;
+
+    private Double longitude;
+
     @Builder
     public CompanyDeliveryRouteRecord(
         UUID deliveryId,
@@ -63,7 +68,9 @@ public class CompanyDeliveryRouteRecord extends BaseUpdatableEntity {
         Integer actualDistance,
         Integer actualDuration,
         UUID agentId,
-        Integer deliverySequence
+        Integer deliverySequence,
+        Double latitude,
+        Double longitude
     ){
         this.deliveryId = deliveryId;
         this.departureHubId = departureHubId;
@@ -75,10 +82,35 @@ public class CompanyDeliveryRouteRecord extends BaseUpdatableEntity {
         this.status = CompanyRouteRecordStatus.WAITING;
         this.agentId = agentId;
         this.deliverySequence = deliverySequence;
+        this.latitude = latitude;
+        this.longitude = longitude;
     }
 
     public void assignAgent(UUID agentId) {
         this.agentId = agentId;
+    }
+
+    public void updateSequence(Integer deliverySequence) {
+        this.deliverySequence = deliverySequence;
+    }
+
+    public void updateRoutePlan(Double latitude, Double longitude, Integer estimatedDistance,
+                                 Integer estimatedDuration, Integer deliverySequence) {
+        if (latitude != null) {
+            this.latitude = latitude;
+        }
+        if (longitude != null) {
+            this.longitude = longitude;
+        }
+        if (estimatedDistance != null) {
+            this.estimatedDistance = estimatedDistance;
+        }
+        if (estimatedDuration != null) {
+            this.estimatedDuration = estimatedDuration;
+        }
+        if (deliverySequence != null) {
+            this.deliverySequence = deliverySequence;
+        }
     }
 
     public void update(CompanyRouteRecordStatus status, Integer actualDistance, Integer actualDuration) {

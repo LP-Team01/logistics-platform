@@ -30,3 +30,10 @@ internal:
     allowed-name: order-service
   hub-service:
     key: ${HUB_INTERNAL_SERVICE_KEY}
+
+naver:
+  map:
+    directions-base-url: ${NAVER_MAP_DIRECTIONS_BASE_URL:https://maps.apigw.ntruss.com}
+    geocoding-base-url: ${NAVER_MAP_GEOCODING_BASE_URL:https://maps.apigw.ntruss.com}
+    client-id: ${NAVER_MAP_CLIENT_ID}
+    client-secret: ${NAVER_MAP_CLIENT_SECRET}

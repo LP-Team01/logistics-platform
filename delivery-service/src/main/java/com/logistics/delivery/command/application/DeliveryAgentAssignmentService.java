@@ -1,4 +1,4 @@
-package com.logistics.delivery.domain.service;
+package com.logistics.delivery.command.application;
 
 import com.logistics.delivery.domain.entity.AgentType;
 import com.logistics.delivery.domain.entity.CompanyDeliveryRouteRecord;
