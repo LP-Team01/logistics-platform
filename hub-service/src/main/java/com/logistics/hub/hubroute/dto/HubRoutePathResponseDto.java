@@ -12,7 +12,7 @@ public record HubRoutePathResponseDto(
 ) {
     public static HubRoutePathResponseDto from(HubRoutePathService.PathResult result) {
         List<PathSegmentDto> path = new ArrayList<>();
-        int sequence = 1;
+        int sequence = 0;
         for (HubRoutePathService.PathSegment segment : result.segments()) {
             path.add(PathSegmentDto.from(segment, sequence));
             sequence++;
