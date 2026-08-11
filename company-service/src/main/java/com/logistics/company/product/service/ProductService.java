@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -47,9 +48,12 @@ public class ProductService {
         return ProductResponseDto.from(product);
     }
 
-
     public List<ProductBatchResponseDto> getProductsBatch(List<UUID> productIds) {
         if (productIds == null || productIds.isEmpty() || productIds.size() > 20) {
+            throw new BusinessException(ErrorCode.INVALID_BATCH_SIZE);
+        }
+
+        if (productIds.stream().anyMatch(Objects::isNull)) {
             throw new BusinessException(ErrorCode.INVALID_BATCH_SIZE);
         }
 
