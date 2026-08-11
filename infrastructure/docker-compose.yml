@@ -4,11 +4,16 @@ x-app-common: &app-common
   restart: unless-stopped
   networks: [logistics]
   environment: &common-environment
-    SPRING_PROFILES_ACTIVE: local
+    SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-local}
     EUREKA_URL: http://eureka-server:8761/eureka
     CONFIG_SERVER_URL: http://config-server:8888
     INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY}
     HUB_INTERNAL_SERVICE_KEY: ${HUB_INTERNAL_SERVICE_KEY}
+    JWT_SECRET: ${JWT_SECRET}
+    JWT_ACCESS_TOKEN_EXPIRATION: ${JWT_ACCESS_TOKEN_EXPIRATION:-3600000}
+    JWT_REFRESH_TOKEN_EXPIRATION: ${JWT_REFRESH_TOKEN_EXPIRATION:-604800000}
+    SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
+    CORS_ALLOWED_ORIGIN_PATTERN: ${CORS_ALLOWED_ORIGIN_PATTERN:-http://localhost:*}
     KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     POSTGRES_USER: ${POSTGRES_USER:-logistics}
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-logistics}
@@ -17,6 +22,7 @@ x-app-common: &app-common
     POSTGRES_SSL_MODE: ${POSTGRES_SSL_MODE:-disable}
     REDIS_HOST: redis
     REDIS_PORT: 6379
+    REDIS_PASSWORD: ${REDIS_PASSWORD}
 
 services:
   postgres:
@@ -39,17 +45,24 @@ services:
 
   redis:
     image: redis:7.4-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --requirepass
+      - ${REDIS_PASSWORD}
     ports:
-      - "${REDIS_HOST_PORT:-6379}:6379"
+        - "${REDIS_HOST_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
       interval: 10s
       timeout: 5s
       retries: 10
-    networks: [logistics]
+    networks: [ logistics ]
 
   kafka:
     image: apache/kafka:3.9.2
@@ -74,7 +87,7 @@ services:
     volumes:
       - kafka-data:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list > /dev/null 2>&1"]
+      test: ["CMD", "/bin/bash", "-c", "</dev/tcp/localhost/29092"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -87,18 +100,18 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-    entrypoint: ["/opt/kafka/bin/kafka-topics.sh"]
+    entrypoint: ["/bin/bash", "-c"]
     command:
-      - --bootstrap-server
-      - kafka:29092
-      - --create
-      - --if-not-exists
-      - --topic
-      - delivery-compensation
-      - --partitions
-      - "3"
-      - --replication-factor
-      - "1"
+      - |
+        for topic in delivery-compensation delivery-ai-notification; do
+          /opt/kafka/bin/kafka-topics.sh \
+            --bootstrap-server kafka:29092 \
+            --create \
+            --if-not-exists \
+            --topic "$$topic" \
+            --partitions 3 \
+            --replication-factor 1
+        done
     networks: [logistics]
 
   eureka-server:
@@ -145,11 +158,12 @@ services:
       dockerfile: infrastructure/Dockerfile
       args: { SERVICE: api-gateway }
     ports: ["8080:8080"]
+    expose: ["9091"]
     depends_on:
       config-server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:9091/actuator/health"]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -241,15 +255,38 @@ services:
       GEMINI_EMBEDDING_MODEL: ${GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
       AI_CHAT_PROVIDER: ${AI_CHAT_PROVIDER:-none}
       AI_EMBEDDING_PROVIDER: ${AI_EMBEDDING_PROVIDER:-none}
-      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-disabled}
     ports: ["8086:8086"]
-    depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy } }
+    depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy }, kafka-init: { condition: service_completed_successfully } }
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8086/actuator/health"]
       interval: 15s
       timeout: 5s
       retries: 10
       start_period: 60s
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: [monitoring]
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus"]
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports: ["9090:9090"]
+    networks: [logistics]
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    profiles: [monitoring]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana-datasource.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
+    ports: ["3000:3000"]
+    depends_on: [prometheus]
+    networks: [logistics]
 
 networks:
   logistics:
@@ -259,3 +296,5 @@ volumes:
   postgres-data:
   redis-data:
   kafka-data:
+  prometheus-data:
+  grafana-data:

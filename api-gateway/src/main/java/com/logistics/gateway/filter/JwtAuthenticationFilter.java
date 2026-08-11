@@ -80,7 +80,7 @@ public class JwtAuthenticationFilter implements GlobalFilter , Ordered {
         }
 
         requestBuilder.header("X-User-Id", userId);
-        requestBuilder.header("X-Role", role);
+        requestBuilder.header("X-User-Role", role);
         // hubId/companyId는 MASTER 등 소속이 없는 유저의 토큰에는 클레임 자체가 없을 수 있음
         putIfPresent(requestBuilder, claims, "hubId", "X-Hub-Id");
         putIfPresent(requestBuilder, claims, "companyId", "X-Company-Id");

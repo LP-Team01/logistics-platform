@@ -1,64 +1,75 @@
-# RDS overlay: excludes the local PostgreSQL container and makes its dependency optional.
+# EC2 production overlay: expose only the API Gateway.
 # Usage:
 # docker compose --env-file .env.prod \
 #   -f infrastructure/docker-compose.yml \
-#   -f infrastructure/docker-compose.rds.yml up --build -d
+#   -f infrastructure/docker-compose.prod.yml up -d --build
 
 services:
   postgres:
+    # 운영에서는 RDS를 사용하며, 명시적으로 프로필을 켠 경우에만 로컬 DB를 실행합니다.
     profiles: [local-postgres]
+    ports: !reset []
+
+  redis:
+    ports: !reset []
+
+  kafka:
+    ports: !reset []
+
+  eureka-server:
+    ports: !reset []
+
+  config-server:
+    ports: !reset []
+
+  api-gateway:
+    ports: !override
+      - "80:8080"
 
   user-service:
+    ports: !reset []
     depends_on:
-      config-server:
-        condition: service_healthy
       postgres:
         condition: service_healthy
         required: false
-      redis:
-        condition: service_healthy
 
   hub-service:
+    ports: !reset []
     depends_on:
-      config-server:
-        condition: service_healthy
       postgres:
         condition: service_healthy
         required: false
-      redis:
-        condition: service_healthy
 
   company-service:
+    ports: !reset []
     depends_on:
-      config-server:
-        condition: service_healthy
       postgres:
         condition: service_healthy
         required: false
-      redis:
-        condition: service_healthy
 
   order-service:
+    ports: !reset []
     depends_on:
-      config-server:
-        condition: service_healthy
       postgres:
         condition: service_healthy
         required: false
 
   delivery-service:
+    ports: !reset []
     depends_on:
-      config-server:
-        condition: service_healthy
       postgres:
         condition: service_healthy
         required: false
 
   ai-notification-service:
-    profiles: [ai]
+    ports: !reset []
     depends_on:
-      config-server:
-        condition: service_healthy
       postgres:
         condition: service_healthy
         required: false
+
+  prometheus:
+    ports: !reset []
+
+  grafana:
+    ports: !reset []
