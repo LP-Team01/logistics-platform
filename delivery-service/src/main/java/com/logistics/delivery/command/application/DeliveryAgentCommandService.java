@@ -13,7 +13,7 @@ import com.logistics.delivery.global.common.UserRole;
 import com.logistics.delivery.global.common.UserStatus;
 import com.logistics.delivery.global.exception.BusinessException;
 import com.logistics.delivery.global.exception.ErrorCode;
-import com.logistics.delivery.infrastructure.client.HubServiceClient;
+import com.logistics.delivery.infrastructure.client.HubQueryService;
 import com.logistics.delivery.infrastructure.client.UserServiceClient;
 import com.logistics.delivery.infrastructure.client.dto.UserServiceUserResponseDto;
 import java.util.EnumSet;
@@ -29,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DeliveryAgentCommandService {
     private final DeliveryAgentRepository deliveryAgentRepository;
     private final UserServiceClient userServiceClient;
-    private final HubServiceClient hubServiceClient;
+    private final HubQueryService hubQueryService;
 
     private static final int MAX_COUNT = 10;
     private static final Set<UserRole> AGENT_MANAGE_ROLES = EnumSet.of(UserRole.MASTER, UserRole.HUB_MANAGER);
@@ -81,11 +81,18 @@ public class DeliveryAgentCommandService {
         deliveryAgent.softDelete(requesterId);
     }
 
+    // 허브 삭제 이벤트(Kafka) 수신 시 소속 업체 배송담당자 전체를 소프트삭제 - 삭제된 순번은 재배열하지 않음(기존 delete()와 동일)
+    @Transactional
+    public void deleteAllByHub(UUID hubId, UUID deletedBy) {
+        List<DeliveryAgent> agents = deliveryAgentRepository.findByHubIdAndDeletedAtIsNull(hubId);
+        agents.forEach(agent -> agent.softDelete(deletedBy));
+    }
+
     private void validateHubExists(UUID hubId) {
         if (hubId == null) {
             return;
         }
-        FeignExceptionTranslator.call(() -> hubServiceClient.getHub(hubId), ErrorCode.DELIVERY_AGENT_HUB_NOT_FOUND);
+        FeignExceptionTranslator.call(() -> hubQueryService.getHub(hubId), ErrorCode.DELIVERY_AGENT_HUB_NOT_FOUND);
     }
 
     private String groupLockKey(AgentType agentType, UUID hubId) {

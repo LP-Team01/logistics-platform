@@ -1,5 +1,6 @@
 package com.logistics.order.infrastructure.client.dto;
 
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -13,6 +14,11 @@ public record CreateDeliveryRequest(
         String deliveryAddress,
         String receiver,
         String receiverSlackId,
-        UUID receiverCompanyId
+        UUID receiverCompanyId,
+        UUID recipientUserId,
+        String productName,
+        Integer quantity,
+        String requestText,
+        Instant requestedArrivalAt
 ) {
 }

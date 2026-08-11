@@ -19,6 +19,9 @@ public interface DeliveryAgentRepository extends JpaRepository<DeliveryAgent, UU
 
     Optional<DeliveryAgent> findByIdAndDeletedAtIsNull(UUID id);
 
+    // 허브 삭제 이벤트 수신 시 소속 배송담당자 전체를 찾아 일괄 소프트삭제하기 위함
+    List<DeliveryAgent> findByHubIdAndDeletedAtIsNull(UUID hubId);
+
     // (agentType, hubId) 그룹 자체를 키로 잠근다(트랜잭션 스코프, 커밋/롤백 시 자동 해제).
     @Query(value = "SELECT pg_advisory_xact_lock(hashtext(:lockKey))", nativeQuery = true)
     void lockAgentGroup(@Param("lockKey") String lockKey);

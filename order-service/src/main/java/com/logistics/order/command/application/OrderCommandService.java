@@ -177,7 +177,12 @@ public class OrderCommandService {
                             receiverCompany.address(),
                             receiverUser.username(),
                             receiverUser.slackId(),
-                            savedOrder.getReceiverCompanyId()
+                            savedOrder.getReceiverCompanyId(),
+                            receiverUser.userId(),
+                            orderItem.getProductName(),
+                            orderItem.getQuantity(),
+                            savedOrder.getDeliveryRequest(),
+                            orderItem.getRequestedDeadline()
                     )
             );
         }

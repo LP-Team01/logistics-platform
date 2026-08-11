@@ -24,9 +24,13 @@ import com.logistics.delivery.global.exception.BusinessException;
 import com.logistics.delivery.global.exception.ErrorCode;
 import com.logistics.delivery.infrastructure.client.HubServiceClient;
 import com.logistics.delivery.infrastructure.client.dto.HubServiceRouteSegmentDto;
+import com.logistics.delivery.infrastructure.kafka.DeliveryAiNotificationEvent;
+import com.logistics.delivery.infrastructure.kafka.DeliveryAiNotificationEventFactory;
+import com.logistics.delivery.infrastructure.kafka.DeliveryAiNotificationOutboxService;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +50,8 @@ public class DeliveryCommandService {
     private final CompanyRouteSequencingService companyRouteSequencingService;
     private final InternalServiceProperties internalServiceProperties;
     private final HubInternalServiceProperties hubInternalServiceProperties;
+    private final DeliveryAiNotificationEventFactory deliveryAiNotificationEventFactory;
+    private final DeliveryAiNotificationOutboxService deliveryAiNotificationOutboxService;
 
     private static final Set<UserRole> DELIVERY_UPDATE_ROLES =
         EnumSet.of(UserRole.MASTER, UserRole.HUB_MANAGER, UserRole.DELIVERY_MANAGER);
@@ -92,6 +98,8 @@ public class DeliveryCommandService {
         // 목적지 허브 → 수령 업체 구간. 업체배송담당자는 DESTINATION_ARRIVED 도달 시점에 배정(agentId는 null로 시작).
         CompanyDeliveryRouteRecord companyRouteRecord = buildCompanyRouteRecord(saved.getId(), command);
         companyDeliveryRouteRecordRepository.save(companyRouteRecord);
+
+        publishDeliveryCreatedEvent(saved, command, savedRouteRecords, companyRouteRecord);
 
         return CreateDeliveryResponseDto.from(saved, savedRouteRecords);
     }
@@ -196,6 +204,16 @@ public class DeliveryCommandService {
             .estimatedDistance(estimate.distanceKm())
             .estimatedDuration(estimate.durationMin())
             .build();
+    }
+
+    // DELIVERY_CREATED 이벤트는 AI 최종 발송 시한 계산/Slack 발송을 위한 부가 데이터라, 조립에 실패해도
+    // 배송 생성 자체는 막지 않는다 (DeliveryAiNotificationEventFactory가 실패 시 Optional.empty() 반환).
+    private void publishDeliveryCreatedEvent(Delivery delivery, CreateDeliveryCommand command,
+                                              List<DeliveryRouteRecord> routeRecords,
+                                              CompanyDeliveryRouteRecord companyRouteRecord) {
+        Optional<DeliveryAiNotificationEvent> event = deliveryAiNotificationEventFactory
+            .create(delivery, command, routeRecords, companyRouteRecord);
+        event.ifPresent(deliveryAiNotificationOutboxService::save);
     }
 
     private DeliveryRouteRecord buildAndSaveRouteRecord(UUID deliveryId, HubServiceRouteSegmentDto segment) {
