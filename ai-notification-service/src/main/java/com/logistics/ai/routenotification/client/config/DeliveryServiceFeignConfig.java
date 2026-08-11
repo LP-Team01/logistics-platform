@@ -26,7 +26,7 @@ public class DeliveryServiceFeignConfig {
      */
     @Bean
     public RequestInterceptor deliveryServiceInternalAuthInterceptor(
-        @Value("${internal-service.key:}") String internalServiceKey
+        @Value("${internal.service.key:}") String internalServiceKey
     ) {
         return requestTemplate -> {
             if (!StringUtils.hasText(internalServiceKey)) {
