@@ -5,7 +5,7 @@ import com.logistics.delivery.domain.entity.CompanyRouteRecordStatus;
 import com.logistics.delivery.domain.repository.CompanyDeliveryRouteRecordRepository;
 import com.logistics.delivery.domain.repository.DeliveryAgentRepository;
 import com.logistics.delivery.infrastructure.client.AiNotificationServiceClient;
-import com.logistics.delivery.infrastructure.client.HubServiceClient;
+import com.logistics.delivery.infrastructure.client.HubQueryService;
 import com.logistics.delivery.infrastructure.client.dto.HubServiceHubResponseDto;
 import com.logistics.delivery.infrastructure.client.dto.VisitSequenceRefinementRequestDto;
 import com.logistics.delivery.infrastructure.client.dto.VisitSequenceRefinementResponseDto;
@@ -34,7 +34,7 @@ public class CompanyRouteSequencingService {
 
     private final CompanyDeliveryRouteRecordRepository companyDeliveryRouteRecordRepository;
     private final DeliveryAgentRepository deliveryAgentRepository;
-    private final HubServiceClient hubServiceClient;
+    private final HubQueryService hubQueryService;
     private final NaverDirectionsClient naverDirectionsClient;
     private final AiNotificationServiceClient aiNotificationServiceClient;
 
@@ -175,7 +175,7 @@ public class CompanyRouteSequencingService {
 
     private HubServiceHubResponseDto fetchHub(UUID hubId) {
         try {
-            return hubServiceClient.getHub(hubId);
+            return hubQueryService.getHub(hubId);
         } catch (FeignException e) {
             log.warn("허브 좌표 조회 실패로 방문 순서 자동 계산을 건너뜁니다 - hubId={}, status={}", hubId, e.status(), e);
             return null;

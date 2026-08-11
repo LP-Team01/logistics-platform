@@ -4,6 +4,9 @@ server:
 spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/delivery_db}
+  cache:
+    redis:
+      time-to-live: ${HUB_CACHE_TTL:10m}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
@@ -16,18 +19,30 @@ spring:
         "[spring.json.use.type.headers]": false
         "[spring.json.value.default.type]": com.logistics.delivery.infrastructure.kafka.DeliveryCompensationEvent
         "[spring.json.trusted.packages]": com.logistics.delivery.infrastructure.kafka
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     listener:
       ack-mode: record
 
 kafka:
   topic:
     delivery-compensation: ${DELIVERY_COMPENSATION_TOPIC:delivery-compensation}
+    delivery-ai-notification: ${DELIVERY_AI_NOTIFICATION_TOPIC:delivery-ai-notification}
+    hub-events: ${HUB_EVENTS_TOPIC:hub-events}
+    delivery-manager-approval-requested: ${DELIVERY_MANAGER_APPROVAL_REQUESTED_TOPIC:delivery-manager-approval-requested}
+    delivery-agent-approval-result: ${DELIVERY_AGENT_APPROVAL_RESULT_TOPIC:delivery-agent-approval-result}
+  outbox:
+    publish-interval-ms: ${DELIVERY_AI_NOTIFICATION_PUBLISH_INTERVAL_MS:5000}
+
+ai-notification:
+  preparation-buffer-minutes: ${AI_NOTIFICATION_PREPARATION_BUFFER_MINUTES:30}
 
 internal:
   service:
     name: delivery-service
     key: ${INTERNAL_SERVICE_KEY}
-    allowed-name: order-service
+    allowed-names: order-service,ai-notification-service
   hub-service:
     key: ${HUB_INTERNAL_SERVICE_KEY}
 

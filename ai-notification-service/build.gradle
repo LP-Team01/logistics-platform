@@ -42,4 +42,9 @@ dependencies {
 
     // Kafka Test
     testImplementation 'org.springframework.kafka:spring-kafka-test'
+
+    // Spring Cloud
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+    implementation 'org.springframework.cloud:spring-cloud-starter-config'
+    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
 }

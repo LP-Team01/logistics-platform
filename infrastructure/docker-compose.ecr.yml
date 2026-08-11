@@ -1,0 +1,37 @@
+# ECR image overlay used by the EC2 deployment workflow.
+services:
+  eureka-server:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/logistics-platform/eureka-server:${IMAGE_TAG:-latest}
+    build: !reset null
+
+  config-server:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/logistics-platform/config-server:${IMAGE_TAG:-latest}
+    build: !reset null
+
+  api-gateway:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/logistics-platform/api-gateway:${IMAGE_TAG:-latest}
+    build: !reset null
+
+  user-service:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/logistics-platform/user-service:${IMAGE_TAG:-latest}
+    build: !reset null
+
+  hub-service:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/logistics-platform/hub-service:${IMAGE_TAG:-latest}
+    build: !reset null
+
+  company-service:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/logistics-platform/company-service:${IMAGE_TAG:-latest}
+    build: !reset null
+
+  order-service:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/logistics-platform/order-service:${IMAGE_TAG:-latest}
+    build: !reset null
+
+  delivery-service:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/logistics-platform/delivery-service:${IMAGE_TAG:-latest}
+    build: !reset null
+
+  ai-notification-service:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/logistics-platform/ai-notification-service:${IMAGE_TAG:-latest}
+    build: !reset null

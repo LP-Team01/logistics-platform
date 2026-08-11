@@ -118,6 +118,31 @@ public class SlackMessageService {
     }
 
     /**
+     * AI 요청 ID와 수신 사용자 ID로 기존 Slack 메시지를 조회합니다.
+     *
+     * <p>정기 알림이 다시 실행되었을 때 이미 처리된 메시지가 있는지
+     * 확인하여 불필요한 Gemini 호출과 중복 발송을 방지합니다.</p>
+     *
+     * @param aiRequestId 논리적인 AI 요청 식별자
+     * @param recipientUserId 메시지 수신 사용자 식별자
+     * @return 기존 Slack 메시지 처리 결과
+     */
+    @Transactional(readOnly = true)
+    public Optional<SlackMessageResponseDto>
+    findSlackMessageByAiRequestAndRecipient(
+        UUID aiRequestId,
+        UUID recipientUserId
+    ) {
+
+        return slackMessageRepository
+            .findByAiRequestIdAndRecipientUserIdAndDeletedAtIsNull(
+                aiRequestId,
+                recipientUserId
+            )
+            .map(SlackMessageResponseDto::from);
+    }
+
+    /**
      * PENDING 메시지가 복구 기준 시간을 초과했는지 확인합니다.
      */
     private boolean isRecoverablePending(
