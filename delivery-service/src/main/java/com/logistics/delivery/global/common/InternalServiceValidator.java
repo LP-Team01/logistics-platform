@@ -14,9 +14,9 @@ public class InternalServiceValidator {
 
     private final InternalServiceProperties properties;
 
-    // Order Service 내부 호출 검증
-    public void validateOrderService(String serviceName, String serviceKey) {
-        boolean validName = "order-service".equals(serviceName);
+    // 내부 서비스(order-service, ai-notification-service 등) 호출 검증 - allowedNames에 등록된 서비스만 허용
+    public void validateInternalService(String serviceName, String serviceKey) {
+        boolean validName = serviceName != null && properties.allowedNames().contains(serviceName);
 
         boolean validKey = serviceKey != null
                 && MessageDigest.isEqual(

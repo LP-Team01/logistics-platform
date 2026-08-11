@@ -7,6 +7,15 @@ spring:
   cache:
     redis:
       time-to-live: 600000
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVER:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+kafka:
+  topic:
+    hub-events: ${HUB_EVENTS_TOPIC:hub-events}
 
 internal:
   service:

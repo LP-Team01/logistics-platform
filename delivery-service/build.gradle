@@ -5,6 +5,7 @@ dependencies {
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.cloud:spring-cloud-starter-config'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.kafka:spring-kafka'
     implementation 'org.springframework.retry:spring-retry'
     implementation 'org.flywaydb:flyway-core'
@@ -16,4 +17,9 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
+
+    // Query 단위 테스트(Specification 필터/페이징 검증)용 임베디드 DB
+    testRuntimeOnly 'com.h2database:h2'
+    // Feign Client 통합 테스트용 (WireMock 스텁 서버)
+    testImplementation 'org.springframework.cloud:spring-cloud-contract-wiremock'
 }

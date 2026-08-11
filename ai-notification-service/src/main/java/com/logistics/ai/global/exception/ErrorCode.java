@@ -10,6 +10,12 @@ public enum ErrorCode {
         "유효하지 않은 AI 요청입니다."
     ),
 
+    AI_INTERNAL_FORBIDDEN(
+        HttpStatus.FORBIDDEN,
+        "AI_403",
+        "내부 서비스 호출만 허용됩니다."
+    ),
+
     INVALID_STATISTICS_PERIOD(
         HttpStatus.BAD_REQUEST,
         "AI_400_01",

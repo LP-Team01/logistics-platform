@@ -10,6 +10,7 @@ import java.util.UUID;
 public record UserResponseDto(
     UUID userId,
     String username,
+    String slackId,
     UserRole role,
     UserStatus status,
     UUID hubId,
@@ -21,6 +22,7 @@ public record UserResponseDto(
         return new UserResponseDto(
             user.getUserId(),
             user.getUsername(),
+            user.getSlackId(),
             user.getRole(),
             user.getStatus(),
             user.getHubId(),

@@ -1,0 +1,192 @@
+package com.logistics.ai.routenotification.service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.genai.Client;
+import com.google.genai.types.GenerateContentConfig;
+import com.google.genai.types.GenerateContentResponse;
+import com.google.genai.types.HttpOptions;
+import com.logistics.ai.global.exception.GeminiProcessingException;
+import com.logistics.ai.routenotification.dto.responsedto.DailyRouteAiResult;
+import jakarta.annotation.PreDestroy;
+import java.util.concurrent.TimeUnit;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+
+/**
+ * Google Gen AI Java SDK를 이용하여
+ * 당일 배송 경로 Slack 메시지를 생성합니다.
+ */
+@Component
+public class GeminiDailyRouteClient implements DailyRouteAiClient {
+
+    private final Client client;
+    private final ObjectMapper objectMapper;
+    private final GenerateContentConfig generateContentConfig;
+    private final String model;
+
+    /**
+     * Gemini API 클라이언트와 요청 옵션을 생성합니다.
+     */
+    public GeminiDailyRouteClient(
+        ObjectMapper objectMapper,
+        @Value("${gemini.api-key:}")
+        String apiKey,
+        @Value("${gemini.model:gemini-3.6-flash}")
+        String model,
+        @Value("${gemini.temperature:0.1}")
+        Float temperature,
+        @Value("${gemini.timeout-ms:30000}")
+        Integer timeoutMs
+    ) {
+        if (!StringUtils.hasText(apiKey)) {
+            throw new IllegalStateException(
+                "Gemini API 키가 설정되지 않았습니다."
+            );
+        }
+
+        if (timeoutMs == null || timeoutMs <= 0) {
+            throw new IllegalStateException(
+                "Gemini 타임아웃은 0보다 커야 합니다."
+            );
+        }
+
+        HttpOptions httpOptions =
+            HttpOptions.builder()
+                .timeout(timeoutMs)
+                .build();
+
+        this.client = Client.builder()
+            .apiKey(apiKey)
+            .httpOptions(httpOptions)
+            .build();
+
+        this.objectMapper = objectMapper;
+        this.model = model;
+
+        this.generateContentConfig =
+            GenerateContentConfig.builder()
+                .temperature(temperature)
+                .responseMimeType("application/json")
+                .build();
+    }
+
+    /**
+     * Gemini에 프롬프트를 전달하여
+     * 당일 배송 경로 안내 메시지를 생성합니다.
+     */
+    @Override
+    public AiExecutionResult generateDailyRouteMessage(
+        String prompt
+    ) {
+        long startTime = System.nanoTime();
+
+        try {
+            GenerateContentResponse response =
+                client.models.generateContent(
+                    model,
+                    prompt,
+                    generateContentConfig
+                );
+
+            String rawResponse = response.text();
+
+            validateRawResponse(rawResponse);
+
+            String jsonResponse = extractJson(rawResponse);
+
+            DailyRouteAiResult result =
+                objectMapper.readValue(
+                    jsonResponse,
+                    DailyRouteAiResult.class
+                );
+
+            if (!result.isValid()) {
+                throw new GeminiProcessingException(
+                    "Gemini 응답에 배송 경로 안내 메시지가 없습니다."
+                );
+            }
+
+            return new AiExecutionResult(
+                rawResponse,
+                result,
+                model,
+                calculateProcessingTime(startTime)
+            );
+
+        } catch (GeminiProcessingException exception) {
+            throw exception;
+
+        } catch (JsonProcessingException exception) {
+            throw new GeminiProcessingException(
+                "Gemini 응답을 JSON으로 변환할 수 없습니다.",
+                exception
+            );
+
+        } catch (Exception exception) {
+            throw new GeminiProcessingException(
+                "배송 경로 안내 메시지 생성에 실패했습니다.",
+                exception
+            );
+        }
+    }
+
+    /**
+     * 현재 Gemini 모델 이름을 반환합니다.
+     */
+    @Override
+    public String getModel() {
+        return model;
+    }
+
+    /**
+     * Gemini가 빈 응답을 반환했는지 확인합니다.
+     */
+    private void validateRawResponse(String rawResponse) {
+        if (!StringUtils.hasText(rawResponse)) {
+            throw new GeminiProcessingException(
+                "Gemini가 빈 응답을 반환했습니다."
+            );
+        }
+    }
+
+    /**
+     * Gemini 응답에서 JSON 객체 부분만 추출합니다.
+     */
+    private String extractJson(String rawResponse) {
+        int jsonStart = rawResponse.indexOf('{');
+        int jsonEnd = rawResponse.lastIndexOf('}');
+
+        if (jsonStart < 0 || jsonEnd < jsonStart) {
+            throw new GeminiProcessingException(
+                "Gemini 응답에서 JSON 객체를 찾을 수 없습니다."
+            );
+        }
+
+        return rawResponse.substring(
+            jsonStart,
+            jsonEnd + 1
+        );
+    }
+
+    /**
+     * Gemini 호출 처리 시간을 밀리초 단위로 계산합니다.
+     */
+    private long calculateProcessingTime(long startTime) {
+        long elapsedTime =
+            System.nanoTime() - startTime;
+
+        return TimeUnit.NANOSECONDS.toMillis(
+            elapsedTime
+        );
+    }
+
+    /**
+     * 애플리케이션 종료 시 Gemini SDK의 HTTP 자원을 정리합니다.
+     */
+    @PreDestroy
+    public void close() {
+        client.close();
+    }
+}

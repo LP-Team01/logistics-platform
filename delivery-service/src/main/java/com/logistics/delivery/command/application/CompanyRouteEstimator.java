@@ -1,6 +1,6 @@
 package com.logistics.delivery.command.application;
 
-import com.logistics.delivery.infrastructure.client.HubServiceClient;
+import com.logistics.delivery.infrastructure.client.HubQueryService;
 import com.logistics.delivery.infrastructure.client.dto.HubServiceHubResponseDto;
 import com.logistics.delivery.infrastructure.client.external.naver.NaverCoordinateFormatter;
 import com.logistics.delivery.infrastructure.client.external.naver.NaverDirectionsClient;
@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class CompanyRouteEstimator {
 
-    private final HubServiceClient hubServiceClient;
+    private final HubQueryService hubQueryService;
     private final NaverGeocodingClient naverGeocodingClient;
     private final NaverDirectionsClient naverDirectionsClient;
 
@@ -65,7 +65,7 @@ public class CompanyRouteEstimator {
     private RouteEstimate estimateCompanyRoute(UUID destinationHubId, Coordinate companyCoordinate) {
         HubServiceHubResponseDto hub;
         try {
-            hub = hubServiceClient.getHub(destinationHubId);
+            hub = hubQueryService.getHub(destinationHubId);
         } catch (FeignException e) {
             log.warn("허브 조회 실패로 Naver Directions 호출을 건너뜁니다 - destinationHubId={}, status={}",
                 destinationHubId, e.status(), e);
