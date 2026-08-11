@@ -2,7 +2,12 @@ package com.logistics.user.user.service;
 
 import com.logistics.user.global.exception.BusinessException;
 import com.logistics.user.global.exception.ErrorCode;
-import com.logistics.user.user.dto.request.DeliveryAgentRequestDto;
+import com.logistics.user.global.exception.FeignExceptionTranslator;
+import com.logistics.user.kafka.DeliveryApprovalEvent;
+import com.logistics.user.kafka.KafkaService;
+import com.logistics.user.user.client.CompanyClient;
+import com.logistics.user.user.client.CompanyResponseDto;
+import com.logistics.user.user.client.HubClient;
 import com.logistics.user.user.dto.request.UpdateRequestDto;
 import com.logistics.user.user.dto.request.UserRequestDto;
 import com.logistics.user.user.dto.request.UserSearchCondition;
@@ -14,7 +19,6 @@ import com.logistics.user.user.entity.User;
 import com.logistics.user.user.entity.UserRole;
 import com.logistics.user.user.entity.UserStatus;
 import com.logistics.user.user.repository.UserRepository;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -25,6 +29,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -35,6 +40,9 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CompanyClient companyClient;
+    private final HubClient hubClient;
+    private final KafkaService kafkaService;
     private static final Set<Integer> ALLOWED_PAGE_SIZES = Set.of(10, 30, 50);
     private static final int DEFAULT_PAGE_SIZE = 10;
 
@@ -48,7 +56,13 @@ public class UserService {
         // 권한별 소속(hubId/companyId) 조합 검증
         validateAffiliation(requestDto.role(), requestDto.hubId(), requestDto.companyId());
 
-        // TODO: hub-service/company-service에 실제 hubId/companyId 존재 여부 검증
+        switch (requestDto.role()){
+            case HUB_MANAGER -> checkHubId(requestDto.hubId());
+            case COMPANY_MANAGER -> validateCompanyBelongsToHub(requestDto.companyId(), requestDto.hubId());
+            case DELIVERY_MANAGER -> {
+                if(requestDto.hubId() != null) checkHubId(requestDto.hubId());
+            }
+        }
 
         User user = User.builder()
             .username(requestDto.username())
@@ -71,8 +85,10 @@ public class UserService {
         );
         return UserResponseDto.from(user);
     }
-    public Page<UserResponseDto> getPendingUserByHub(UUID hubId, Pageable pageable) {
-
+    public Page<UserResponseDto> getPendingUserByHub(UUID hubId, UUID requesterHubId, Pageable pageable) {
+        if(!hubId.equals(requesterHubId)){
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
         return userRepository.findAllByHubIdAndDeletedAtIsNullAndStatus(hubId,UserStatus.PENDING, pageable)
             .map(UserResponseDto::from);
     }
@@ -87,12 +103,7 @@ public class UserService {
             () -> new BusinessException(ErrorCode.USER_NOT_FOUND)
         );
 
-        if(requestDto.username() != null && !requestDto.username().equals(user.getUsername())){
-            validateDuplicateId(requestDto.username());
-        }
-        if(requestDto.slackId() != null && !requestDto.slackId().equals(user.getSlackId())){
-            validateDuplicateSlackId(requestDto.slackId());
-        }
+        validateUpdate(user, requestDto);
 
         user.update(requestDto);
 
@@ -123,9 +134,11 @@ public class UserService {
 
         return UserStatusResponse.from(user);
     }
+
+
     @CacheEvict(value = "users", key = "#userId")
     @Transactional
-    public UserStatusResponse approvedUser(UUID userId, DeliveryAgentRequestDto requestDto) {
+    public UserStatusResponse approvedUser(UUID userId, UUID requesterId, UserRole managerRole, UUID managerHubId) {
         User user = userRepository.findByUserIdAndDeletedAtIsNull(userId).orElseThrow(
             () -> new BusinessException(ErrorCode.USER_NOT_FOUND)
         );
@@ -133,31 +146,49 @@ public class UserService {
         if(user.getStatus() != UserStatus.PENDING){
             throw new BusinessException(ErrorCode.ALREADY_PROCESSED_SIGNUP);
         }
+        AgentType agentType = user.getHubId() == null ? AgentType.HUB_DELIVERY : AgentType.COMPANY_DELIVERY;
+        validateApprovalScope(managerRole, managerHubId, user, agentType);
 
-        if(user.getRole() == UserRole.DELIVERY_MANAGER){
-            if(requestDto.agentType() == null){
-                throw new BusinessException(ErrorCode.BAD_REQUEST);
-            }
-            // TODO: OpenFeign으로 Delivery agent 생성
-            if(requestDto.agentType().equals(AgentType.COMPANY_DELIVERY)){
-                if(requestDto.hubId() == null){
-                    throw new BusinessException(ErrorCode.BAD_REQUEST);
-                }
-                // 성공
-
-                // 실패
-            }else{
-                // 성공
-
-                // 실패
-            }
+        if (user.getRole() == UserRole.DELIVERY_MANAGER) {
+            DeliveryApprovalEvent event = new DeliveryApprovalEvent(
+                requesterId,
+                managerHubId,
+                String.valueOf(managerRole),
+                user.getUserId(),
+                user.getHubId(),
+                agentType,
+                user.getSlackId()
+            );
+            kafkaService.approvalDeliveryAgent(String.valueOf(user.getUserId()), event);
+            user.approving();
+        }else{
+            user.approve();
         }
 
-        user.approve();
+
 
         return UserStatusResponse.from(user);
     }
 
+    // MASTER는 전부 승인 가능. HUB_MANAGER는 COMPANY_MANAGER와 COMPANY_DELIVERY 타입 DELIVERY_MANAGER를
+    // 자기 담당 허브(managerHubId == 대상의 hubId) 한해서만 승인 가능.
+    private void validateApprovalScope(UserRole managerRole, UUID managerHubId, User target, AgentType agentType) {
+        if (managerRole == UserRole.MASTER) {
+            return;
+        }
+        if (managerRole != UserRole.HUB_MANAGER) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
+
+        boolean allowedTargetRole = target.getRole() == UserRole.COMPANY_MANAGER
+            || (target.getRole() == UserRole.DELIVERY_MANAGER && agentType == AgentType.COMPANY_DELIVERY);
+        if (!allowedTargetRole) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
+        if (!Objects.equals(managerHubId, target.getHubId())) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
+    }
 
 
     private void validateDuplicateSlackId(String slackId) {
@@ -185,6 +216,11 @@ public class UserService {
                     throw new BusinessException(ErrorCode.BAD_REQUEST);
                 }
             }
+            case DELIVERY_MANAGER -> {
+                if(companyId != null){
+                    throw new BusinessException(ErrorCode.BAD_REQUEST);
+                }
+            }
 
         }
     }
@@ -194,6 +230,40 @@ public class UserService {
             pageable.getPageSize() : DEFAULT_PAGE_SIZE;
 
         return PageRequest.of(pageable.getPageNumber(), size, pageable.getSort());
+    }
+
+
+    private void validateUpdate(User user, UpdateRequestDto requestDto) {
+        if (requestDto.username() != null && !requestDto.username().equals(user.getUsername())) {
+            validateDuplicateId(requestDto.username());
+        }
+        if (requestDto.slackId() != null && !requestDto.slackId().equals(user.getSlackId())) {
+            validateDuplicateSlackId(requestDto.slackId());
+        }
+
+        if (requestDto.role() != null || requestDto.hubId() != null || requestDto.companyId() != null) {
+            UserRole resolvedRole = requestDto.role() != null ? requestDto.role() : user.getRole();
+            UUID resolvedHubId = requestDto.hubId() != null ? requestDto.hubId() : user.getHubId();
+            UUID resolvedCompanyId = requestDto.companyId() != null ? requestDto.companyId() : user.getCompanyId();
+
+            validateAffiliation(resolvedRole, resolvedHubId, resolvedCompanyId);
+            switch (resolvedRole) {
+                case HUB_MANAGER -> checkHubId(resolvedHubId);
+                case COMPANY_MANAGER -> validateCompanyBelongsToHub(resolvedCompanyId, resolvedHubId);
+            }
+        }
+    }
+
+    private void validateCompanyBelongsToHub(UUID companyId, UUID hubId) {
+        CompanyResponseDto company = FeignExceptionTranslator.call(
+            () -> companyClient.getCompany(companyId), ErrorCode.COMPANY_NOT_FOUND);
+        if (!hubId.equals(company.hubId())) {
+            throw new BusinessException(ErrorCode.HUB_COMPANY_MISMATCH);
+        }
+    }
+
+    private void checkHubId(UUID hubId) {
+        FeignExceptionTranslator.call(() -> hubClient.getHub(hubId), ErrorCode.HUB_NOT_FOUND);
     }
 
 
