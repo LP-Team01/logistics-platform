@@ -6,6 +6,8 @@ import org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAu
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.cloud.openfeign.EnableFeignClients;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * AI 및 Slack 알림 서비스를 실행하는 Spring Boot 애플리케이션입니다.
@@ -15,6 +17,10 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
  * RAG 개발을 시작할 때 아래 제외 설정을 제거합니다.</p>
  */
 @ConfigurationPropertiesScan
+@EnableFeignClients(
+    basePackages = "com.logistics.ai.routenotification.client"
+)
+@EnableScheduling
 @SpringBootApplication(exclude = {
     GoogleGenAiEmbeddingConnectionAutoConfiguration.class,
     GoogleGenAiTextEmbeddingAutoConfiguration.class,

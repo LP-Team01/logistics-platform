@@ -16,6 +16,11 @@ public enum SlackMessageType {
     DISPATCH_DEADLINE,
 
     /**
+     * 배송 담당자에게 발송하는 당일 배송 경로 알림입니다.
+     */
+    DAILY_ROUTE,
+
+    /**
      * Slack 연동 확인용 테스트 메시지입니다.
      */
     TEST
