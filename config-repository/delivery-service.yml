@@ -42,7 +42,7 @@ internal:
   service:
     name: delivery-service
     key: ${INTERNAL_SERVICE_KEY}
-    allowed-name: order-service
+    allowed-names: order-service,ai-notification-service
   hub-service:
     key: ${HUB_INTERNAL_SERVICE_KEY}
 
