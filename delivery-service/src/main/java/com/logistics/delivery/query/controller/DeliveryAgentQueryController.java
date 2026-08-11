@@ -10,9 +10,13 @@ import com.logistics.delivery.query.dto.response.DeliveryAgentDetailResponseDto;
 import com.logistics.delivery.query.dto.response.DeliveryAgentResponseDto;
 import com.logistics.delivery.query.dto.response.TodayRouteResponseDto;
 import com.logistics.delivery.query.dto.request.DeliveryAgentSearchRequestDto;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -28,16 +32,25 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/delivery-agents")
+@Tag(name = "배송 담당자", description = "배송 담당자 단건/목록 조회, 당일 방문 계획, 다음 순번 조회 API")
 public class DeliveryAgentQueryController {
 
     private final DeliveryAgentQueryService deliveryAgentQueryService;
     private final InternalServiceValidator internalServiceValidator;
 
     @GetMapping("/{agentId}")
+    @Operation(
+        summary = "배송 담당자 단건 조회",
+        description = "배송 담당자 식별자로 상세 정보를 조회합니다."
+    )
     public ResponseEntity<DeliveryAgentDetailResponseDto> getDeliveryAgent(
+            @Parameter(description = "요청자 역할", required = true)
             @RequestHeader("X-User-Role") UserRole userRole,
+            @Parameter(description = "요청자 사용자 id", required = true)
             @RequestHeader("X-User-Id") UUID requesterId,
+            @Parameter(description = "요청자 소속 허브 id")
             @RequestHeader(value = "X-Hub-Id", required = false) UUID requesterHubId,
+            @Parameter(description = "배송 담당자 id", required = true)
             @PathVariable UUID agentId
     ) {
         DeliveryAgentDetailResponseDto result = deliveryAgentQueryService.getDeliveryAgent(
@@ -46,13 +59,24 @@ public class DeliveryAgentQueryController {
     }
 
     @GetMapping
+    @Operation(
+        summary = "배송 담당자 목록 조회/검색",
+        description = "허브 id, 담당자 유형, 가용 여부로 배송 담당자 목록을 검색합니다. "
+            + "X-Internal-Service(-Key) 헤더가 유효하면 내부 서비스 호출로 보고 전체 조회 권한을 부여합니다."
+    )
     public ResponseEntity<DeliveryAgentResponseDto> searchDeliveryAgents(
+        @Parameter(description = "요청자 역할")
         @RequestHeader(value = "X-User-Role", required = false) UserRole userRole,
+        @Parameter(description = "요청자 사용자 id")
         @RequestHeader(value = "X-User-Id", required = false) UUID requesterId,
+        @Parameter(description = "요청자 소속 허브 id")
         @RequestHeader(value = "X-Hub-Id", required = false) UUID requesterHubId,
+        @Parameter(description = "호출 서비스명(내부 전용 검증)")
         @RequestHeader(value = "X-Internal-Service", required = false) String serviceName,
+        @Parameter(description = "호출 서비스 인증 키(내부 전용 검증)")
         @RequestHeader(value = "X-Internal-Service-Key", required = false) String serviceKey,
-        @ModelAttribute @Valid DeliveryAgentSearchRequestDto request,
+        @ParameterObject @ModelAttribute @Valid DeliveryAgentSearchRequestDto request,
+        @ParameterObject
         @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
         ) {
         UserRole effectiveRole = resolveRole(serviceName, serviceKey, userRole, requesterId);
@@ -63,12 +87,23 @@ public class DeliveryAgentQueryController {
 
     // "매일 아침 6시 발송" 트리거 담당 서비스(ai-notification-service)가 조회할 당일 방문 계획 - 내부 서비스 호출 허용
     @GetMapping("/{agentId}/today-route")
+    @Operation(
+        summary = "당일 방문 계획 조회",
+        description = "업체 배송 담당자의 당일 방문 계획(경로, 총 거리/소요시간, 방문지 목록)을 조회합니다. "
+            + "\"매일 아침 6시 발송\" 요약 알림을 위해 ai-notification-service가 내부 호출로 조회합니다."
+    )
     public ResponseEntity<TodayRouteResponseDto> getTodayRoute(
+            @Parameter(description = "요청자 역할")
             @RequestHeader(value = "X-User-Role", required = false) UserRole userRole,
+            @Parameter(description = "요청자 사용자 id")
             @RequestHeader(value = "X-User-Id", required = false) UUID requesterId,
+            @Parameter(description = "요청자 소속 허브 id")
             @RequestHeader(value = "X-Hub-Id", required = false) UUID requesterHubId,
+            @Parameter(description = "호출 서비스명(내부 전용 검증)")
             @RequestHeader(value = "X-Internal-Service", required = false) String serviceName,
+            @Parameter(description = "호출 서비스 인증 키(내부 전용 검증)")
             @RequestHeader(value = "X-Internal-Service-Key", required = false) String serviceKey,
+            @Parameter(description = "배송 담당자 id", required = true)
             @PathVariable UUID agentId
     ) {
         UserRole effectiveRole = resolveRole(serviceName, serviceKey, userRole, requesterId);
@@ -90,8 +125,14 @@ public class DeliveryAgentQueryController {
     }
 
     @GetMapping("/next")
+    @Operation(
+        summary = "다음 순번 배송 담당자 조회",
+        description = "담당자 유형과 허브 id를 기준으로 가용한(isAvailable=true) 담당자 중 배정 순번이 가장 빠른 담당자를 조회합니다."
+    )
     public ResponseEntity<DeliveryAgentDetailResponseDto> getNextDeliveryAgent(
+        @Parameter(description = "배송 담당자 유형", required = true)
         @RequestParam AgentType agentType,
+        @Parameter(description = "허브 id(HUB_DELIVERY 조회 시 미지정 가능)")
         @RequestParam(required = false) UUID hubId
         ) {
         DeliveryAgentDetailResponseDto result = deliveryAgentQueryService.getNextDeliveryAgent(agentType, hubId);
