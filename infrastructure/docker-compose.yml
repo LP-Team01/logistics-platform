@@ -23,6 +23,10 @@ x-app-common: &app-common
     REDIS_HOST: redis
     REDIS_PORT: 6379
     REDIS_PASSWORD: ${REDIS_PASSWORD}
+    ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+    TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-1.0}
+    MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+    MANAGEMENT_TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-1.0}
 
 services:
   postgres:
@@ -112,6 +116,16 @@ services:
             --partitions 3 \
             --replication-factor 1
         done
+    networks: [logistics]
+
+  zipkin:
+    image: openzipkin/zipkin:3.6.1
+    restart: unless-stopped
+    environment:
+      JAVA_OPTS: -Xms128m -Xmx384m
+    mem_limit: 512m
+    ports:
+      - "${ZIPKIN_HOST_PORT:-9411}:9411"
     networks: [logistics]
 
   eureka-server:
