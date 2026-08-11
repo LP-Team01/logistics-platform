@@ -5,10 +5,13 @@ import org.springframework.http.HttpStatus;
 public enum ErrorCode {
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "GATEWAY_401_01", "유효하지 않은 인증 토큰입니다."),
     EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "GATEWAY_401_02", "만료된 인증 토큰입니다."),
+    EMPTY_TOKEN(HttpStatus.UNAUTHORIZED, "GATEWAY_401_03", "인증 토큰이 비어 있거나 잘못되었습니다."),
+    UNSUPPORTED_TOKEN(HttpStatus.UNAUTHORIZED, "GATEWAY_401_04", "지원되지 않는 인증 토큰입니다."),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "GATEWAY_403", "접근 권한이 없습니다."),
     SERVICE_NOT_FOUND(HttpStatus.NOT_FOUND, "GATEWAY_404", "요청한 서비스를 찾을 수 없습니다."),
     SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "GATEWAY_503", "서비스에 일시적으로 연결할 수 없습니다."),
     GATEWAY_ERROR(HttpStatus.BAD_GATEWAY, "GATEWAY_502", "서비스 요청 처리 중 오류가 발생했습니다.");
+
 
     private final HttpStatus status;
     private final String code;

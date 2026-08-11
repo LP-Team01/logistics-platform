@@ -4,9 +4,17 @@ x-app-common: &app-common
   restart: unless-stopped
   networks: [logistics]
   environment: &common-environment
-    SPRING_PROFILES_ACTIVE: local
+    SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-local}
     EUREKA_URL: http://eureka-server:8761/eureka
     CONFIG_SERVER_URL: http://config-server:8888
+    INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY}
+    HUB_INTERNAL_SERVICE_KEY: ${HUB_INTERNAL_SERVICE_KEY}
+    JWT_SECRET: ${JWT_SECRET}
+    JWT_ACCESS_TOKEN_EXPIRATION: ${JWT_ACCESS_TOKEN_EXPIRATION:-3600000}
+    JWT_REFRESH_TOKEN_EXPIRATION: ${JWT_REFRESH_TOKEN_EXPIRATION:-604800000}
+    SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
+    CORS_ALLOWED_ORIGIN_PATTERN: ${CORS_ALLOWED_ORIGIN_PATTERN:-http://localhost:*}
+    KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     POSTGRES_USER: ${POSTGRES_USER:-logistics}
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-logistics}
     POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
@@ -14,6 +22,7 @@ x-app-common: &app-common
     POSTGRES_SSL_MODE: ${POSTGRES_SSL_MODE:-disable}
     REDIS_HOST: redis
     REDIS_PORT: 6379
+    REDIS_PASSWORD: ${REDIS_PASSWORD}
 
 services:
   postgres:
@@ -36,16 +45,73 @@ services:
 
   redis:
     image: redis:7.4-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --requirepass
+      - ${REDIS_PASSWORD}
     ports:
-      - "${REDIS_HOST_PORT:-6379}:6379"
+        - "${REDIS_HOST_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
       interval: 10s
       timeout: 5s
       retries: 10
+    networks: [ logistics ]
+
+  kafka:
+    image: apache/kafka:3.9.2
+    restart: unless-stopped
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "/bin/bash", "-c", "</dev/tcp/localhost/29092"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks: [logistics]
+
+  kafka-init:
+    image: apache/kafka:3.9.2
+    restart: "no"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        for topic in delivery-compensation delivery-ai-notification; do
+          /opt/kafka/bin/kafka-topics.sh \
+            --bootstrap-server kafka:29092 \
+            --create \
+            --if-not-exists \
+            --topic "$$topic" \
+            --partitions 3 \
+            --replication-factor 1
+        done
     networks: [logistics]
 
   eureka-server:
@@ -56,10 +122,11 @@ services:
       args: { SERVICE: eureka-server }
     ports: ["8761:8761"]
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health || exit 1"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8761/actuator/health"]
       interval: 15s
       timeout: 5s
       retries: 10
+      start_period: 30s
 
   config-server:
     <<: *app-common
@@ -78,10 +145,11 @@ services:
       eureka-server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health || exit 1"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8888/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 30s
 
   api-gateway:
     <<: *app-common
@@ -90,9 +158,16 @@ services:
       dockerfile: infrastructure/Dockerfile
       args: { SERVICE: api-gateway }
     ports: ["8080:8080"]
+    expose: ["9091"]
     depends_on:
       config-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9091/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   user-service:
     <<: *app-common
@@ -102,6 +177,12 @@ services:
       DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/user_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8081:8081"]
     depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   hub-service:
     <<: *app-common
@@ -111,6 +192,12 @@ services:
       DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/hub_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8082:8082"]
     depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8082/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   company-service:
     <<: *app-common
@@ -120,6 +207,12 @@ services:
       DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/company_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8083:8083"]
     depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8083/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   order-service:
     <<: *app-common
@@ -128,7 +221,13 @@ services:
       <<: *common-environment
       DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/order_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8084:8084"]
-    depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy } }
+    depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy }, kafka-init: { condition: service_completed_successfully } }
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8084/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   delivery-service:
     <<: *app-common
@@ -137,7 +236,13 @@ services:
       <<: *common-environment
       DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/delivery_db?sslmode=${POSTGRES_SSL_MODE:-disable}
     ports: ["8085:8085"]
-    depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy } }
+    depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy }, kafka-init: { condition: service_completed_successfully } }
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8085/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   ai-notification-service:
     <<: *app-common
@@ -145,14 +250,43 @@ services:
     environment:
       <<: *common-environment
       DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/ai_db?sslmode=${POSTGRES_SSL_MODE:-disable}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-disabled}
       GEMINI_CHAT_MODEL: ${GEMINI_CHAT_MODEL:-gemini-2.5-flash}
       GEMINI_EMBEDDING_MODEL: ${GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
       AI_CHAT_PROVIDER: ${AI_CHAT_PROVIDER:-none}
       AI_EMBEDDING_PROVIDER: ${AI_EMBEDDING_PROVIDER:-none}
-      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-disabled}
     ports: ["8086:8086"]
-    depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy } }
+    depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy }, kafka-init: { condition: service_completed_successfully } }
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8086/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: [monitoring]
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus"]
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports: ["9090:9090"]
+    networks: [logistics]
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    profiles: [monitoring]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana-datasource.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
+    ports: ["3000:3000"]
+    depends_on: [prometheus]
+    networks: [logistics]
 
 networks:
   logistics:
@@ -161,3 +295,6 @@ networks:
 volumes:
   postgres-data:
   redis-data:
+  kafka-data:
+  prometheus-data:
+  grafana-data:

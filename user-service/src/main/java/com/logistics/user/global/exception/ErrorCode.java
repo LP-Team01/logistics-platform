@@ -5,11 +5,19 @@ import org.springframework.http.HttpStatus;
 public enum ErrorCode {
 
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_404", "사용자를 찾을 수 없습니다."),
-    DUPLICATE_EMAIL(HttpStatus.CONFLICT, "USER_409_01", "이미 사용 중인 이메일입니다."),
+    DUPLICATE_USERNAME(HttpStatus.CONFLICT, "USER_409_01", "이미 사용 중인 아이디입니다."),
     DUPLICATE_SLACK_ID(HttpStatus.CONFLICT, "USER_409_02", "이미 등록된 Slack ID입니다."),
-    INVALID_PASSWORD(HttpStatus.UNAUTHORIZED, "AUTH_401_01", "비밀번호가 일치하지 않습니다."),
+    USER_REJECTED(HttpStatus.UNAUTHORIZED, "USER_401_01", "거절된 사용자입니다."),
+    USER_PENDING(HttpStatus.UNAUTHORIZED, "USER_401_02", "아직 가입 승인 대기중입니다."),
+    INVALID_PASSWORD_OR_USERNAME(HttpStatus.UNAUTHORIZED, "AUTH_401_01", "아이디 비밀번호가 일치하지 않습니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH_401_02", "인증이 필요합니다."),
-    ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH_403", "접근 권한이 없습니다.");
+    ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH_403", "접근 권한이 없습니다."),
+    BAD_REQUEST(HttpStatus.BAD_REQUEST,"USER_400" , "권한에 맞는 입력이 아닙니다."),
+    ALREADY_PROCESSED_SIGNUP(HttpStatus.CONFLICT, "USER_409_03", "이미 처리된 가입 요청입니다." ),
+    COOKIE_NOT_FOUND(HttpStatus.NOT_FOUND,"AUTH_404_01" , "쿠키가 없습니다."),
+    REFRESHTOKEN_NOT_FOUND(HttpStatus.UNAUTHORIZED,"AUTH_401_03" , "현재 가진 토큰은 권한이 없습니다."),
+    REFRESHTOKEN_NOT_MATCHED(HttpStatus.UNAUTHORIZED,"AUTH_401_04" , "토큰이 일치하지 않습니다."),
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED,"AUTH_401_05" , "유효한 토큰이 아닙니다." );
 
     private final HttpStatus status;
     private final String code;

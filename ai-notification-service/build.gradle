@@ -1,19 +1,45 @@
 dependencyManagement {
     imports {
-        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
         mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
     }
 }
 
 dependencies {
+    // Web/API
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+
+    // Database/JPA
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+    implementation 'org.flywaydb:flyway-core'
+    runtimeOnly 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // Spring Cloud
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.cloud:spring-cloud-starter-config'
+
+    // Kafka
+    implementation 'org.springframework.kafka:spring-kafka'
+
+    // Swagger
     implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
-    implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
+
+    // Spring AI / Gemini / RAG
     implementation 'org.springframework.ai:spring-ai-starter-model-google-genai-embedding'
     implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
-    runtimeOnly 'org.postgresql:postgresql'
+
+    // Google Gemini 직접 호출 SDK
+    implementation 'com.google.genai:google-genai:1.64.0'
+
+    // Slack Web API 직접 호출
+    implementation 'com.slack.api:slack-api-client:1.49.0'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // Kafka Test
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
 }
