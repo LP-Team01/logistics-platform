@@ -16,6 +16,11 @@ services:
   kafka:
     ports: !reset []
 
+  zipkin:
+    # 운영 UI는 SSH 터널을 통해서만 접근합니다.
+    ports: !override
+      - "127.0.0.1:9411:9411"
+
   eureka-server:
     ports: !reset []
 
