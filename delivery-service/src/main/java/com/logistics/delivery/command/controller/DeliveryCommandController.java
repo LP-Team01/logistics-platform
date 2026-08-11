@@ -38,7 +38,7 @@ public class DeliveryCommandController {
             @RequestHeader("X-Internal-Service") String serviceName,
             @RequestHeader("X-Internal-Service-Key") String serviceKey,
             @RequestBody @Valid CreateDeliveryRequestDto request) {
-        internalServiceValidator.validateOrderService(serviceName, serviceKey);
+        internalServiceValidator.validateInternalService(serviceName, serviceKey);
         CreateDeliveryCommand command = request.toCommand();
         CreateDeliveryResponseDto result = deliveryCommandService.create(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
@@ -50,7 +50,7 @@ public class DeliveryCommandController {
             @RequestHeader("X-Internal-Service") String serviceName,
             @RequestHeader("X-Internal-Service-Key") String serviceKey,
             @RequestBody @Valid List<@NotNull @Valid CreateDeliveryRequestDto> requests) {
-        internalServiceValidator.validateOrderService(serviceName, serviceKey);
+        internalServiceValidator.validateInternalService(serviceName, serviceKey);
         List<CreateDeliveryCommand> commands = requests.stream().map(CreateDeliveryRequestDto::toCommand).toList();
         List<BatchCreateDeliveryResponseDto> result = deliveryCommandService.createBatch(commands);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
@@ -85,7 +85,7 @@ public class DeliveryCommandController {
             @RequestHeader("X-Internal-Service") String serviceName,
             @RequestHeader("X-Internal-Service-Key") String serviceKey,
             @PathVariable UUID orderItemId) {
-        internalServiceValidator.validateOrderService(serviceName, serviceKey);
+        internalServiceValidator.validateInternalService(serviceName, serviceKey);
         deliveryCommandService.deleteByOrderItem(orderItemId);
         return ResponseEntity.noContent().build();
     }
@@ -96,7 +96,7 @@ public class DeliveryCommandController {
             @RequestHeader("X-Internal-Service") String serviceName,
             @RequestHeader("X-Internal-Service-Key") String serviceKey,
             @PathVariable UUID orderId) {
-        internalServiceValidator.validateOrderService(serviceName, serviceKey);
+        internalServiceValidator.validateInternalService(serviceName, serviceKey);
         deliveryCommandService.cancelByOrderId(orderId);
         return ResponseEntity.noContent().build();
     }

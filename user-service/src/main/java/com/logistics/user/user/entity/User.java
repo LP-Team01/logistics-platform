@@ -95,10 +95,14 @@ public class User extends BaseEntity {
         this.status = UserStatus.APPROVED;
     }
 
+    public void approving() {this.status = UserStatus.APPROVING;}
+
     public void reject() {
         this.status = UserStatus.REJECTED;
     }
 
-
+    public void revertToPending() {
+        this.status = UserStatus.PENDING;
+    }
 
 }

@@ -5,7 +5,35 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/user_db}
 
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            # 외부 서비스 연결은 최대 3초 대기
+            connect-timeout: 3000
+            # 외부 서비스 응답은 최대 10초 대기
+            read-timeout: 10000
+
+  cache:
+    redis:
+      time-to-live: 600000
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
 jwt:
   secret: ${JWT_SECRET}
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:3600000}
   refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
+
+kafka:
+  topic:
+    delivery-manager-approval-requested: ${DELIVERY_MANAGER_APPROVAL_REQUESTED_TOPIC:delivery-manager-approval-requested}
+    delivery-agent-approval-result: ${DELIVERY_AGENT_APPROVAL_RESULT_TOPIC:delivery-agent-approval-result}

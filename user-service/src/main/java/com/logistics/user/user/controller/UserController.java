@@ -7,6 +7,7 @@ import com.logistics.user.user.dto.request.UserSearchCondition;
 import com.logistics.user.user.dto.response.UserResponseDto;
 import com.logistics.user.user.dto.response.UserStatusResponse;
 import com.logistics.user.user.dto.response.UserUpdateResponseDto;
+import com.logistics.user.user.entity.UserRole;
 import com.logistics.user.user.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,15 @@ public class UserController {
         UserResponseDto responseDto = userService.getUser(userId);
         return ResponseEntity.ok(responseDto);
     }
+    @GetMapping("/hubs/{hubId}/pending")
+    public ResponseEntity<Page<UserResponseDto>> getPendingUserByHub(
+        @PathVariable UUID hubId,
+        @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+        @RequestHeader("X-Hub-Id") UUID requesterHubId
+    ){
+        Page<UserResponseDto> response = userService.getPendingUserByHub(hubId,requesterHubId, pageable);
+        return ResponseEntity.ok(response);
+    }
 
     @GetMapping
     public ResponseEntity<Page<UserResponseDto>> searchUsers(
@@ -76,9 +86,11 @@ public class UserController {
     @PatchMapping("/{userId}/approved")
     public ResponseEntity<UserStatusResponse> approveUser(
         @PathVariable UUID userId,
-        @RequestBody DeliveryAgentRequestDto requestDto
+        @RequestHeader("X-User-Id") UUID requesterId,
+        @RequestHeader("X-User-Role") UserRole managerRole,
+        @RequestHeader(value = "X-Hub-Id", required = false) UUID managerHubId
     ){
-        UserStatusResponse response = userService.approvedUser(userId, requestDto);
+        UserStatusResponse response = userService.approvedUser(userId,requesterId, managerRole, managerHubId);
         return ResponseEntity.ok(response);
     }
 
