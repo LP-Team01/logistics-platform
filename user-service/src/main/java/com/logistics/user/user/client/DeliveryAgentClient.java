@@ -11,6 +11,7 @@ public interface DeliveryAgentClient {
 
     @PostMapping("/api/delivery-agents")
     DeliveryAgentResponse createAgent(
+        @RequestHeader("X-User-Id") UUID requesterId,
         @RequestHeader("X-User-Role") String userRole,
         @RequestHeader(value = "X-Hub-Id", required = false) UUID requesterHubId,
         @RequestBody CreateDeliveryAgentRequest request
