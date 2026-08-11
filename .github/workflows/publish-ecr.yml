@@ -40,11 +40,32 @@ jobs:
           chmod +x gradlew
           ./gradlew bootJar -x test
 
+      # AWS IAM 신뢰 정책과 비교할 수 있도록 비밀 토큰을 제외한 OIDC claim만 출력한다.
+      - name: Show OIDC claims
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const token = await core.getIDToken('sts.amazonaws.com');
+            const payload = JSON.parse(
+              Buffer.from(token.split('.')[1], 'base64url').toString()
+            );
+
+            core.info(JSON.stringify({
+              iss: payload.iss,
+              aud: payload.aud,
+              sub: payload.sub,
+              repository: payload.repository,
+              ref: payload.ref,
+              event_name: payload.event_name,
+              workflow: payload.workflow
+            }, null, 2));
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
+          audience: sts.amazonaws.com
 
       - name: Login to Amazon ECR
         id: login-ecr
