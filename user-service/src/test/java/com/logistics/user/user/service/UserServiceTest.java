@@ -11,7 +11,7 @@ import static org.mockito.Mockito.when;
 import com.logistics.user.global.exception.BusinessException;
 import com.logistics.user.global.exception.ErrorCode;
 import com.logistics.user.kafka.DeliveryManagerApprovalRequestedEvent;
-import com.logistics.user.kafka.KafkaService;
+import com.logistics.user.kafka.outbox.DeliveryManagerApprovalOutboxService;
 import com.logistics.user.user.client.CompanyClient;
 import com.logistics.user.user.client.CompanyResponseDto;
 import com.logistics.user.user.client.HubClient;
@@ -38,8 +38,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -53,7 +51,7 @@ class UserServiceTest {
     @Mock
     private HubClient hubClient;
     @Mock
-    private KafkaService kafkaService;
+    private DeliveryManagerApprovalOutboxService deliveryManagerApprovalOutboxService;
 
     @InjectMocks
     private UserService userService;
@@ -156,13 +154,12 @@ class UserServiceTest {
             User target = pendingUser(UserRole.DELIVERY_MANAGER, otherHubId);
             when(userRepository.findByUserIdAndDeletedAtIsNull(userId)).thenReturn(Optional.of(target));
 
-            // when & then: Kafka 발행은 트랜잭션 커밋 이후로 미뤄지므로, 커밋을 시뮬레이션해야 검증 가능
-            withTransactionSynchronization(() ->
-                assertThatCode(() ->
-                    userService.approvedUser(userId, requesterId, UserRole.MASTER, hubId))
-                    .doesNotThrowAnyException());
+            // when & then
+            assertThatCode(() ->
+                userService.approvedUser(userId, requesterId, UserRole.MASTER, hubId))
+                .doesNotThrowAnyException();
             assertThat(target.getStatus()).isEqualTo(UserStatus.APPROVING);
-            verify(kafkaService).approvalDeliveryAgent(any(), any(DeliveryManagerApprovalRequestedEvent.class));
+            verify(deliveryManagerApprovalOutboxService).save(any(DeliveryManagerApprovalRequestedEvent.class));
         }
 
         @Test
@@ -184,13 +181,12 @@ class UserServiceTest {
             User target = pendingUser(UserRole.DELIVERY_MANAGER, hubId);
             when(userRepository.findByUserIdAndDeletedAtIsNull(userId)).thenReturn(Optional.of(target));
 
-            // when & then: Kafka 발행은 트랜잭션 커밋 이후로 미뤄지므로, 커밋을 시뮬레이션해야 검증 가능
-            withTransactionSynchronization(() ->
-                assertThatCode(() ->
-                    userService.approvedUser(userId, requesterId, UserRole.HUB_MANAGER, hubId))
-                    .doesNotThrowAnyException());
+            // when & then
+            assertThatCode(() ->
+                userService.approvedUser(userId, requesterId, UserRole.HUB_MANAGER, hubId))
+                .doesNotThrowAnyException();
             assertThat(target.getStatus()).isEqualTo(UserStatus.APPROVING);
-            verify(kafkaService).approvalDeliveryAgent(any(), any(DeliveryManagerApprovalRequestedEvent.class));
+            verify(deliveryManagerApprovalOutboxService).save(any(DeliveryManagerApprovalRequestedEvent.class));
         }
 
         @Test
@@ -251,20 +247,6 @@ class UserServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.ACCESS_DENIED);
-        }
-    }
-
-    // approvedUser()가 TransactionSynchronizationManager.registerSynchronization(afterCommit)으로 Kafka 발행을
-    // 커밋 이후로 미루기 때문에, 실제 스프링 트랜잭션이 없는 단위테스트에서는 커밋을 직접 시뮬레이션해야 콜백이 실행된다.
-    private void withTransactionSynchronization(Runnable action) {
-        TransactionSynchronizationManager.initSynchronization();
-        try {
-            action.run();
-            for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
-                synchronization.afterCommit();
-            }
-        } finally {
-            TransactionSynchronizationManager.clearSynchronization();
         }
     }
 

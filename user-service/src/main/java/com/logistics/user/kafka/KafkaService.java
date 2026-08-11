@@ -7,12 +7,10 @@ import com.logistics.user.user.entity.UserStatus;
 import com.logistics.user.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.kafka.annotation.DltHandler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,17 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class KafkaService {
 
-    private final KafkaTemplate<String, DeliveryManagerApprovalRequestedEvent> kafkaTemplate;
     private final UserRepository userRepository;
-
-    @Value("${kafka.topic.delivery-manager-approval-requested}")
-    private String approvalTopic;
-
-
-    public void approvalDeliveryAgent(String key, DeliveryManagerApprovalRequestedEvent event){
-        kafkaTemplate.send(approvalTopic, key, event);
-    }
-
 
     @RetryableTopic(
         attempts = "5",
