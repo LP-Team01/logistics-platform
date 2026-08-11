@@ -235,6 +235,8 @@ services:
     environment:
       <<: *common-environment
       DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/delivery_db?sslmode=${POSTGRES_SSL_MODE:-disable}
+      NAVER_MAP_CLIENT_ID: ${NAVER_MAP_CLIENT_ID}
+      NAVER_MAP_CLIENT_SECRET: ${NAVER_MAP_CLIENT_SECRET}
     ports: ["8085:8085"]
     depends_on: { config-server: { condition: service_healthy }, postgres: { condition: service_healthy }, kafka-init: { condition: service_completed_successfully } }
     healthcheck:
