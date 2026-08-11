@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: delivery-service
+  cloud:
+    config:
+      enabled: false
+  flyway:
+    enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+
+naver:
+  map:
+    directions-base-url: https://maps.apigw.ntruss.com
+    geocoding-base-url: https://maps.apigw.ntruss.com
+    client-id: test-client-id
+    client-secret: test-client-secret
+
+internal:
+  service:
+    name: delivery-service
+    key: test-internal-service-key
+    allowed-names:
+      - order-service
+      - ai-notification-service
+  hub-service:
+    key: test-hub-internal-service-key
