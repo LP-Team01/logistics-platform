@@ -1,4 +1,4 @@
-package com.logistics.delivery.global.config;
+package com.logistics.ai.global.config;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;

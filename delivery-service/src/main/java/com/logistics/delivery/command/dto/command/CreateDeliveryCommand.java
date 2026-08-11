@@ -1,5 +1,6 @@
 package com.logistics.delivery.command.dto.command;
 
+import java.time.Instant;
 import java.util.UUID;
 import lombok.Builder;
 
@@ -12,6 +13,11 @@ public record CreateDeliveryCommand(
     String deliveryAddress,
     String receiver,
     String receiverSlackId,
-    UUID receiverCompanyId
+    UUID receiverCompanyId,
+    UUID recipientUserId,
+    String productName,
+    Integer quantity,
+    String requestText,
+    Instant requestedArrivalAt
 ) {
 }
