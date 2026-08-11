@@ -165,6 +165,7 @@ public class UserService {
                 user.getHubId(),
                 agentType,
                 user.getSlackId(),
+                requesterId,
                 Instant.now()
             );
             // 커밋 전에 발행하면 delivery-service의 콜백(GET /api/users/{id})이 아직 반영 안 된 상태를 볼 수 있어

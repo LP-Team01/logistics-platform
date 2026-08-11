@@ -12,6 +12,7 @@ public record DeliveryManagerApprovalRequestedEvent(
     UUID hubId,
     AgentType agentType,
     String slackId,
+    UUID requesterId,
     Instant occurredAt
 ) {
 }
