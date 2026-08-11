@@ -10,6 +10,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -51,6 +52,13 @@ public class GlobalExceptionHandler {
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .collect(Collectors.joining(", "));
         return response(HttpStatus.BAD_REQUEST, "COMMON_400", message, request);
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ErrorResponse> handleMissingHeaderException(
+            MissingRequestHeaderException exception, HttpServletRequest request) {
+        return response(HttpStatus.BAD_REQUEST, "COMMON_400",
+                exception.getHeaderName() + " 헤더가 필요합니다.", request);
     }
 
     @ExceptionHandler(Exception.class)
