@@ -6,6 +6,8 @@
 
 services:
   postgres:
+    # 운영에서는 RDS를 사용하며, 명시적으로 프로필을 켠 경우에만 로컬 DB를 실행합니다.
+    profiles: [local-postgres]
     ports: !reset []
 
   redis:
@@ -13,6 +15,11 @@ services:
 
   kafka:
     ports: !reset []
+
+  zipkin:
+    # 운영 UI는 SSH 터널을 통해서만 접근합니다.
+    ports: !override
+      - "127.0.0.1:9411:9411"
 
   eureka-server:
     ports: !reset []
@@ -26,21 +33,45 @@ services:
 
   user-service:
     ports: !reset []
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
 
   hub-service:
     ports: !reset []
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
 
   company-service:
     ports: !reset []
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
 
   order-service:
     ports: !reset []
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
 
   delivery-service:
     ports: !reset []
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
 
   ai-notification-service:
     ports: !reset []
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
 
   prometheus:
     ports: !reset []

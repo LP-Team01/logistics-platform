@@ -1,4 +1,10 @@
 management:
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
   endpoint:
     health:
       probes:
@@ -48,7 +54,7 @@ eureka:
 
 logging:
   pattern:
-    correlation: '[%X{requestId:-}] '
+    correlation: '[traceId=%X{traceId:-},spanId=%X{spanId:-},requestId=%X{requestId:-}] '
 
 # Gateway와 각 서비스의 API 문서 활성화 여부를 동일하게 제어합니다.
 springdoc:

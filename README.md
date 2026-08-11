@@ -286,6 +286,24 @@ docker compose --env-file .env -f infrastructure/docker-compose.yml logs -f user
 - `/v3/api-docs`가 정상 JSON을 반환하는지 먼저 확인합니다.
 - Config Server와 Eureka Server가 먼저 정상 기동됐는지 확인합니다.
 
+## 🔎 Zipkin 분산 추적
+
+각 Spring 서비스는 Micrometer Tracing으로 HTTP 요청의 Trace/Span을 생성하고 Zipkin으로 전송합니다. 로그의 `traceId`로 여러 서비스에 걸친 요청 흐름을 함께 조회할 수 있습니다.
+
+로컬 UI:
+
+```text
+http://localhost:9411/zipkin
+```
+
+운영에서는 9411 포트를 외부에 공개하지 않습니다. EC2 SSH 터널을 연결한 뒤 같은 로컬 주소로 접속합니다.
+
+```powershell
+ssh -i "logistics-platform-key.pem" -L 9411:localhost:9411 ubuntu@EC2_주소
+```
+
+`TRACING_SAMPLING_PROBABILITY=1.0`은 모든 요청을 수집합니다. 트래픽이 증가하면 운영 값을 `0.1` 등으로 낮춥니다. 현재 Zipkin 데이터는 컨테이너 재시작 시 사라지는 인메모리 방식입니다.
+
 ## 🧪 테스트 및 CI
 
 전체 테스트 실행:
