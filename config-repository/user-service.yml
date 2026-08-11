@@ -35,5 +35,5 @@ jwt:
 
 kafka:
   topic:
-    delivery-agent-approval-requested: ${DELIVERY_AGENT_APPROVAL_TOPIC:delivery-agent-approval-requested}
+    delivery-manager-approval-requested: ${DELIVERY_MANAGER_APPROVAL_REQUESTED_TOPIC:delivery-manager-approval-requested}
     delivery-agent-approval-result: ${DELIVERY_AGENT_APPROVAL_RESULT_TOPIC:delivery-agent-approval-result}

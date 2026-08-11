@@ -21,7 +21,7 @@ public class KafkaConsumerConfig {
     private String bootstrapServers;
 
     @Bean
-    public ConsumerFactory<String, DeliveryApprovalResultEvent> deliveryApprovalResultConsumerFactory(){
+    public ConsumerFactory<String, DeliveryAgentApprovalResultEvent> deliveryApprovalResultConsumerFactory(){
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "user-service");
@@ -29,14 +29,14 @@ public class KafkaConsumerConfig {
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
         props.put(JsonDeserializer.TRUSTED_PACKAGES, "com.logistics.user.kafka");
-        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, DeliveryApprovalResultEvent.class.getName());
+        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, DeliveryAgentApprovalResultEvent.class.getName());
         props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
         return new DefaultKafkaConsumerFactory<>(props);
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, DeliveryApprovalResultEvent> deliveryApprovalResultListenerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, DeliveryApprovalResultEvent> factory =
+    public ConcurrentKafkaListenerContainerFactory<String, DeliveryAgentApprovalResultEvent> deliveryApprovalResultListenerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, DeliveryAgentApprovalResultEvent> factory =
             new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(deliveryApprovalResultConsumerFactory());
         return factory;

@@ -3,7 +3,7 @@ package com.logistics.user.user.service;
 import com.logistics.user.global.exception.BusinessException;
 import com.logistics.user.global.exception.ErrorCode;
 import com.logistics.user.global.exception.FeignExceptionTranslator;
-import com.logistics.user.kafka.DeliveryApprovalEvent;
+import com.logistics.user.kafka.DeliveryManagerApprovalRequestedEvent;
 import com.logistics.user.kafka.KafkaService;
 import com.logistics.user.user.client.CompanyClient;
 import com.logistics.user.user.client.CompanyResponseDto;
@@ -20,6 +20,7 @@ import com.logistics.user.user.entity.UserRole;
 import com.logistics.user.user.entity.UserStatus;
 import com.logistics.user.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -28,11 +29,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.Instant;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -149,25 +154,36 @@ public class UserService {
         AgentType agentType = user.getHubId() == null ? AgentType.HUB_DELIVERY : AgentType.COMPANY_DELIVERY;
         validateApprovalScope(managerRole, managerHubId, user, agentType);
 
+        log.info("유저 승인 처리. userId={}, requesterId={}, managerRole={}", userId, requesterId, managerRole);
+
         if (user.getRole() == UserRole.DELIVERY_MANAGER) {
-            DeliveryApprovalEvent event = new DeliveryApprovalEvent(
-                requesterId,
-                managerHubId,
-                String.valueOf(managerRole),
+            user.approving();
+
+            DeliveryManagerApprovalRequestedEvent event = new DeliveryManagerApprovalRequestedEvent(
+                UUID.randomUUID(),
                 user.getUserId(),
                 user.getHubId(),
                 agentType,
-                user.getSlackId()
+                user.getSlackId(),
+                Instant.now()
             );
-            kafkaService.approvalDeliveryAgent(String.valueOf(user.getUserId()), event);
-            user.approving();
+            // 커밋 전에 발행하면 delivery-service의 콜백(GET /api/users/{id})이 아직 반영 안 된 상태를 볼 수 있어
+            // 커밋 이후로 발행을 미룬다
+            runAfterCommit(() -> kafkaService.approvalDeliveryAgent(String.valueOf(user.getUserId()), event));
         }else{
             user.approve();
         }
 
-
-
         return UserStatusResponse.from(user);
+    }
+
+    private void runAfterCommit(Runnable action) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                action.run();
+            }
+        });
     }
 
     // MASTER는 전부 승인 가능. HUB_MANAGER는 COMPANY_MANAGER와 COMPANY_DELIVERY 타입 DELIVERY_MANAGER를

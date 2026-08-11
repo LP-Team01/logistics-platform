@@ -1,6 +1,7 @@
 package com.logistics.user.kafka;
 
-import com.logistics.user.kafka.consumer.DeliveryApprovalResultEvent;
+import com.logistics.user.kafka.consumer.DeliveryAgentApprovalResultEvent;
+import com.logistics.user.kafka.consumer.DeliveryAgentApprovalResultEventType;
 import com.logistics.user.user.entity.User;
 import com.logistics.user.user.entity.UserStatus;
 import com.logistics.user.user.repository.UserRepository;
@@ -18,35 +19,37 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class KafkaService {
 
-    private final KafkaTemplate<String, DeliveryApprovalEvent> kafkaTemplate;
+    private final KafkaTemplate<String, DeliveryManagerApprovalRequestedEvent> kafkaTemplate;
     private final UserRepository userRepository;
 
-    @Value("${kafka.topic.delivery-agent-approval-requested}")
+    @Value("${kafka.topic.delivery-manager-approval-requested}")
     private String approvalTopic;
 
 
-    public void approvalDeliveryAgent(String key, DeliveryApprovalEvent event){
+    public void approvalDeliveryAgent(String key, DeliveryManagerApprovalRequestedEvent event){
         kafkaTemplate.send(approvalTopic, key, event);
     }
 
 
-    @CacheEvict(value = "users", key = "#event.userId()")
+    @CacheEvict(value = "users", key = "#event.agentId()")
     @Transactional
     @KafkaListener(
         topics = "${kafka.topic.delivery-agent-approval-result}",
         containerFactory = "deliveryApprovalResultListenerFactory"
     )
-    public void listenApprovalResult(DeliveryApprovalResultEvent event){
-        User user = userRepository.findByUserIdAndDeletedAtIsNullAndStatus(event.userId(), UserStatus.APPROVING)
+    public void listenApprovalResult(DeliveryAgentApprovalResultEvent event){
+        User user = userRepository.findByUserIdAndDeletedAtIsNullAndStatus(event.agentId(), UserStatus.APPROVING)
             .orElse(null);
         if(user == null){
-            log.warn("listenApprovalResult의 User를 찾을 수 없습니다.");
+            log.warn("listenApprovalResult의 User를 찾을 수 없습니다. agentId={}", event.agentId());
             return;
         }
 
-        if (event.success()) {
+        if (event.eventType() == DeliveryAgentApprovalResultEventType.APPROVED) {
             user.approve();
         }else{
+            log.warn("배송담당자 승인 실패. agentId={}, reasonCode={}, reasonMessage={}",
+                event.agentId(), event.failureReasonCode(), event.failureReasonMessage());
             user.revertToPending();
         }
     }
