@@ -1,0 +1,49 @@
+# EC2 production overlay: expose only the API Gateway.
+# Usage:
+# docker compose --env-file .env.prod \
+#   -f infrastructure/docker-compose.yml \
+#   -f infrastructure/docker-compose.prod.yml up -d --build
+
+services:
+  postgres:
+    ports: !reset []
+
+  redis:
+    ports: !reset []
+
+  kafka:
+    ports: !reset []
+
+  eureka-server:
+    ports: !reset []
+
+  config-server:
+    ports: !reset []
+
+  api-gateway:
+    ports: !override
+      - "80:8080"
+
+  user-service:
+    ports: !reset []
+
+  hub-service:
+    ports: !reset []
+
+  company-service:
+    ports: !reset []
+
+  order-service:
+    ports: !reset []
+
+  delivery-service:
+    ports: !reset []
+
+  ai-notification-service:
+    ports: !reset []
+
+  prometheus:
+    ports: !reset []
+
+  grafana:
+    ports: !reset []

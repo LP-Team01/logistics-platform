@@ -50,6 +50,7 @@ Desktop.ini
 .env.prod
 !.env.example
 !.env.rds.example
+!.env.prod.example
 *.pem
 *.key
 *.p12

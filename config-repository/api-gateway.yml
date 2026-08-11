@@ -31,6 +31,73 @@ spring:
               uri: lb://ai-notification-service
               predicates:
                 - Path=/api/ai-requests/**,/api/slack-messages/**
+            # 서비스별 Swagger API 문서 라우팅
+            - id: user-service-docs
+              uri: lb://user-service
+              predicates:
+                - Path=/docs/user/**
+              filters:
+                - StripPrefix=2
+
+            - id: hub-service-docs
+              uri: lb://hub-service
+              predicates:
+                - Path=/docs/hub/**
+              filters:
+                - StripPrefix=2
+
+            - id: company-service-docs
+              uri: lb://company-service
+              predicates:
+                - Path=/docs/company/**
+              filters:
+                - StripPrefix=2
+
+            - id: order-service-docs
+              uri: lb://order-service
+              predicates:
+                - Path=/docs/order/**
+              filters:
+                - StripPrefix=2
+
+            - id: delivery-service-docs
+              uri: lb://delivery-service
+              predicates:
+                - Path=/docs/delivery/**
+              filters:
+                - StripPrefix=2
+
+            - id: ai-notification-service-docs
+              uri: lb://ai-notification-service
+              predicates:
+                - Path=/docs/ai/**
+              filters:
+                - StripPrefix=2
+          # 특정 서비스가 멈췄을 때 Gateway 요청이 계속 대기하지 않도록
+          httpclient:
+            connect-timeout: 3000
+            response-timeout: 10s
+          # 프론트엔드나 Swagger가 Gateway API를 호출할 수 있도록
+          globalcors:
+            add-to-simple-url-handler-mapping: true
+            cors-configurations:
+              '[/**]':
+                allowed-origin-patterns:
+                  - ${CORS_ALLOWED_ORIGIN_PATTERN:http://localhost:*}
+                allowed-methods:
+                  - GET
+                  - POST
+                  - PUT
+                  - PATCH
+                  - DELETE
+                  - OPTIONS
+                allowed-headers:
+                  - "*"
+                exposed-headers:
+                  - Authorization
+                  - X-Request-Id
+                allow-credentials: true
+                max-age: 3600
 
 management:
   server:
@@ -46,12 +113,16 @@ jwt:
 
 gateway:
   security:
-    # JWT 검증 자체를 건너뛰는 경로 (로그인 전이거나, Access Token이 아니라
+    # 로그인, 회원가입, Swagger 문서처럼 JWT 검증을 생략하는 공개 경로
     permit-all:
       - /api/auth/login
       - /api/auth/re-issue
       - /api/auth/logout
       - /api/users/signup
+      - /docs/**
+      - /swagger-ui/**
+      - /swagger-ui.html
+      - /v3/api-docs/**
 
     # 경로별 필요 role 매핑. 위에서부터 순서대로 첫 매치 규칙을 적용하니
     # 더 구체적인 경로를 먼저, 넓은 경로(**)를 나중에 적는다.
@@ -128,10 +199,10 @@ gateway:
         roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
       - path: /api/orders/*/cancel
         methods: [PATCH]
-        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER]
+        roles: [MASTER, HUB_MANAGER]
       - path: /api/orders/*/items/*/cancel
         methods: [PATCH]
-        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER]
+        roles: [MASTER, HUB_MANAGER]
       - path: /api/orders/*/items/*
         methods: [PUT]
         roles: [MASTER, HUB_MANAGER]
@@ -219,3 +290,25 @@ gateway:
       - path: /api/slack-messages
         methods: [POST]
         roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
+
+# Swagger UI에 서비스 목록 등록
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:true}
+
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:true}
+    path: /swagger-ui.html
+    urls:
+      - name: User Service
+        url: /docs/user/v3/api-docs
+      - name: Hub Service
+        url: /docs/hub/v3/api-docs
+      - name: Company Service
+        url: /docs/company/v3/api-docs
+      - name: Order Service
+        url: /docs/order/v3/api-docs
+      - name: Delivery Service
+        url: /docs/delivery/v3/api-docs
+      - name: AI Notification Service
+        url: /docs/ai/v3/api-docs
