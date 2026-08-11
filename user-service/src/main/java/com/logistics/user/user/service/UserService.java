@@ -94,7 +94,8 @@ public class UserService {
         if(!hubId.equals(requesterHubId)){
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
-        return userRepository.findAllByHubIdAndDeletedAtIsNullAndStatus(hubId,UserStatus.PENDING, pageable)
+        Pageable resolved = resolvePageable(pageable);
+        return userRepository.findAllByHubIdAndDeletedAtIsNullAndStatus(hubId,UserStatus.PENDING, resolved)
             .map(UserResponseDto::from);
     }
     public Page<UserResponseDto> searchUsers(UserSearchCondition condition, Pageable pageable) {
