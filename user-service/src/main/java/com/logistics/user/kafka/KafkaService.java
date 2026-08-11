@@ -9,8 +9,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.kafka.annotation.DltHandler;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +34,11 @@ public class KafkaService {
     }
 
 
+    @RetryableTopic(
+        attempts = "5",
+        backoff = @Backoff(delay = 5_000, multiplier = 2),
+        listenerContainerFactory = "deliveryApprovalResultListenerFactory"
+    )
     @CacheEvict(value = "users", key = "#event.agentId()")
     @Transactional
     @KafkaListener(
@@ -52,5 +60,11 @@ public class KafkaService {
                 event.agentId(), event.failureReasonCode(), event.failureReasonMessage());
             user.revertToPending();
         }
+    }
+
+    @DltHandler
+    public void handleApprovalResultDlt(DeliveryAgentApprovalResultEvent event){
+        log.error("배송담당자 승인 결과 처리 최종 실패(DLT). agentId={}, eventType={}",
+            event.agentId(), event.eventType());
     }
 }

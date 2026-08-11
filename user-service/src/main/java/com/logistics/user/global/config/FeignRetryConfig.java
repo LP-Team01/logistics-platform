@@ -15,8 +15,9 @@ public class FeignRetryConfig {
 
     @Bean
     public Retryer retryer() {
-        // 100ms 시작, 최대 1s 간격, 최대 3번 시도(최초 1회 + 재시도 2회)
-        return new Retryer.Default(100, 1000, 3);
+        // 100ms 시작, 최대 1s 간격, 최대 2번 시도(최초 1회 + 재시도 1회)
+        // connect-timeout(3s)+read-timeout(10s)이 시도당 최대 대기시간이라, 3번 이상은 총 대기시간이 과도하게 길어짐
+        return new Retryer.Default(100, 1000, 2);
     }
 
     @Bean
