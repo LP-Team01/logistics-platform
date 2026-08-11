@@ -133,10 +133,13 @@ gateway:
       # --- user-service ---
       - path: /api/users/*/approved
         methods: [PATCH]
-        roles: [MASTER]
+        roles: [MASTER, HUB_MANAGER]
       - path: /api/users/*/rejected
         methods: [PATCH]
-        roles: [MASTER]
+        roles: [MASTER, HUB_MANAGER]
+      - path: /api/users/hubs/*/pending
+        methods: [GET]
+        roles: [HUB_MANAGER]
       - path: /api/users/me
         methods: [GET]
         roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]

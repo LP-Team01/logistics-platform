@@ -42,7 +42,7 @@ public class AuthService {
             case REJECTED -> {
                 throw new BusinessException(ErrorCode.USER_REJECTED);
             }
-            case PENDING -> {
+            case PENDING, APPROVING -> {
                 throw new BusinessException(ErrorCode.USER_PENDING);
             }
         }
