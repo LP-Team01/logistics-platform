@@ -127,14 +127,19 @@ public class DeliveryAgentQueryController {
     @GetMapping("/next")
     @Operation(
         summary = "다음 순번 배송 담당자 조회",
-        description = "담당자 유형과 허브 id를 기준으로 가용한(isAvailable=true) 담당자 중 배정 순번이 가장 빠른 담당자를 조회합니다."
+        description = "담당자 유형과 허브 id를 기준으로 가용한(isAvailable=true) 담당자 중 배정 순번이 가장 빠른 담당자를 조회하는 내부 전용 API입니다."
     )
     public ResponseEntity<DeliveryAgentDetailResponseDto> getNextDeliveryAgent(
+        @Parameter(description = "호출 서비스명(내부 전용 검증)", required = true)
+        @RequestHeader("X-Internal-Service") String serviceName,
+        @Parameter(description = "호출 서비스 인증 키(내부 전용 검증)", required = true)
+        @RequestHeader("X-Internal-Service-Key") String serviceKey,
         @Parameter(description = "배송 담당자 유형", required = true)
         @RequestParam AgentType agentType,
         @Parameter(description = "허브 id(HUB_DELIVERY 조회 시 미지정 가능)")
         @RequestParam(required = false) UUID hubId
         ) {
+        internalServiceValidator.validateInternalService(serviceName, serviceKey);
         DeliveryAgentDetailResponseDto result = deliveryAgentQueryService.getNextDeliveryAgent(agentType, hubId);
         return ResponseEntity.ok(result);
     }
