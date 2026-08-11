@@ -77,15 +77,6 @@ public class DeliveryAgentQueryController {
         return ResponseEntity.ok(result);
     }
 
-    @GetMapping("/next")
-    public ResponseEntity<DeliveryAgentDetailResponseDto> getNextDeliveryAgent(
-        @RequestParam AgentType agentType,
-        @RequestParam(required = false) UUID hubId
-        ) {
-        DeliveryAgentDetailResponseDto result = deliveryAgentQueryService.getNextDeliveryAgent(agentType, hubId);
-        return ResponseEntity.ok(result);
-    }
-
     // X-Internal-Service(-Key)가 유효하면 내부 서비스 호출로 보고 전체 조회 권한(MASTER)을 부여, 없으면 기존 사용자 헤더를 요구
     private UserRole resolveRole(String serviceName, String serviceKey, UserRole userRole, UUID requesterId) {
         if (serviceName != null || serviceKey != null) {
@@ -96,6 +87,15 @@ public class DeliveryAgentQueryController {
             throw new BusinessException(ErrorCode.DELIVERY_AGENT_QUERY_FORBIDDEN);
         }
         return userRole;
+    }
+
+    @GetMapping("/next")
+    public ResponseEntity<DeliveryAgentDetailResponseDto> getNextDeliveryAgent(
+        @RequestParam AgentType agentType,
+        @RequestParam(required = false) UUID hubId
+        ) {
+        DeliveryAgentDetailResponseDto result = deliveryAgentQueryService.getNextDeliveryAgent(agentType, hubId);
+        return ResponseEntity.ok(result);
     }
 
 }
