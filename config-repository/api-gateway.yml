@@ -223,20 +223,22 @@ gateway:
         roles: [MASTER]
 
       # --- delivery-service ---
-      # /next처럼 더 구체적인 경로는 반드시 /* 같은 넓은 패턴보다 앞에 와야 함
+      # 더 구체적인 경로는 반드시 /* 같은 넓은 패턴보다 앞에 와야 함
       # (안 그러면 내부 전용 엔드포인트가 넓은 규칙에 걸려서 실수로 열릴 수 있음)
-      - path: /api/delivery-agents/next
-        methods: [GET]
-        roles: []
+      # /api/delivery-agents/next는 X-Internal-Service 헤더로 검증하는 내부 전용 API라 규칙을 두지 않음
+      # (다른 내부 전용 배송 API들과 동일하게 게이트웨이를 거치지 않고 서비스 간 직접 호출로만 사용 — 규칙이 없으면 기본 거부되어 외부에서는 어차피 막힘)
       - path: /api/delivery-agents
         methods: [POST]
         roles: [MASTER, HUB_MANAGER]
+      - path: /api/delivery-agents/*/today-route
+        methods: [GET]
+        roles: [MASTER, HUB_MANAGER, DELIVERY_MANAGER]
       - path: /api/delivery-agents
         methods: [GET]
-        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
+        roles: [MASTER, HUB_MANAGER, DELIVERY_MANAGER]
       - path: /api/delivery-agents/*
         methods: [GET]
-        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
+        roles: [MASTER, HUB_MANAGER, DELIVERY_MANAGER]
       - path: /api/delivery-agents/*
         methods: [PATCH, DELETE]
         roles: [MASTER, HUB_MANAGER]
@@ -252,12 +254,18 @@ gateway:
       - path: /api/deliveries/*/company-route-records/*/status
         methods: [PATCH]
         roles: [MASTER, DELIVERY_MANAGER]
+      - path: /api/deliveries/*/company-route-records/*/route-plan
+        methods: [PATCH]
+        roles: [MASTER, HUB_MANAGER]
       - path: /api/deliveries/*/company-route-records
         methods: [GET]
         roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
       - path: /api/deliveries/*/status
         methods: [PATCH]
         roles: [MASTER, HUB_MANAGER, DELIVERY_MANAGER]
+      - path: /api/deliveries/*
+        methods: [DELETE]
+        roles: [MASTER, HUB_MANAGER]
       - path: /api/deliveries/*
         methods: [GET]
         roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
