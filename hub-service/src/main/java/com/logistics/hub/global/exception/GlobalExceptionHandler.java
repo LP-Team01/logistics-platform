@@ -6,11 +6,16 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -49,9 +54,47 @@ public class GlobalExceptionHandler {
             ErrorCode errorCode = ErrorCode.DUPLICATE_HUB_ROUTE;
             return response(errorCode.getStatus(), errorCode.getCode(), errorCode.getMessage(), request);
         }
+        if (message != null && message.contains("uq_hub_name")) {
+            ErrorCode errorCode = ErrorCode.DUPLICATE_HUB;
+            return response(errorCode.getStatus(), errorCode.getCode(), errorCode.getMessage(), request);
+        }
         log.error("Unhandled data integrity violation", exception);
         return response(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_500",
             "서버 내부 오류가 발생했습니다.", request);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatchException(
+        MethodArgumentTypeMismatchException exception, HttpServletRequest request
+    ) {
+        String message = String.format("'$s', 파라미터의 값이 올바른 형식이 아닙니다.", exception.getName());
+        return response(HttpStatus.BAD_REQUEST, "COMMON_400", message, request);
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ErrorResponse> handleMissingHeaderException(
+        MissingRequestHeaderException exception, HttpServletRequest request) {
+        String message = String.format("필수 헤더 '%s'가 누락되었습니다.", exception.getHeaderName());
+        return response(HttpStatus.BAD_REQUEST, "COMMON_400", message, request);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingParameterException(
+        MissingServletRequestParameterException exception, HttpServletRequest request) {
+        String message = String.format("필수 파라미터 '%s'가 누락되었습니다.", exception.getParameterName());
+        return response(HttpStatus.BAD_REQUEST, "COMMON_400", message, request);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleMessageNotReadableException(
+        HttpMessageNotReadableException exception, HttpServletRequest request) {
+        return response(HttpStatus.BAD_REQUEST, "COMMON_400", "요청 본문의 형식이 올바르지 않습니다.", request);
+    }
+
+    @ExceptionHandler(InvalidDataAccessApiUsageException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidSortException(
+        InvalidDataAccessApiUsageException exception, HttpServletRequest request) {
+        return response(HttpStatus.BAD_REQUEST, "COMMON_400", "정렬 기준이 올바르지 않습니다.", request);
     }
 
     private ResponseEntity<ErrorResponse> response(

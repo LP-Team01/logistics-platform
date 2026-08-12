@@ -1,5 +1,6 @@
 package com.logistics.hub.hubroute.controller;
 
+import com.logistics.hub.global.auth.RoleValidator;
 import com.logistics.hub.hubroute.dto.HubRouteCreateRequestDto;
 import com.logistics.hub.hubroute.dto.HubRouteDeleteResponseDto;
 import com.logistics.hub.hubroute.dto.HubRoutePageResponseDto;
@@ -33,9 +34,14 @@ import java.util.UUID;
 public class HubRouteController {
 
     private final HubRouteService hubRouteService;
+    private final RoleValidator roleValidator;
 
     @PostMapping
-    public ResponseEntity<HubRouteResponseDto> createHubRoute(@Valid @RequestBody HubRouteCreateRequestDto request) {
+    public ResponseEntity<HubRouteResponseDto> createHubRoute(
+        @RequestHeader("X-User-Role") String role,
+        @Valid @RequestBody HubRouteCreateRequestDto request
+    ) {
+        roleValidator.requireMaster(role);
         HubRouteResponseDto response = hubRouteService.createHubRoute(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -49,8 +55,10 @@ public class HubRouteController {
     @PatchMapping("/{hubRouteId}")
     public ResponseEntity<HubRouteResponseDto> updateHubRoute(
         @PathVariable UUID hubRouteId,
+        @RequestHeader("X-User-Role") String role,
         @Valid @RequestBody HubRouteUpdateRequestDto request
     ) {
+        roleValidator.requireMaster(role);
         HubRouteResponseDto response = hubRouteService.updateHubRoute(hubRouteId, request);
         return ResponseEntity.ok(response);
     }
@@ -58,8 +66,10 @@ public class HubRouteController {
     @DeleteMapping("/{hubRouteId}")
     public ResponseEntity<HubRouteDeleteResponseDto> deleteHubRoute(
         @PathVariable UUID hubRouteId,
+        @RequestHeader("X-User-Role") String role,
         @RequestHeader(value = "X-User-Id", required = false) UUID deletedBy
     ) {
+        roleValidator.requireMaster(role);
         HubRouteDeleteResponseDto response = hubRouteService.deleteHubRoute(hubRouteId, deletedBy);
         return ResponseEntity.ok(response);
     }
