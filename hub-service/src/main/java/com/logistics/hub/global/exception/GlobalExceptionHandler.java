@@ -6,8 +6,10 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -81,6 +83,18 @@ public class GlobalExceptionHandler {
         MissingServletRequestParameterException exception, HttpServletRequest request) {
         String message = String.format("필수 파라미터 '%s'가 누락되었습니다.", exception.getParameterName());
         return response(HttpStatus.BAD_REQUEST, "COMMON_400", message, request);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleMessageNotReadableException(
+        HttpMessageNotReadableException exception, HttpServletRequest request) {
+        return response(HttpStatus.BAD_REQUEST, "COMMON_400", "요청 본문의 형식이 올바르지 않습니다.", request);
+    }
+
+    @ExceptionHandler(InvalidDataAccessApiUsageException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidSortException(
+        InvalidDataAccessApiUsageException exception, HttpServletRequest request) {
+        return response(HttpStatus.BAD_REQUEST, "COMMON_400", "정렬 기준이 올바르지 않습니다.", request);
     }
 
     private ResponseEntity<ErrorResponse> response(
