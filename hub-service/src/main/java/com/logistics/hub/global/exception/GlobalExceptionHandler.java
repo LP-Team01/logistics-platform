@@ -9,6 +9,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -64,6 +66,20 @@ public class GlobalExceptionHandler {
         MethodArgumentTypeMismatchException exception, HttpServletRequest request
     ) {
         String message = String.format("'$s', 파라미터의 값이 올바른 형식이 아닙니다.", exception.getName());
+        return response(HttpStatus.BAD_REQUEST, "COMMON_400", message, request);
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ErrorResponse> handleMissingHeaderException(
+        MissingRequestHeaderException exception, HttpServletRequest request) {
+        String message = String.format("필수 헤더 '%s'가 누락되었습니다.", exception.getHeaderName());
+        return response(HttpStatus.BAD_REQUEST, "COMMON_400", message, request);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingParameterException(
+        MissingServletRequestParameterException exception, HttpServletRequest request) {
+        String message = String.format("필수 파라미터 '%s'가 누락되었습니다.", exception.getParameterName());
         return response(HttpStatus.BAD_REQUEST, "COMMON_400", message, request);
     }
 
