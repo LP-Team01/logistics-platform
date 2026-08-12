@@ -10,6 +10,7 @@ import com.logistics.delivery.command.dto.response.UpdateCompanyRouteRecordPlanR
 import com.logistics.delivery.domain.entity.CompanyDeliveryRouteRecord;
 import com.logistics.delivery.domain.entity.CompanyRouteRecordStatus;
 import com.logistics.delivery.domain.entity.Delivery;
+import com.logistics.delivery.domain.entity.DeliveryStatus;
 import com.logistics.delivery.domain.repository.CompanyDeliveryRouteRecordRepository;
 import com.logistics.delivery.domain.repository.DeliveryRepository;
 import com.logistics.delivery.global.common.UserRole;
@@ -52,6 +53,72 @@ class CompanyRouteRecordCommandServiceTest {
             .receiver("receiver")
             .build();
         when(deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)).thenReturn(Optional.of(delivery));
+    }
+
+    private Delivery stubDeliveryAtStatus(UUID deliveryId, DeliveryStatus status) {
+        Delivery delivery = Delivery.builder()
+            .orderId(UUID.randomUUID())
+            .orderItemId(UUID.randomUUID())
+            .departureHubId(UUID.randomUUID())
+            .destinationHubId(DEPARTURE_HUB)
+            .deliveryAddress("addr")
+            .receiver("receiver")
+            .build();
+        for (DeliveryStatus step : DELIVERY_STATUS_ORDER) {
+            if (step == DeliveryStatus.HUB_WAITING) {
+                continue;
+            }
+            delivery.update(step);
+            if (step == status) {
+                break;
+            }
+        }
+        when(deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)).thenReturn(Optional.of(delivery));
+        return delivery;
+    }
+
+    private static final DeliveryStatus[] DELIVERY_STATUS_ORDER = {
+        DeliveryStatus.HUB_WAITING, DeliveryStatus.HUB_MOVING, DeliveryStatus.DESTINATION_ARRIVED,
+        DeliveryStatus.DELIVERING, DeliveryStatus.COMPANY_MOVING, DeliveryStatus.DELIVERED
+    };
+
+    @Test
+    @DisplayName("업체배송경로가 DELIVERED로 완료되면 상위 Delivery.status도 DELIVERED로 함께 동기화된다")
+    void syncsDeliveryStatusToDeliveredWhenRouteRecordDelivered() {
+        UUID deliveryId = UUID.randomUUID();
+        UUID recordId = UUID.randomUUID();
+        Delivery delivery = stubDeliveryAtStatus(deliveryId, DeliveryStatus.COMPANY_MOVING);
+        CompanyDeliveryRouteRecord record = newRecord(deliveryId, UUID.randomUUID());
+        record.update(CompanyRouteRecordStatus.COMPANY_MOVING, null, null);
+        when(companyRouteRecordRepository.findByIdAndDeliveryIdAndDeletedAtIsNull(recordId, deliveryId))
+            .thenReturn(Optional.of(record));
+
+        companyRouteRecordCommandService.updateStatus(deliveryId, recordId,
+            UpdateCompanyRouteRecordCommand.builder().status(CompanyRouteRecordStatus.DELIVERED)
+                .actualDistance(5).actualDuration(10).build(),
+            UserRole.MASTER, UUID.randomUUID());
+
+        assertEquals(DeliveryStatus.DELIVERED, delivery.getStatus());
+    }
+
+    @Test
+    @DisplayName("상위 Delivery.status가 아직 COMPANY_MOVING이 아니면 업체배송경로 완료 처리 자체가 거부된다")
+    void rejectsRouteRecordDeliveredWhenDeliveryStatusNotYetCompanyMoving() {
+        UUID deliveryId = UUID.randomUUID();
+        UUID recordId = UUID.randomUUID();
+        stubDeliveryAtStatus(deliveryId, DeliveryStatus.DELIVERING);
+        CompanyDeliveryRouteRecord record = newRecord(deliveryId, UUID.randomUUID());
+        record.update(CompanyRouteRecordStatus.COMPANY_MOVING, null, null);
+        when(companyRouteRecordRepository.findByIdAndDeliveryIdAndDeletedAtIsNull(recordId, deliveryId))
+            .thenReturn(Optional.of(record));
+
+        BusinessException exception = assertThrows(BusinessException.class,
+            () -> companyRouteRecordCommandService.updateStatus(deliveryId, recordId,
+                UpdateCompanyRouteRecordCommand.builder().status(CompanyRouteRecordStatus.DELIVERED)
+                    .actualDistance(5).actualDuration(10).build(),
+                UserRole.MASTER, UUID.randomUUID()));
+
+        assertEquals(ErrorCode.DELIVERY_STATUS_NOT_CHANGEABLE, exception.getErrorCode());
     }
 
     @Test

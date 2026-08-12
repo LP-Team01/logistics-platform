@@ -1,12 +1,13 @@
 package com.logistics.user.user.client;
 
+import com.logistics.user.global.config.FeignRetryConfig;
 import java.util.UUID;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 
-@FeignClient(name = "delivery-service")
+@FeignClient(name = "delivery-service", configuration = FeignRetryConfig.class)
 public interface DeliveryAgentClient {
 
     @PostMapping("/api/delivery-agents")

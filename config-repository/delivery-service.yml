@@ -46,6 +46,16 @@ internal:
   hub-service:
     key: ${HUB_INTERNAL_SERVICE_KEY}
 
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 3000
+        readTimeout: 5000
+      ai-notification-service:
+        connectTimeout: 3000
+        readTimeout: 35000
+
 naver:
   map:
     directions-base-url: ${NAVER_MAP_DIRECTIONS_BASE_URL:https://maps.apigw.ntruss.com}

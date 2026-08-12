@@ -22,6 +22,7 @@ import com.logistics.delivery.global.config.HubInternalServiceProperties;
 import com.logistics.delivery.global.config.InternalServiceProperties;
 import com.logistics.delivery.global.exception.BusinessException;
 import com.logistics.delivery.global.exception.ErrorCode;
+import com.logistics.delivery.infrastructure.client.CompanyServiceClient;
 import com.logistics.delivery.infrastructure.client.HubServiceClient;
 import com.logistics.delivery.infrastructure.client.dto.HubServiceRouteSegmentDto;
 import com.logistics.delivery.infrastructure.kafka.DeliveryAiNotificationEvent;
@@ -46,6 +47,7 @@ public class DeliveryCommandService {
     private final CompanyDeliveryRouteRecordRepository companyDeliveryRouteRecordRepository;
     private final DeliveryAgentAssignmentService deliveryAgentAssignmentService;
     private final HubServiceClient hubServiceClient;
+    private final CompanyServiceClient companyServiceClient;
     private final CompanyRouteEstimator companyRouteEstimator;
     private final CompanyRouteSequencingService companyRouteSequencingService;
     private final InternalServiceProperties internalServiceProperties;
@@ -76,6 +78,7 @@ public class DeliveryCommandService {
     private CreateDeliveryResponseDto createOne(CreateDeliveryCommand command) {
         validateOrderNotCancelled(command.orderId());
         validateOrderItem(command.orderItemId());
+        validateCompanyExists(command.receiverCompanyId());
         Delivery delivery = Delivery.builder()
             .orderId(command.orderId())
             .orderItemId(command.orderItemId())
@@ -266,6 +269,11 @@ public class DeliveryCommandService {
         if (cancelled) {
             throw new BusinessException(ErrorCode.DELIVERY_ORDER_CANCELLED);
         }
+    }
+
+    private void validateCompanyExists(UUID companyId) {
+        FeignExceptionTranslator.call(() -> companyServiceClient.getCompany(companyId),
+            ErrorCode.DELIVERY_COMPANY_NOT_FOUND);
     }
 
     private void validateBatchSize(List<CreateDeliveryCommand> commands) {

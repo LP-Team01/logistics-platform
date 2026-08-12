@@ -4,7 +4,7 @@ import com.logistics.user.global.exception.BusinessException;
 import com.logistics.user.global.exception.ErrorCode;
 import com.logistics.user.global.exception.FeignExceptionTranslator;
 import com.logistics.user.kafka.DeliveryManagerApprovalRequestedEvent;
-import com.logistics.user.kafka.KafkaService;
+import com.logistics.user.kafka.outbox.DeliveryManagerApprovalOutboxService;
 import com.logistics.user.user.client.CompanyClient;
 import com.logistics.user.user.client.CompanyResponseDto;
 import com.logistics.user.user.client.HubClient;
@@ -29,8 +29,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -47,7 +45,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final CompanyClient companyClient;
     private final HubClient hubClient;
-    private final KafkaService kafkaService;
+    private final DeliveryManagerApprovalOutboxService deliveryManagerApprovalOutboxService;
     private static final Set<Integer> ALLOWED_PAGE_SIZES = Set.of(10, 30, 50);
     private static final int DEFAULT_PAGE_SIZE = 10;
 
@@ -94,7 +92,8 @@ public class UserService {
         if(!hubId.equals(requesterHubId)){
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
-        return userRepository.findAllByHubIdAndDeletedAtIsNullAndStatus(hubId,UserStatus.PENDING, pageable)
+        Pageable resolved = resolvePageable(pageable);
+        return userRepository.findAllByHubIdAndDeletedAtIsNullAndStatus(hubId,UserStatus.PENDING, resolved)
             .map(UserResponseDto::from);
     }
     public Page<UserResponseDto> searchUsers(UserSearchCondition condition, Pageable pageable) {
@@ -168,23 +167,15 @@ public class UserService {
                 requesterId,
                 Instant.now()
             );
-            // 커밋 전에 발행하면 delivery-service의 콜백(GET /api/users/{id})이 아직 반영 안 된 상태를 볼 수 있어
-            // 커밋 이후로 발행을 미룬다
-            runAfterCommit(() -> kafkaService.approvalDeliveryAgent(String.valueOf(user.getUserId()), event));
+            // 상태 변경과 같은 트랜잭션 안에서 아웃박스에 적재 — 커밋이 곧 이벤트 저장이므로
+            // 발행 시점에 delivery-service가 아직 반영 안 된 상태를 볼 걱정이 없고, 커밋 후 Kafka 장애로
+            // 이벤트가 유실되는 것도 방지된다. 실제 Kafka 발행은 DeliveryManagerApprovalOutboxPublisher가 폴링한다.
+            deliveryManagerApprovalOutboxService.save(event);
         }else{
             user.approve();
         }
 
         return UserStatusResponse.from(user);
-    }
-
-    private void runAfterCommit(Runnable action) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                action.run();
-            }
-        });
     }
 
     // MASTER는 전부 승인 가능. HUB_MANAGER는 COMPANY_MANAGER와 COMPANY_DELIVERY 타입 DELIVERY_MANAGER를
