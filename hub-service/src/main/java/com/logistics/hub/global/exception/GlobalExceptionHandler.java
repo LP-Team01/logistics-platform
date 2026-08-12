@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -49,9 +50,21 @@ public class GlobalExceptionHandler {
             ErrorCode errorCode = ErrorCode.DUPLICATE_HUB_ROUTE;
             return response(errorCode.getStatus(), errorCode.getCode(), errorCode.getMessage(), request);
         }
+        if (message != null && message.contains("uq_hub_name")) {
+            ErrorCode errorCode = ErrorCode.DUPLICATE_HUB;
+            return response(errorCode.getStatus(), errorCode.getCode(), errorCode.getMessage(), request);
+        }
         log.error("Unhandled data integrity violation", exception);
         return response(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_500",
             "서버 내부 오류가 발생했습니다.", request);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatchException(
+        MethodArgumentTypeMismatchException exception, HttpServletRequest request
+    ) {
+        String message = String.format("'$s', 파라미터의 값이 올바른 형식이 아닙니다.", exception.getName());
+        return response(HttpStatus.BAD_REQUEST, "COMMON_400", message, request);
     }
 
     private ResponseEntity<ErrorResponse> response(

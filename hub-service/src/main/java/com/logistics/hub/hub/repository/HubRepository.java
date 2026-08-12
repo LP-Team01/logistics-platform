@@ -17,6 +17,8 @@ public interface HubRepository extends JpaRepository<Hub, UUID> {
 
     Optional<Hub> findByHubIdAndDeletedAtIsNull(UUID hubId); // 단건 조회
 
+    boolean existsByNameAndDeletedAtIsNull(String name);
+
     @Query("SELECT h FROM Hub h WHERE h.deletedAt IS NULL AND (:keyword IS NULL OR h.name LIKE %:keyword%)")
     Page<Hub> search(@Param("keyword") String keyword, Pageable pageable);
 }
