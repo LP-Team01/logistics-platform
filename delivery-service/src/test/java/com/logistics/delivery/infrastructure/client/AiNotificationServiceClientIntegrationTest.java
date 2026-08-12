@@ -28,8 +28,8 @@ import org.springframework.cloud.contract.wiremock.AutoConfigureWireMock;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Configuration;
 
-// AiNotificationServiceClient는 delivery-service가 제안하는 계약이라 실제 엔드포인트가 아직 없을 수 있음
-// (production 코드는 이 경우 404를 정상 케이스로 보고 NN 순서로 폴백함 - CompanyRouteSequencingService 참고)
+// ai-notification-service 내부 전용 엔드포인트 호출 - X-Internal-Service(-Key) 헤더가 함께 전송되는지도 검증한다
+// (production 코드는 실패 시 404 등을 정상 케이스로 보고 NN 순서로 폴백함 - CompanyRouteSequencingService 참고)
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
     classes = AiNotificationServiceClientIntegrationTest.TestConfig.class,
@@ -78,21 +78,24 @@ class AiNotificationServiceClientIntegrationTest {
                     {"agentId":"%s","orderedRecordIds":["%s"]}
                     """.formatted(request.agentId(), orderedId))));
 
-        VisitSequenceRefinementResponseDto result = aiNotificationServiceClient.refineVisitSequence(request);
+        VisitSequenceRefinementResponseDto result =
+            aiNotificationServiceClient.refineVisitSequence("delivery-service", "test-key", request);
 
         assertEquals(request.agentId(), result.agentId());
         assertEquals(List.of(orderedId), result.orderedRecordIds());
-        verify(postRequestedFor(urlPathEqualTo("/api/ai-requests/visit-sequence")).withHeader(
-            "Content-Type", equalTo("application/json")));
+        verify(postRequestedFor(urlPathEqualTo("/api/ai-requests/visit-sequence"))
+            .withHeader("Content-Type", equalTo("application/json"))
+            .withHeader("X-Internal-Service", equalTo("delivery-service"))
+            .withHeader("X-Internal-Service-Key", equalTo("test-key")));
     }
 
     @Test
-    @DisplayName("엔드포인트가 아직 구현되지 않아 404가 오면 FeignException.NotFound가 발생한다")
-    void refineVisitSequenceNotImplementedYet() {
+    @DisplayName("엔드포인트 호출이 실패(404 등)하면 FeignException.NotFound가 발생한다")
+    void refineVisitSequenceNotFound() {
         stubFor(post(urlPathEqualTo("/api/ai-requests/visit-sequence"))
             .willReturn(aResponse().withStatus(404)));
 
         assertThrows(FeignException.NotFound.class,
-            () -> aiNotificationServiceClient.refineVisitSequence(newRequest()));
+            () -> aiNotificationServiceClient.refineVisitSequence("delivery-service", "test-key", newRequest()));
     }
 }

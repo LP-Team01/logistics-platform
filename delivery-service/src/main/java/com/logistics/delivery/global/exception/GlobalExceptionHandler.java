@@ -8,6 +8,7 @@ import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -70,6 +71,13 @@ public class GlobalExceptionHandler {
         }
         log.error("Data integrity violation", exception);
         return response(HttpStatus.CONFLICT, "COMMON_409", "데이터 정합성 제약을 위반했습니다.", request);
+    }
+
+    // Delivery/CompanyDeliveryRouteRecord의 @Version 낙관적 락 충돌 - 같은 건에 대한 동시 상태 변경 중 하나만 성공
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLockingFailureException(
+            ObjectOptimisticLockingFailureException exception, HttpServletRequest request) {
+        return errorResponse(ErrorCode.DELIVERY_STATUS_UPDATE_CONFLICT, request);
     }
 
     @ExceptionHandler(Exception.class)

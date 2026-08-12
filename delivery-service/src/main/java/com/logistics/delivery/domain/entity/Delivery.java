@@ -11,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.util.Map;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -56,6 +57,12 @@ public class Delivery extends BaseUpdatableEntity {
     private String receiverSlackId;
 
     private UUID companyAgentId;
+
+    // DESTINATION_ARRIVED 전이가 업체배송담당자 배정(회전 커서 소비)을 동반하므로, 같은 배송 건에 대한 동시 상태 변경
+    // 요청 중 하나만 성공시키기 위한 낙관적 락. 두 번째 요청은 DELIVERY_STATUS_UPDATE_CONFLICT(409)로 거부된다.
+    @Version
+    @Column(nullable = false)
+    private Long version;
 
     @Builder
     public Delivery(

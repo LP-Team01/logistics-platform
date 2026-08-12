@@ -5,12 +5,16 @@ import com.logistics.delivery.infrastructure.client.dto.VisitSequenceRefinementR
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 
-// delivery-service가 제안하는 계약 - 실제 엔드포인트는 ai-notification-service 담당자가 구현
-// 구현 전까지는 호출 시 404/연결실패가 정상
+// ai-notification-service 내부 전용 API - X-Internal-Service(-Key) 헤더 필요
 @FeignClient(name = "ai-notification-service")
 public interface AiNotificationServiceClient {
 
     @PostMapping("/api/ai-requests/visit-sequence")
-    VisitSequenceRefinementResponseDto refineVisitSequence(@RequestBody VisitSequenceRefinementRequestDto request);
+    VisitSequenceRefinementResponseDto refineVisitSequence(
+        @RequestHeader("X-Internal-Service") String serviceName,
+        @RequestHeader("X-Internal-Service-Key") String serviceKey,
+        @RequestBody VisitSequenceRefinementRequestDto request
+    );
 }

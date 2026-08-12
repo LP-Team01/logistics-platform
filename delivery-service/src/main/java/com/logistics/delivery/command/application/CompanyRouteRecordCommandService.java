@@ -5,6 +5,9 @@ import com.logistics.delivery.command.dto.command.UpdateCompanyRouteRecordPlanCo
 import com.logistics.delivery.command.dto.response.UpdateCompanyRouteRecordPlanResponseDto;
 import com.logistics.delivery.command.dto.response.UpdateCompanyRouteRecordResponseDto;
 import com.logistics.delivery.domain.entity.CompanyDeliveryRouteRecord;
+import com.logistics.delivery.domain.entity.CompanyRouteRecordStatus;
+import com.logistics.delivery.domain.entity.Delivery;
+import com.logistics.delivery.domain.entity.DeliveryStatus;
 import com.logistics.delivery.domain.repository.CompanyDeliveryRouteRecordRepository;
 import com.logistics.delivery.domain.repository.DeliveryRepository;
 import com.logistics.delivery.global.common.DeliveryAccessGuard;
@@ -34,10 +37,15 @@ public class CompanyRouteRecordCommandService {
     public UpdateCompanyRouteRecordResponseDto updateStatus(UUID deliveryId, UUID recordId,
                                                             UpdateCompanyRouteRecordCommand command,
                                                             UserRole userRole, UUID requesterId) {
-        validateDeliveryExists(deliveryId);
+        Delivery delivery = findDelivery(deliveryId);
         CompanyDeliveryRouteRecord routeRecord = findRouteRecord(deliveryId, recordId);
         validateAccess(userRole, requesterId, routeRecord);
         routeRecord.update(command.status(), command.actualDistance(), command.actualDuration());
+        // 업체배송경로(사실상 배송 1건과 1:1)가 DELIVERED로 완료되면 상위 Delivery.status도 함께 DELIVERED로 동기화.
+        // Delivery.status가 아직 COMPANY_MOVING이 아니면(호출 순서가 잘못된 경우) 기존 상태 전이 검증이 그대로 거부한다.
+        if (command.status() == CompanyRouteRecordStatus.DELIVERED) {
+            delivery.update(DeliveryStatus.DELIVERED);
+        }
         return UpdateCompanyRouteRecordResponseDto.from(routeRecord);
     }
 
@@ -73,7 +81,11 @@ public class CompanyRouteRecordCommandService {
     }
 
     private void validateDeliveryExists(UUID deliveryId) {
-        deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)
+        findDelivery(deliveryId);
+    }
+
+    private Delivery findDelivery(UUID deliveryId) {
+        return deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)
             .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOT_FOUND));
     }
 
