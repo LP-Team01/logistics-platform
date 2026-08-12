@@ -1,119 +1,133 @@
-# 인프라 구성
+# 인프라 운영 가이드
 
-## 필수 구성
+![물류관리 시스템 인프라 구성도](infrastructure-diagram.png)
 
-- Spring Boot 3.5.16 / Java 17
-- API Gateway, Eureka, Config Server
-- PostgreSQL 17 + pgvector
-- Redis 7.4
-- Kafka 3.9.2 (KRaft)
-- Prometheus / Grafana (선택형 monitoring 프로필)
-- Docker Compose
-- GitHub Actions
+[SVG 원본](infrastructure-diagram.svg)
 
-AWS ECR, ECS Fargate, RDS 배포는 선택 사항이며 로컬 환경은 Docker Compose만으로 실행할 수 있습니다.
+## 현재 구성
 
-## 환경 분리
+- 애플리케이션: Spring Boot 3.5.16, Java 17, API Gateway, Eureka, Config Server
+- 데이터: Amazon RDS for PostgreSQL 17, pgvector(`ai_db`), Redis 7.4
+- 메시징: Kafka 3.9.2(KRaft), Outbox, Retry Topic, DLT
+- 관측성: Actuator, Prometheus, Grafana, Zipkin
+- 실행 환경: Docker Compose on Amazon EC2
+- 배포: GitHub Actions OIDC → Amazon ECR → AWS Systems Manager → EC2
+- 외부 진입점: Caddy(80/443, 자동 TLS) → API Gateway
+- 운영 도메인: `https://api.logistics-platfom.shop`
 
-Docker Compose가 지정된 env 파일을 읽어 각 컨테이너에 환경 변수를 전달합니다.
+운영 EC2에서는 로컬 PostgreSQL 컨테이너를 실행하지 않습니다. 서비스별 DB는 사설망의 RDS 인스턴스에 논리적으로 분리하며 `ai_db`에만 `vector` 확장을 사용합니다.
+
+## 네트워크와 보안
+
+1. 외부 요청은 Caddy의 80/443 포트로만 들어오며 API Gateway로 전달됩니다.
+2. Gateway가 JWT를 검증하고 신뢰할 수 없는 `X-User-*` 헤더를 제거한 뒤 사용자 정보를 전달합니다.
+3. 서비스 간 내부 API는 `INTERNAL_SERVICE_KEY` 또는 `HUB_INTERNAL_SERVICE_KEY`로 검증합니다.
+4. RDS는 Public Access를 비활성화하고 EC2 보안 그룹에서 오는 5432 연결만 허용합니다.
+5. 운영 서버 관리는 SSH 고정 IP 허용 또는 AWS Session Manager를 사용합니다.
+6. `.env`, `.env.prod`, PEM 키와 실제 Secret은 Git에 커밋하지 않습니다.
+
+## 환경 파일
 
 ```powershell
 # 로컬
+Copy-Item .env.example .env
 docker compose --env-file .env -f infrastructure/docker-compose.yml up --build -d
-
-# 운영/RDS
-docker compose --env-file .env.prod -f infrastructure/docker-compose.yml -f infrastructure/docker-compose.rds.yml up --build -d
 ```
 
-- `.env`: 로컬 환경, `SPRING_PROFILES_ACTIVE=local`
-- `.env.prod`: 운영 환경, `SPRING_PROFILES_ACTIVE=prod`
-- 실제 env 파일은 Git에 커밋하지 않습니다.
-- 운영 Secret은 가능하면 AWS Secrets Manager 또는 ECS Secret으로 주입합니다.
-- Config Server는 `native` 프로필로 `/config`에 마운트된 `config-repository`를 제공합니다.
-- 운영 Profile에는 graceful shutdown, Health 상세정보 비공개, INFO 로그 레벨을 적용합니다.
+```bash
+# EC2 운영
+cp .env.prod.example .env.prod
+chmod 600 .env.prod
+```
+
+운영 파일에는 RDS endpoint, Redis/JWT/내부 통신 키, 외부 API 키를 실제 값으로 설정합니다. `JWT_SECRET`은 32바이트 이상의 표준 Base64 문자열이어야 합니다.
+
+```bash
+openssl rand -base64 32 | tr -d '\n'
+```
+
+## 운영 배포
+
+`main` 브랜치의 CI가 성공하면 `.github/workflows/publish-ecr.yml`이 실행됩니다.
+
+```text
+main push
+  → GitHub Actions CI
+  → GitHub OIDC로 AWS IAM Role 임시 권한 획득
+  → 서비스 이미지 9개를 ECR에 commit SHA 태그로 push
+  → SSM Run Command로 EC2 배포 명령 실행
+  → EC2가 ECR image pull 후 Docker Compose 재기동
+```
+
+EC2에서 수동으로 같은 구성을 확인할 때는 다음 파일을 함께 사용합니다.
+
+```bash
+docker compose \
+  --env-file .env.prod \
+  -f infrastructure/docker-compose.yml \
+  -f infrastructure/docker-compose.prod.yml \
+  -f infrastructure/docker-compose.ecr.yml \
+  ps
+```
+
+실제 pull 및 재기동은 GitHub Actions가 `infrastructure/deploy-ec2.sh`를 호출해 수행합니다.
 
 ## 서비스 통신 원칙
 
-1. 외부 요청은 API Gateway를 통해서만 접근합니다.
-2. Gateway가 JWT를 검증하고 사용자 및 요청 식별 헤더를 전달합니다.
-3. 서비스 간 동기 통신은 REST/OpenFeign을 사용합니다.
-4. 서비스는 다른 서비스의 DB를 직접 조회하지 않습니다.
-5. 내부 API는 `INTERNAL_SERVICE_KEY`와 `HUB_INTERNAL_SERVICE_KEY`로 보호합니다.
+- 외부 요청은 API Gateway를 통과합니다.
+- 동기 서비스 통신은 REST/OpenFeign을 사용합니다.
+- 서비스는 다른 서비스의 DB를 직접 조회하지 않습니다.
+- Config Server는 `config-repository`의 공통·서비스별 설정을 제공합니다.
+- Eureka는 Docker 네트워크에서 서비스 등록과 탐색을 담당합니다.
 
 ## Kafka
 
-`kafka-init`이 다음 Topic을 명시적으로 생성합니다.
+`kafka-init`이 다음 Topic을 생성합니다.
 
 | Topic | Producer | Consumer | 목적 |
 |---|---|---|---|
-| `delivery-compensation` | Order | Delivery | 배송 보상 취소 재시도 |
+| `delivery-compensation` | Order | Delivery | 배송 보상 취소 재처리 |
 | `delivery-ai-notification` | Delivery | AI Notification | 배송 이벤트 알림 |
 
-배송 보상 이벤트는 Order Outbox에 먼저 저장한 뒤 Kafka로 발행합니다. Delivery Consumer는 재시도 후에도 실패하면 DLT로 이동시킵니다. DLT는 운영 모니터링과 재처리 절차가 필요합니다.
-
-DLT 파티션별 적재 Offset 확인:
+Order Service는 동기 보상 취소가 실패하면 Outbox에 기록하고 Kafka로 발행합니다. Delivery Consumer는 Retry Topic을 거쳐 재시도하고 최종 실패 메시지는 DLT로 보냅니다.
 
 ```powershell
+# DLT 상태
 .\infrastructure\kafka-dlt.ps1 status
-```
 
-장애 원인을 해결한 뒤 DLT 메시지를 원본 Topic으로 재전송합니다. 한 번에 최대 100건으로 제한하며 전용 Consumer Group Offset을 사용해 같은 메시지의 반복 재전송을 방지합니다.
-
-```powershell
+# 원인 해결 후 최대 10건 재처리
 .\infrastructure\kafka-dlt.ps1 replay -MaxMessages 10
 ```
 
-재전송 후 Delivery Service 로그와 DLT 상태를 다시 확인합니다. 자동 무한 재처리는 장애 확산을 막기 위해 사용하지 않습니다.
-
-## 로컬 실행 및 확인
+## 상태 확인
 
 ```powershell
-.\gradlew.bat clean bootJar
-docker compose --env-file .env -f infrastructure/docker-compose.yml up --build -d
 docker compose --env-file .env -f infrastructure/docker-compose.yml ps
-```
-
-Prometheus와 Grafana를 포함해 실행:
-
-```powershell
-docker compose --profile monitoring --env-file .env -f infrastructure/docker-compose.yml up --build -d
-```
-
-- Prometheus: <http://localhost:9090>
-- Grafana: <http://localhost:3000>
-- Grafana에는 `http://prometheus:9090` Data Source가 자동 등록됩니다.
-- 운영에서는 `GRAFANA_ADMIN_PASSWORD`를 반드시 별도 Secret으로 설정합니다.
-
-정상 상태:
-
-- PostgreSQL, Redis, Kafka와 모든 애플리케이션: `healthy`
-- `kafka-init`: `Exited (0)`
-
-주요 확인 주소:
-
-- Gateway Health: Docker 내부 `http://api-gateway:9091/actuator/health`
-- Gateway Metrics: Docker 내부 `http://api-gateway:9091/actuator/prometheus`
-- Eureka: <http://localhost:8761>
-- Config Server: <http://localhost:8888/order-service/local>
-
-Kafka Topic 확인:
-
-```powershell
 docker compose --env-file .env -f infrastructure/docker-compose.yml exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --list
 ```
 
-Flyway 적용 확인 예시:
+- Gateway Health(컨테이너 내부): `http://api-gateway:9091/actuator/health`
+- Eureka(로컬): `http://localhost:8761`
+- Config Server(로컬): `http://localhost:8888/order-service/local`
+- Zipkin(로컬): `http://localhost:9411`
+- Prometheus/Grafana: `monitoring` profile 사용 시 `http://localhost:9090`, `http://localhost:3000`
 
-```powershell
-docker compose --env-file .env -f infrastructure/docker-compose.yml exec postgres psql -U logistics -d order_db -c "SELECT version, description, success FROM flyway_schema_history ORDER BY installed_rank;"
-```
+운영에서는 9091 관리 포트와 Zipkin 포트를 인터넷에 공개하지 않습니다.
 
-## CI
+## RDS와 Flyway
 
-Pull Request와 `main`, `dev` 브랜치 Push에서 다음을 검증합니다.
+- DB: `user_db`, `hub_db`, `company_db`, `order_db`, `delivery_db`, `ai_db`
+- 초기 DB 생성: `infrastructure/postgres/create-rds-databases.sql`
+- 연결/확장 검증: `infrastructure/postgres/verify-rds.sql`
+- `ai_db`: `CREATE EXTENSION IF NOT EXISTS vector;`
 
-1. 전체 Gradle 테스트
-2. 실행 JAR 생성
-3. Docker Compose 설정 유효성
-4. 전체 서비스 Docker 이미지 빌드
-5. 전체 Compose 기동 및 Gateway, Config Server, Eureka, Kafka Smoke Test
+이미 적용된 Flyway 파일은 이름이나 내용을 수정하지 않습니다. 스키마 변경은 항상 다음 버전의 새 마이그레이션으로 추가해야 checksum validation 오류를 피할 수 있습니다.
+
+## CI 검증 범위
+
+Pull Request와 `main`, `dev` push에서 다음 항목을 검증합니다.
+
+1. 전체 Gradle 테스트 및 Boot JAR 생성
+2. 기본/RDS/운영 Docker Compose 문법
+3. 전체 서비스 Docker 이미지 빌드
+4. Compose 기동 및 Gateway, Config Server, Eureka, Kafka smoke test
