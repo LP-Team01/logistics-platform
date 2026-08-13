@@ -1,5 +1,7 @@
 package com.logistics.ai;
 
+import io.swagger.v3.oas.annotations.OpenAPIDefinition;
+import io.swagger.v3.oas.annotations.servers.Server;
 import org.springframework.ai.model.google.genai.autoconfigure.embedding.GoogleGenAiEmbeddingConnectionAutoConfiguration;
 import org.springframework.ai.model.google.genai.autoconfigure.embedding.GoogleGenAiTextEmbeddingAutoConfiguration;
 import org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration;
@@ -26,6 +28,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     GoogleGenAiTextEmbeddingAutoConfiguration.class,
     PgVectorStoreAutoConfiguration.class
 })
+@OpenAPIDefinition(servers = @Server(url = "/", description = "API Gateway"))
 public class AiNotificationServiceApplication {
 
     public static void main(String[] args) {
