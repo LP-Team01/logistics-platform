@@ -4,6 +4,7 @@ import com.logistics.user.user.entity.User;
 import com.logistics.user.user.entity.UserRole;
 import com.logistics.user.user.entity.UserStatus;
 
+import java.io.Serializable;
 import java.time.Instant;
 import java.util.UUID;
 // (회원가입/단건조회/목록조회/로그인 공용)
@@ -16,7 +17,7 @@ public record UserResponseDto(
     UUID hubId,
     UUID companyId,
     Instant createdAt
-) {
+) implements Serializable {
 
     public static UserResponseDto from(User user) {
         return new UserResponseDto(
