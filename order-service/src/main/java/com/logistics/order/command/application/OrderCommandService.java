@@ -150,10 +150,6 @@ public class OrderCommandService {
             order.addItem(orderItem);
         }
 
-        // UUID만 먼저 확정하고 INSERT는 트랜잭션 커밋 때 한 번 수행
-        Order savedOrder =
-                orderRepository.save(order);
-
         // 배송 생성 요청 목록
         List<CreateDeliveryRequest> deliveryRequests =
                 new ArrayList<>();
@@ -163,25 +159,25 @@ public class OrderCommandService {
                 new HashSet<>();
 
         // 주문 상품별 배송 요청 정보 생성
-        for (OrderItem orderItem : savedOrder.getOrderItems()) {
+        for (OrderItem orderItem : order.getOrderItems()) {
             requestedOrderItemIds.add(
                     orderItem.getOrderItemId()
             );
 
             deliveryRequests.add(
                     new CreateDeliveryRequest(
-                            savedOrder.getOrderId(),
+                            order.getOrderId(),
                             orderItem.getOrderItemId(),
                             orderItem.getSupplierHubId(),
-                            savedOrder.getReceiverHubId(),
+                            order.getReceiverHubId(),
                             receiverCompany.address(),
                             receiverUser.username(),
                             receiverUser.slackId(),
-                            savedOrder.getReceiverCompanyId(),
+                            order.getReceiverCompanyId(),
                             receiverUser.userId(),
                             orderItem.getProductName(),
                             orderItem.getQuantity(),
-                            savedOrder.getDeliveryRequest(),
+                            order.getDeliveryRequest(),
                             orderItem.getRequestedDeadline()
                     )
             );
@@ -193,7 +189,7 @@ public class OrderCommandService {
                     createDeliveries(deliveryRequests);
 
             // 메서드 반환 후 주문 커밋이 실패해도 배송 보상이 누락되지 않도록 등록
-            registerRollbackCompensation(savedOrder.getOrderId());
+            registerRollbackCompensation(order.getOrderId());
 
             // 주문 상품 ID로 배송 응답을 찾기 위한 Map
             Map<UUID, CreateDeliveryResponse> deliveryResponseMap =
@@ -218,7 +214,7 @@ public class OrderCommandService {
             }
 
             // 각 주문 상품에 생성된 배송 ID 연결
-            for (OrderItem orderItem : savedOrder.getOrderItems()) {
+            for (OrderItem orderItem : order.getOrderItems()) {
                 CreateDeliveryResponse deliveryResponse =
                         deliveryResponseMap.get(
                                 orderItem.getOrderItemId()
@@ -236,17 +232,21 @@ public class OrderCommandService {
             }
 
             // 모든 배송이 정상적으로 연결되면 주문 확정
-            savedOrder.completeDeliveryCreation();
+            order.completeDeliveryCreation();
+
+            // 배송 연결까지 완료된 최종 상태를 INSERT 한 번으로 저장
+            Order savedOrder = orderRepository.save(order);
+
+            return OrderCommandResponse.from(savedOrder);
 
         } catch (RuntimeException exception) {
             // 일괄 배송 생성 실패 시 주문 단위로 한 번만 보상 취소
-            compensateDeliveries(savedOrder.getOrderId());
+            compensateDeliveries(order.getOrderId());
 
             // 예외를 다시 전달하여 주문 DB 트랜잭션 롤백
             throw exception;
         }
 
-        return OrderCommandResponse.from(savedOrder);
     }
 
     /**

@@ -8,8 +8,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
@@ -17,14 +15,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Persistable;
 
 @Entity
 @Table(name = "p_orders")
-public class Order extends BaseEntity {
+public class Order extends BaseEntity implements Persistable<UUID> {
 
     // 주문의 고유 식별자입니다. Hibernate가 UUID를 자동 생성합니다.
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "order_id", nullable = false, updatable = false)
     private UUID orderId;
 
@@ -84,6 +82,7 @@ public class Order extends BaseEntity {
             );
         }
 
+        this.orderId = UUID.randomUUID();
         this.receiverCompanyId = receiverCompanyId;
         this.receiverHubId = receiverHubId;
         this.status = OrderStatus.PENDING;
@@ -434,6 +433,10 @@ public class Order extends BaseEntity {
     }
 
     public UUID getOrderId() { return orderId; }
+    @Override
+    public UUID getId() { return orderId; }
+    @Override
+    public boolean isNew() { return getCreatedAt() == null; }
     public UUID getReceiverCompanyId() { return receiverCompanyId; }
     public UUID getReceiverHubId() {return receiverHubId;}
     public OrderStatus getStatus() { return status; }
