@@ -91,7 +91,7 @@ class HubDeletedConsumerTest {
         CacheEvict cacheEvict = consume.getAnnotation(CacheEvict.class);
 
         assertNotNull(cacheEvict);
-        assertArrayEquals(new String[] {"hubs"}, cacheEvict.value());
+        assertArrayEquals(new String[] {"delivery-service-hubs"}, cacheEvict.value());
         assertEquals("#event.hubId()", cacheEvict.key());
     }
 }

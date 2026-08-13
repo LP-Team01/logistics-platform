@@ -13,7 +13,7 @@ public record CompanyResponseDto(
     String type,
     String address,
     Instant createdAt,
-    String createdBy
+    UUID createdBy
 ) {
     // Entity -> DTO 변환 정적 팩토리 메서드
     public static CompanyResponseDto from(Company company) {
