@@ -34,6 +34,10 @@ public class HubService {
 
     @Transactional
     public HubResponseDto createHub(HubCreateRequestDto request) {
+        if (hubRepository.existsByNameAndDeletedAtIsNull(request.name())) {
+            throw new BusinessException(ErrorCode.DUPLICATE_HUB);
+        }
+
         Hub hub = Hub.builder()
             .name(request.name())
             .address(request.address())

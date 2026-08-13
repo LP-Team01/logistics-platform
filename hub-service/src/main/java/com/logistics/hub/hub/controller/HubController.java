@@ -1,5 +1,6 @@
 package com.logistics.hub.hub.controller;
 
+import com.logistics.hub.global.auth.RoleValidator;
 import com.logistics.hub.hub.dto.HubCreateRequestDto;
 import com.logistics.hub.hub.dto.HubDeleteResponseDto;
 import com.logistics.hub.hub.dto.HubPageResponseDto;
@@ -33,9 +34,14 @@ import java.util.UUID;
 public class HubController {
 
     private final HubService hubService;
+    private final RoleValidator roleValidator;
 
     @PostMapping
-    public ResponseEntity<HubResponseDto> createHub(@Valid @RequestBody HubCreateRequestDto request) {
+    public ResponseEntity<HubResponseDto> createHub(
+        @RequestHeader("X-User-Role") String role,
+        @Valid @RequestBody HubCreateRequestDto request
+    ) {
+        roleValidator.requireMaster(role);
         HubResponseDto response = hubService.createHub(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -49,8 +55,10 @@ public class HubController {
     @PatchMapping("/{hubId}")
     public ResponseEntity<HubResponseDto> updateHub(
         @PathVariable UUID hubId,
+        @RequestHeader("X-User-Role") String role,
         @Valid @RequestBody HubUpdateRequestDto request
-        ) {
+    ) {
+        roleValidator.requireMaster(role);
         HubResponseDto response = hubService.updateHub(hubId, request);
         return ResponseEntity.ok(response);
     }
@@ -58,8 +66,10 @@ public class HubController {
     @DeleteMapping("/{hubId}")
     public ResponseEntity<HubDeleteResponseDto> deletedHub(
         @PathVariable UUID hubId,
+        @RequestHeader("X-User-Role") String role,
         @RequestHeader(value = "X-User-Id", required = false) UUID deletedBy
     ) {
+        roleValidator.requireMaster(role);
         HubDeleteResponseDto response = hubService.deleteHub(hubId, deletedBy);
         return ResponseEntity.ok(response);
     }
