@@ -222,6 +222,9 @@ gateway:
         methods: [PUT]
         roles: [MASTER, HUB_MANAGER]
       - path: /api/orders/*
+        methods: [PATCH]
+        roles: [MASTER, HUB_MANAGER]
+      - path: /api/orders/*
         methods: [DELETE]
         roles: [MASTER, HUB_MANAGER]
 
