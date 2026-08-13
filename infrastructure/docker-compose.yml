@@ -267,7 +267,7 @@ services:
       <<: *common-environment
       DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/ai_db?sslmode=${POSTGRES_SSL_MODE:-disable}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-disabled}
-      GEMINI_CHAT_MODEL: ${GEMINI_CHAT_MODEL:-gemini-2.5-flash}
+      GEMINI_CHAT_MODEL: ${GEMINI_CHAT_MODEL:-gemini-3.6-flash}
       GEMINI_EMBEDDING_MODEL: ${GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
       AI_CHAT_PROVIDER: ${AI_CHAT_PROVIDER:-none}
       AI_EMBEDDING_PROVIDER: ${AI_EMBEDDING_PROVIDER:-none}
