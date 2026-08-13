@@ -1,4 +1,4 @@
-# EC2 production overlay: expose only the API Gateway.
+# EC2 production overlay: expose only Caddy on HTTP/HTTPS.
 # Usage:
 # docker compose --env-file .env.prod \
 #   -f infrastructure/docker-compose.yml \
@@ -16,6 +16,11 @@ services:
   kafka:
     ports: !reset []
 
+  zipkin:
+    # 운영 UI는 SSH 터널을 통해서만 접근합니다.
+    ports: !override
+      - "127.0.0.1:9411:9411"
+
   eureka-server:
     ports: !reset []
 
@@ -23,8 +28,25 @@ services:
     ports: !reset []
 
   api-gateway:
-    ports: !override
-      - "80:8080"
+    ports: !reset []
+
+  caddy:
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?API_DOMAIN is required}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    networks: [logistics]
 
   user-service:
     ports: !reset []
@@ -69,7 +91,13 @@ services:
         required: false
 
   prometheus:
-    ports: !reset []
+    ports: !override
+      - "127.0.0.1:9090:9090"
 
   grafana:
-    ports: !reset []
+    ports: !override
+      - "127.0.0.1:3000:3000"
+
+volumes:
+  caddy-data:
+  caddy-config:

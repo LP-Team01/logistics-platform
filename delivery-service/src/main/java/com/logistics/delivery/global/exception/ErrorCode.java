@@ -15,6 +15,8 @@ public enum ErrorCode {
     DELIVERY_HUB_NOT_FOUND(HttpStatus.NOT_FOUND, "DELIVERY_404_08", "배송 생성에 필요한 허브를 찾을 수 없습니다."),
     DELIVERY_BATCH_REQUEST_EMPTY(HttpStatus.BAD_REQUEST, "DELIVERY_400_10", "배송 일괄 생성 요청 목록은 비어 있을 수 없습니다."),
     DELIVERY_BATCH_REQUEST_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "DELIVERY_400_11", "배송 일괄 생성 요청은 최대 20건까지 가능합니다."),
+    DELIVERY_COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "DELIVERY_404_09", "배송 생성에 필요한 수령 업체를 찾을 수 없습니다."),
+    DELIVERY_STATUS_UPDATE_CONFLICT(HttpStatus.CONFLICT, "DELIVERY_409_07", "동시에 상태가 변경되어 처리에 실패했습니다. 다시 시도해주세요."),
 
     //DELIVERY_ROUTE & COMPANY_ROUTE
     INVALID_DELIVERY_ROUTE(HttpStatus.BAD_REQUEST, "DELIVERY_400", "유효하지 않은 배송 경로입니다."),

@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1100" viewBox="0 0 1800 1100">
+  <defs>
+    <style>
+      text { font-family: "Noto Sans KR", "Malgun Gothic", "Segoe UI", sans-serif; fill: #172033; }
+      .title { font-size: 38px; font-weight: 800; }
+      .subtitle { font-size: 18px; fill: #68758a; }
+      .section { font-size: 24px; font-weight: 800; }
+      .box-title { font-size: 19px; font-weight: 750; text-anchor: middle; }
+      .box-sub { font-size: 14px; fill: #68758a; text-anchor: middle; }
+      .label { font-size: 13px; fill: #526079; text-anchor: middle; }
+      .note { font-size: 15px; fill: #526079; }
+      .panel { fill: #ffffff; stroke: #cbd6e5; stroke-width: 2; }
+      .aws { fill: #fff7e8; stroke: #d97706; stroke-width: 2; }
+      .app { fill: #eef5ff; stroke: #2563eb; stroke-width: 2; }
+      .platform { fill: #f5f0ff; stroke: #7c3aed; stroke-width: 2; }
+      .data { fill: #ecfdf5; stroke: #059669; stroke-width: 2; }
+      .external { fill: #f8fafc; stroke: #64748b; stroke-width: 2; }
+      .arrow { fill: none; stroke: #718096; stroke-width: 2.5; marker-end: url(#arrow); }
+      .dashed { stroke-dasharray: 8 7; }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#718096"/>
+    </marker>
+  </defs>
+
+  <rect width="1800" height="1100" fill="#f4f7fb"/>
+  <text x="48" y="58" class="title">물류관리 플랫폼 인프라 구성도</text>
+  <text x="48" y="88" class="subtitle">현재 운영 구성 · EC2 Docker Compose / RDS / ECR 자동 배포</text>
+
+  <rect x="32" y="112" width="1736" height="650" rx="22" class="panel"/>
+  <text x="58" y="153" class="section">1. 운영 런타임</text>
+
+  <rect x="62" y="282" width="150" height="84" rx="14" class="external"/>
+  <text x="137" y="318" class="box-title">사용자</text>
+  <text x="137" y="344" class="box-sub">Swagger / API Client</text>
+
+  <rect x="262" y="282" width="180" height="84" rx="14" class="external"/>
+  <text x="352" y="313" class="box-title">Gabia DNS</text>
+  <text x="352" y="339" class="box-sub">api.logistics-platfom.shop</text>
+
+  <rect x="492" y="272" width="174" height="104" rx="14" class="aws"/>
+  <text x="579" y="311" class="box-title">Caddy</text>
+  <text x="579" y="338" class="box-sub">80 / 443 · 자동 TLS</text>
+  <text x="579" y="358" class="box-sub">Reverse Proxy</text>
+
+  <path d="M212 324 H262" class="arrow"/>
+  <text x="237" y="311" class="label">HTTPS</text>
+  <path d="M442 324 H492" class="arrow"/>
+
+  <rect x="706" y="172" width="830" height="514" rx="20" fill="#fbfcff" stroke="#9bb7df" stroke-width="2"/>
+  <text x="730" y="205" font-size="18" font-weight="750" fill="#2563eb">Amazon EC2 · Docker Compose</text>
+
+  <rect x="744" y="238" width="204" height="92" rx="14" class="app"/>
+  <text x="846" y="276" class="box-title">API Gateway</text>
+  <text x="846" y="302" class="box-sub">JWT · Routing · Swagger</text>
+  <path d="M666 324 H716 V284 H744" class="arrow"/>
+
+  <rect x="990" y="230" width="170" height="78" rx="14" class="platform"/>
+  <text x="1075" y="262" class="box-title">Eureka</text>
+  <text x="1075" y="286" class="box-sub">Service Discovery</text>
+  <rect x="1192" y="230" width="180" height="78" rx="14" class="platform"/>
+  <text x="1282" y="262" class="box-title">Config Server</text>
+  <text x="1282" y="286" class="box-sub">Central Configuration</text>
+  <path d="M948 270 H990" class="arrow dashed"/>
+  <path d="M948 296 H1168 V269 H1192" class="arrow dashed"/>
+
+  <text x="750" y="372" font-size="16" font-weight="700" fill="#526079">Domain Services</text>
+  <rect x="744" y="390" width="190" height="76" rx="13" class="app"/>
+  <text x="839" y="421" class="box-title">User Service</text>
+  <text x="839" y="445" class="box-sub">인증 · 사용자</text>
+  <rect x="954" y="390" width="190" height="76" rx="13" class="app"/>
+  <text x="1049" y="421" class="box-title">Hub Service</text>
+  <text x="1049" y="445" class="box-sub">허브 · 경로</text>
+  <rect x="1164" y="390" width="190" height="76" rx="13" class="app"/>
+  <text x="1259" y="421" class="box-title">Company Service</text>
+  <text x="1259" y="445" class="box-sub">업체 · 상품</text>
+  <rect x="744" y="486" width="190" height="76" rx="13" class="app"/>
+  <text x="839" y="517" class="box-title">Order Service</text>
+  <text x="839" y="541" class="box-sub">CQRS · Outbox</text>
+  <rect x="954" y="486" width="190" height="76" rx="13" class="app"/>
+  <text x="1049" y="517" class="box-title">Delivery Service</text>
+  <text x="1049" y="541" class="box-sub">배송 · Kafka Consumer</text>
+  <rect x="1164" y="486" width="190" height="76" rx="13" class="app"/>
+  <text x="1259" y="517" class="box-title">AI / Notification</text>
+  <text x="1259" y="541" class="box-sub">Spring AI · RAG · Slack</text>
+
+  <path d="M846 330 V360 H839 V390" class="arrow"/>
+  <path d="M846 360 H1049 V390" class="arrow"/>
+  <path d="M846 360 H1259 V390" class="arrow"/>
+  <path d="M846 360 V486" class="arrow"/>
+  <path d="M846 360 H1049 V486" class="arrow"/>
+  <path d="M846 360 H1259 V486" class="arrow"/>
+
+  <rect x="744" y="602" width="174" height="62" rx="13" class="data"/>
+  <text x="831" y="628" class="box-title">Redis</text>
+  <text x="831" y="650" class="box-sub">Cache · Token</text>
+  <rect x="946" y="602" width="174" height="62" rx="13" class="platform"/>
+  <text x="1033" y="628" class="box-title">Kafka</text>
+  <text x="1033" y="650" class="box-sub">KRaft · Retry · DLT</text>
+  <rect x="1148" y="602" width="174" height="62" rx="13" class="platform"/>
+  <text x="1235" y="628" class="box-title">Zipkin</text>
+  <text x="1235" y="650" class="box-sub">Distributed Tracing</text>
+  <path d="M839 562 V602" class="arrow dashed"/>
+  <path d="M1049 562 V602" class="arrow dashed"/>
+  <path d="M1259 562 V602" class="arrow dashed"/>
+
+  <rect x="1580" y="254" width="156" height="142" rx="14" class="data"/>
+  <text x="1658" y="290" class="box-title">Amazon RDS</text>
+  <text x="1658" y="316" class="box-sub">PostgreSQL 17</text>
+  <text x="1658" y="340" class="box-sub">서비스별 DB 분리</text>
+  <text x="1658" y="364" class="box-sub">pgvector · Private</text>
+  <path d="M1354 428 H1458 V325 H1580" class="arrow"/>
+  <text x="1468" y="312" class="label">JPA / JDBC</text>
+
+  <rect x="1570" y="470" width="176" height="126" rx="14" class="external"/>
+  <text x="1658" y="504" class="box-title">External APIs</text>
+  <text x="1658" y="532" class="box-sub">Gemini · Slack</text>
+  <text x="1658" y="556" class="box-sub">Naver Maps</text>
+  <path d="M1354 524 H1570" class="arrow"/>
+
+  <rect x="32" y="786" width="1736" height="272" rx="22" class="panel"/>
+  <text x="58" y="828" class="section">2. CI/CD 자동 배포</text>
+
+  <rect x="74" y="875" width="160" height="82" rx="14" class="external"/>
+  <text x="154" y="908" class="box-title">개발자</text>
+  <text x="154" y="934" class="box-sub">main Push / PR Merge</text>
+  <rect x="290" y="875" width="204" height="82" rx="14" class="app"/>
+  <text x="392" y="908" class="box-title">GitHub Actions</text>
+  <text x="392" y="934" class="box-sub">Test · Build · Scan</text>
+  <rect x="550" y="875" width="180" height="82" rx="14" class="platform"/>
+  <text x="640" y="908" class="box-title">AWS IAM OIDC</text>
+  <text x="640" y="934" class="box-sub">Temporary Credentials</text>
+  <rect x="786" y="875" width="174" height="82" rx="14" class="aws"/>
+  <text x="873" y="908" class="box-title">Amazon ECR</text>
+  <text x="873" y="934" class="box-sub">SHA-tagged Images</text>
+  <rect x="1016" y="875" width="198" height="82" rx="14" class="aws"/>
+  <text x="1115" y="908" class="box-title">AWS SSM</text>
+  <text x="1115" y="934" class="box-sub">Run Command</text>
+  <rect x="1270" y="875" width="224" height="82" rx="14" class="aws"/>
+  <text x="1382" y="908" class="box-title">EC2 Deployment</text>
+  <text x="1382" y="934" class="box-sub">Compose Pull · Recreate</text>
+  <rect x="1540" y="875" width="180" height="82" rx="14" class="data"/>
+  <text x="1630" y="908" class="box-title">Health Check</text>
+  <text x="1630" y="934" class="box-sub">Actuator · Eureka</text>
+
+  <path d="M234 916 H290" class="arrow"/>
+  <path d="M494 916 H550" class="arrow"/>
+  <path d="M730 916 H786" class="arrow"/>
+  <path d="M960 916 H1016" class="arrow"/>
+  <path d="M1214 916 H1270" class="arrow"/>
+  <path d="M1494 916 H1540" class="arrow"/>
+
+  <text x="58" y="1016" class="note">운영 원칙: 외부 공개는 Caddy 80/443만 허용 · RDS는 사설망 · 서버 관리는 Session Manager 권장 · Secret은 Git에 저장하지 않음</text>
+</svg>

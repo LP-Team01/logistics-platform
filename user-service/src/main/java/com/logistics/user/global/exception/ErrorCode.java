@@ -17,7 +17,13 @@ public enum ErrorCode {
     COOKIE_NOT_FOUND(HttpStatus.NOT_FOUND,"AUTH_404_01" , "쿠키가 없습니다."),
     REFRESHTOKEN_NOT_FOUND(HttpStatus.UNAUTHORIZED,"AUTH_401_03" , "현재 가진 토큰은 권한이 없습니다."),
     REFRESHTOKEN_NOT_MATCHED(HttpStatus.UNAUTHORIZED,"AUTH_401_04" , "토큰이 일치하지 않습니다."),
-    INVALID_TOKEN(HttpStatus.UNAUTHORIZED,"AUTH_401_05" , "유효한 토큰이 아닙니다." );
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED,"AUTH_401_05" , "유효한 토큰이 아닙니다." ),
+    HUB_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_404_01", "존재하지 않는 허브입니다."),
+    COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_404_02", "존재하지 않는 업체입니다."),
+    HUB_COMPANY_MISMATCH(HttpStatus.BAD_REQUEST, "USER_400_01", "요청한 허브와 업체가 실제로 속한 허브가 일치하지 않습니다."),
+    DELIVERY_AGENT_NOT_APPROVED(HttpStatus.CONFLICT, "USER_409_04", "배송담당자 등록 처리 중 승인 상태 확인에 실패했습니다."),
+    DELIVERY_AGENT_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "USER_409_05", "허브의 배송담당자 정원이 초과되었습니다."),
+    DELIVERY_AGENT_CREATE_FAILED(HttpStatus.BAD_GATEWAY, "USER_502_01", "배송담당자 등록에 실패했습니다.");
 
     private final HttpStatus status;
     private final String code;

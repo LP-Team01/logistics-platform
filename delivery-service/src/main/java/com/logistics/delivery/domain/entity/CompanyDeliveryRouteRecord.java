@@ -11,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.util.Map;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -57,6 +58,12 @@ public class CompanyDeliveryRouteRecord extends BaseUpdatableEntity {
     private Double latitude;
 
     private Double longitude;
+
+    // 방문순서 재계산(CompanyRouteResequenceWriter)과 상태 변경(CompanyRouteRecordCommandService)이 같은 행을
+    // 서로 다른 트랜잭션에서 동시에 건드릴 수 있어, 둘 중 먼저 커밋한 쪽만 성공시키기 위한 낙관적 락.
+    @Version
+    @Column(nullable = false)
+    private Long version;
 
     @Builder
     public CompanyDeliveryRouteRecord(

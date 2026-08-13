@@ -58,3 +58,31 @@ gemini:
 slack:
   bot-token: ${SLACK_BOT_TOKEN:}
   pending-recovery-minutes: ${SLACK_PENDING_RECOVERY_MINUTES:5}
+
+internal:
+  service:
+    name: ai-notification-service
+    key: ${INTERNAL_SERVICE_KEY}
+    allowed-names: delivery-service
+
+# 업체 배송 담당자 당일 경로 Slack 알림 스케줄 설정
+#
+# enabled:
+#   true  - 스케줄러 실행
+#   false - 스케줄러 중지
+#
+# cron 작성 순서:
+#   초 분 시 일 월 요일
+#
+# 예시:
+#   "0 0 6 * * *"    - 매일 오전 6시
+#   "0 30 7 * * *"   - 매일 오전 7시 30분
+#   "0 * * * * *"    - 매분 실행(테스트용)
+#   "*/10 * * * * *" - 10초마다 실행(테스트용)
+#
+# 실제 실행 시각은 .env의 DAILY_ROUTE_NOTIFICATION_CRON으로 변경합니다.
+# 환경변수가 없으면 콜론 뒤의 기본값인 오전 6시가 사용됩니다.
+daily-route-notification:
+  enabled: ${DAILY_ROUTE_NOTIFICATION_ENABLED:true}
+  cron: "${DAILY_ROUTE_NOTIFICATION_CRON:0 0 6 * * *}"
+  zone: "${DAILY_ROUTE_NOTIFICATION_ZONE:Asia/Seoul}"

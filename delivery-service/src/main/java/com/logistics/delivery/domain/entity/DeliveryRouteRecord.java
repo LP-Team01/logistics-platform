@@ -11,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.util.Map;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -55,6 +56,12 @@ public class DeliveryRouteRecord extends BaseUpdatableEntity {
     private RouteRecordStatus status;
 
     private UUID agentId;
+
+    // MASTER/담당 허브의 HUB_MANAGER/본인 담당 DELIVERY_MANAGER가 같은 행을 동시에 갱신할 수 있어
+    // 나중에 커밋하는 쪽을 DELIVERY_STATUS_UPDATE_CONFLICT(409)로 거부하기 위한 낙관적 락.
+    @Version
+    @Column(nullable = false)
+    private Long version;
 
     @Builder
     public DeliveryRouteRecord(

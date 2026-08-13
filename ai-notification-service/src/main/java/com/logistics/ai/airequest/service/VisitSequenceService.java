@@ -31,6 +31,13 @@ public class VisitSequenceService {
      * @throws GeminiProcessingException Gemini 응답이 유효하지 않거나 recordId 집합이 요청과 다른 경우
      */
     public VisitSequenceResponseDto refine(VisitSequenceRequestDto request) {
+        if (request.stops().size() == 1) {
+            return new VisitSequenceResponseDto(
+                request.agentId(),
+                List.of(request.stops().get(0).recordId())
+            );
+        }
+
         String prompt = visitSequencePromptService.createPrompt(request);
 
         VisitSequenceAiClient.AiExecutionResult executionResult =

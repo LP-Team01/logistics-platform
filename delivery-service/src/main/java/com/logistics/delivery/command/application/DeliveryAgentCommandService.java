@@ -13,7 +13,7 @@ import com.logistics.delivery.global.common.UserRole;
 import com.logistics.delivery.global.common.UserStatus;
 import com.logistics.delivery.global.exception.BusinessException;
 import com.logistics.delivery.global.exception.ErrorCode;
-import com.logistics.delivery.infrastructure.client.HubServiceClient;
+import com.logistics.delivery.infrastructure.client.HubQueryService;
 import com.logistics.delivery.infrastructure.client.UserServiceClient;
 import com.logistics.delivery.infrastructure.client.dto.UserServiceUserResponseDto;
 import java.util.EnumSet;
@@ -29,18 +29,28 @@ import org.springframework.transaction.annotation.Transactional;
 public class DeliveryAgentCommandService {
     private final DeliveryAgentRepository deliveryAgentRepository;
     private final UserServiceClient userServiceClient;
-    private final HubServiceClient hubServiceClient;
+    private final HubQueryService hubQueryService;
 
     private static final int MAX_COUNT = 10;
     private static final Set<UserRole> AGENT_MANAGE_ROLES = EnumSet.of(UserRole.MASTER, UserRole.HUB_MANAGER);
 
+    // REST 경로(허브관리자 직접 생성)는 이미 승인 완료(APPROVED)된 사용자만 대상으로 한다.
     @Transactional
     public CreateDeliveryAgentResponseDto create(CreateDeliveryAgentCommand command, UserRole userRole,
                                                   UUID requesterHubId) {
+        return create(command, userRole, requesterHubId, UserStatus.APPROVED);
+    }
+
+    // 유저 승인 사가(Kafka)로 들어온 요청은 user-service가 아직 APPROVING(중간 상태)일 때 호출된다 -
+    // user-service가 이 요청의 성공 결과를 받아야 비로소 APPROVING -> APPROVED로 전환되므로,
+    // 여기서 APPROVED를 요구하면 항상 실패한다(DeliveryManagerApprovalService에서 이 오버로드 사용).
+    @Transactional
+    public CreateDeliveryAgentResponseDto create(CreateDeliveryAgentCommand command, UserRole userRole,
+                                                  UUID requesterHubId, UserStatus expectedUserStatus) {
         validateRole(userRole);
         validateHubManagerScope(userRole, command.agentType(), command.hubId(), requesterHubId);
         validateHubExists(command.hubId());
-        validateAgentUser(command.agentId());
+        validateAgentUser(command.agentId(), expectedUserStatus);
 
         // (agentType, hubId) 그룹 자체를 advisory lock으로 먼저 잠근다 - "빈 그룹 최초 등록" 동시 요청까지 직렬화하기 위함
         deliveryAgentRepository.lockAgentGroup(groupLockKey(command.agentType(), command.hubId()));
@@ -81,11 +91,18 @@ public class DeliveryAgentCommandService {
         deliveryAgent.softDelete(requesterId);
     }
 
+    // 허브 삭제 이벤트(Kafka) 수신 시 소속 업체 배송담당자 전체를 소프트삭제 - 삭제된 순번은 재배열하지 않음(기존 delete()와 동일)
+    @Transactional
+    public void deleteAllByHub(UUID hubId, UUID deletedBy) {
+        List<DeliveryAgent> agents = deliveryAgentRepository.findByHubIdAndDeletedAtIsNull(hubId);
+        agents.forEach(agent -> agent.softDelete(deletedBy));
+    }
+
     private void validateHubExists(UUID hubId) {
         if (hubId == null) {
             return;
         }
-        FeignExceptionTranslator.call(() -> hubServiceClient.getHub(hubId), ErrorCode.DELIVERY_AGENT_HUB_NOT_FOUND);
+        FeignExceptionTranslator.call(() -> hubQueryService.getHub(hubId), ErrorCode.DELIVERY_AGENT_HUB_NOT_FOUND);
     }
 
     private String groupLockKey(AgentType agentType, UUID hubId) {
@@ -102,13 +119,13 @@ public class DeliveryAgentCommandService {
         }
     }
 
-    private void validateAgentUser(UUID agentId) {
+    private void validateAgentUser(UUID agentId, UserStatus expectedUserStatus) {
         UserServiceUserResponseDto user = FeignExceptionTranslator.call(
             () -> userServiceClient.getUser(agentId), ErrorCode.DELIVERY_AGENT_USER_NOT_FOUND);
         if (user.role() != UserRole.DELIVERY_MANAGER) {
             throw new BusinessException(ErrorCode.DELIVERY_AGENT_INVALID_USER_ROLE);
         }
-        if (user.status() != UserStatus.APPROVED) {
+        if (user.status() != expectedUserStatus) {
             throw new BusinessException(ErrorCode.DELIVERY_AGENT_USER_NOT_APPROVED);
         }
     }

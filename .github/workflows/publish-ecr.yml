@@ -1,0 +1,155 @@
+name: Publish ECR Images
+
+on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-ecr-main
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Build boot jars
+        run: |
+          chmod +x gradlew
+          ./gradlew bootJar -x test
+
+      # AWS IAM 신뢰 정책과 비교할 수 있도록 비밀 토큰을 제외한 OIDC claim만 출력한다.
+      - name: Show OIDC claims
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const token = await core.getIDToken('sts.amazonaws.com');
+            const payload = JSON.parse(
+              Buffer.from(token.split('.')[1], 'base64url').toString()
+            );
+
+            core.info(JSON.stringify({
+              iss: payload.iss,
+              aud: payload.aud,
+              sub: payload.sub,
+              repository: payload.repository,
+              ref: payload.ref,
+              event_name: payload.event_name,
+              workflow: payload.workflow
+            }, null, 2));
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push service images
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          services=(
+            eureka-server
+            config-server
+            api-gateway
+            user-service
+            hub-service
+            company-service
+            order-service
+            delivery-service
+            ai-notification-service
+          )
+
+          for service in "${services[@]}"; do
+            image="$ECR_REGISTRY/logistics-platform/$service"
+            docker build \
+              --file infrastructure/Dockerfile \
+              --build-arg "SERVICE=$service" \
+              --tag "$image:$IMAGE_TAG" \
+              --tag "$image:latest" \
+              .
+            docker push "$image:$IMAGE_TAG"
+            docker push "$image:latest"
+          done
+
+      - name: Deploy tested images to EC2
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+        run: |
+          cat > ssm-parameters.json <<EOF
+          {
+            "commands": [
+              "sudo -u ubuntu -H bash -lc 'cd /home/ubuntu/logistics-platform && git pull --ff-only origin main && bash infrastructure/deploy-ec2.sh $ECR_REGISTRY $IMAGE_TAG $AWS_REGION'"
+            ]
+          }
+          EOF
+
+          command_id=$(aws ssm send-command \
+            --instance-ids "$EC2_INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "Deploy logistics-platform $IMAGE_TAG" \
+            --parameters file://ssm-parameters.json \
+            --query 'Command.CommandId' \
+            --output text)
+
+          for attempt in {1..60}; do
+            status=$(aws ssm get-command-invocation \
+              --command-id "$command_id" \
+              --instance-id "$EC2_INSTANCE_ID" \
+              --query 'Status' \
+              --output text 2>/dev/null || true)
+
+            case "$status" in
+              Success)
+                aws ssm get-command-invocation \
+                  --command-id "$command_id" \
+                  --instance-id "$EC2_INSTANCE_ID" \
+                  --query 'StandardOutputContent' \
+                  --output text
+                exit 0
+                ;;
+              Failed|Cancelled|TimedOut)
+                aws ssm get-command-invocation \
+                  --command-id "$command_id" \
+                  --instance-id "$EC2_INSTANCE_ID" \
+                  --output json
+                exit 1
+                ;;
+            esac
+
+            sleep 10
+          done
+
+          echo "Timed out waiting for EC2 deployment command $command_id" >&2
+          exit 1

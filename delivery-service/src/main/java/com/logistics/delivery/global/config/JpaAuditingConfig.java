@@ -1,5 +1,6 @@
 package com.logistics.delivery.global.config;
 
+import com.logistics.delivery.global.common.AuditorContext;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.context.annotation.Bean;
@@ -17,20 +18,19 @@ public class JpaAuditingConfig {
         return () -> {
             ServletRequestAttributes attributes =
                 (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-            if (attributes == null) {
-                return Optional.empty();
+            if (attributes != null) {
+                String userId = attributes.getRequest().getHeader("X-User-Id");
+                if (userId != null && !userId.isBlank()) {
+                    try {
+                        return Optional.of(UUID.fromString(userId));
+                    } catch (IllegalArgumentException e) {
+                        return Optional.empty();
+                    }
+                }
             }
 
-            String userId = attributes.getRequest().getHeader("X-User-Id");
-            if (userId == null || userId.isBlank()) {
-                return Optional.empty();
-            }
-
-            try {
-                return Optional.of(UUID.fromString(userId));
-            } catch (IllegalArgumentException e) {
-                return Optional.empty();
-            }
+            // HTTP 요청 컨텍스트가 없는 경로(Kafka 컨슈머 등)는 AuditorContext에 명시적으로 지정된 값을 사용
+            return AuditorContext.get();
         };
     }
 }

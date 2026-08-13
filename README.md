@@ -14,9 +14,9 @@
 
 허브, 업체, 상품, 주문, 배송 정보를 하나의 흐름으로 관리하는 물류관리 백엔드 플랫폼입니다.
 
-서비스별 책임과 데이터베이스를 분리한 MSA 구조를 사용하며, API Gateway를 통해 외부 요청을 단일 진입점으로 관리합니다. 기본 기능은 REST 기반 동기 통신으로 구현하고, AI 알림 서비스에서는 Spring AI와 Gemini, pgvector 기반 RAG 및 Slack 알림 연동을 지원할 예정입니다.
+서비스별 책임과 데이터베이스를 분리한 MSA 구조를 사용하며, API Gateway를 통해 외부 요청을 단일 진입점으로 관리합니다. 기본 기능은 REST 기반 동기 통신으로 구현하고, AI 알림 서비스는 Spring AI와 Gemini, pgvector 기반 RAG 및 Slack 알림 연동을 지원합니다.
 
-주문 생성 실패 후 배송 보상 취소가 실패하는 경우를 대비해 Outbox와 Kafka 기반 재처리를 적용했습니다. AWS 배포는 기본 기능 완료 후 일정에 따라 적용하는 선택 사항입니다.
+주문 생성 실패 후 배송 보상 취소가 실패하는 경우를 대비해 Outbox와 Kafka 기반 재처리를 적용했습니다. 운영 환경은 GitHub Actions, Amazon ECR, EC2, RDS, Caddy로 구성하며 `main` CI 성공 시 검증된 이미지를 자동 배포합니다.
 
 ## 🎯 주요 목표
 
@@ -31,12 +31,15 @@
 - Slack을 이용한 주요 업무 알림 전송
 - Docker Compose를 이용한 동일한 로컬 개발 환경 제공
 - GitHub Actions를 이용한 테스트 및 빌드 자동화
+- ECR, EC2, RDS와 SSM을 이용한 운영 배포 자동화
 
 ## 🏗️ 인프라 구성도
 
 ![물류관리 시스템 인프라 구성도](docs/infrastructure-diagram.png)
 
-현재는 Docker Compose 기반의 로컬 개발 환경을 사용합니다. 기본 기능 구현 후 시간이 허용되면 Docker 이미지를 AWS ECR에 저장하고 ECS Fargate로 배포할 예정입니다.
+[수정 가능한 SVG 원본](docs/infrastructure-diagram.svg)
+
+로컬은 Docker Compose로 PostgreSQL, Redis, Kafka, Zipkin과 전체 서비스를 실행합니다. 운영은 RDS PostgreSQL을 외부 DB로 사용하고, ECR 이미지를 EC2의 Docker Compose로 실행합니다. Caddy가 API Gateway 앞에서 TLS 인증서 발급과 HTTPS 역프록시를 담당합니다.
 
 ## 🧩 서비스 구성
 
@@ -81,8 +84,9 @@
 
 - Docker, Docker Compose
 - Git, GitHub
-- GitHub Actions
-- AWS ECR, ECS Fargate — 향후 선택 적용
+- GitHub Actions CI/CD, GitHub OIDC
+- AWS ECR, EC2, RDS, Systems Manager
+- Caddy HTTPS Reverse Proxy
 - Kafka — 배송 보상 실패 이벤트 재처리에 적용
 
 ## 🔄 요청 흐름
@@ -90,12 +94,14 @@
 ```text
 Client
   └─ HTTPS / REST
-      └─ API Gateway
+      └─ Caddy
+          └─ API Gateway
           ├─ JWT 검증 및 사용자 정보 전달
           ├─ Eureka 기반 서비스 탐색
           └─ 각 도메인 서비스 호출
-               ├─ PostgreSQL / pgvector
+               ├─ RDS PostgreSQL / pgvector
                ├─ Redis
+               ├─ Kafka
                └─ AI Notification Service
                     ├─ Gemini
                     └─ Slack
@@ -117,10 +123,16 @@ logistics-platform/
 ├─ ai-notification-service/
 ├─ infrastructure/
 │  ├─ docker-compose.yml
+│  ├─ docker-compose.prod.yml
+│  ├─ docker-compose.ecr.yml
 │  ├─ Dockerfile
+│  ├─ Caddyfile
+│  ├─ deploy-ec2.sh
 │  └─ postgres/init.sql
 ├─ docs/
-├─ .github/workflows/ci.yml
+├─ .github/workflows/
+│  ├─ ci.yml
+│  └─ publish-ecr.yml
 ├─ build.gradle
 └─ settings.gradle
 ```
@@ -153,7 +165,7 @@ cp .env.example .env
 ```dotenv
 POSTGRES_USER=logistics
 POSTGRES_PASSWORD=change-me
-JWT_SECRET=replace-with-at-least-32-byte-secret
+JWT_SECRET=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
 INTERNAL_SERVICE_KEY=replace-with-random-secret
 HUB_INTERNAL_SERVICE_KEY=replace-with-random-secret
 
@@ -217,16 +229,18 @@ docker compose --env-file .env -f infrastructure/docker-compose.yml down -v
 | 항목 | URL |
 |---|---|
 | API Gateway | <http://localhost:8080> |
-| Gateway Health Check | <http://localhost:8080/actuator/health> |
+| Gateway Health Check | `api-gateway` 컨테이너 내부 `http://localhost:9091/actuator/health` |
 | Eureka Dashboard | <http://localhost:8761> |
 | Config Server Health Check | <http://localhost:8888/actuator/health> |
 | PostgreSQL | `localhost:5432` |
 | Redis | `localhost:6379` |
 | Kafka | `localhost:9092` |
+| Zipkin | <http://localhost:9411/zipkin> |
+| 운영 API / Swagger | <https://api.logistics-platfom.shop/swagger-ui.html> |
 
 ## 📖 API 문서
 
-도메인 서비스는 Springdoc OpenAPI를 이용해 API 명세를 제공합니다. 현재 Gateway 통합 Swagger는 구성하지 않았으므로, 로컬에서 각 서비스의 포트로 직접 접속합니다.
+도메인 서비스는 Springdoc OpenAPI를 이용해 API 명세를 제공합니다. 로컬에서는 각 서비스 포트로 직접 접속할 수 있고, API Gateway Swagger UI에서 서비스별 명세를 선택할 수 있습니다.
 
 ### Swagger 접속 전 준비
 
@@ -253,7 +267,14 @@ docker compose --env-file .env -f infrastructure/docker-compose.yml ps
 | Delivery Service | <http://localhost:8085/swagger-ui/index.html> | <http://localhost:8085/v3/api-docs> |
 | AI Notification Service | <http://localhost:8086/swagger-ui/index.html> | <http://localhost:8086/v3/api-docs> |
 
-> API Gateway(`8080`), Eureka Server(`8761`), Config Server(`8888`)는 현재 Swagger UI 제공 대상이 아닙니다.
+Gateway 통합 Swagger UI:
+
+```text
+로컬: http://localhost:8080/swagger-ui.html
+운영: https://api.logistics-platfom.shop/swagger-ui.html
+```
+
+Gateway가 `503 Service Unavailable`를 반환하면 선택한 도메인 서비스의 헬스 상태와 Eureka 등록 여부를 먼저 확인합니다.
 
 ### Swagger에서 JWT 인증하기
 
@@ -285,6 +306,24 @@ docker compose --env-file .env -f infrastructure/docker-compose.yml logs -f user
 - `/swagger-ui.html` 대신 `/swagger-ui/index.html`로 접속합니다.
 - `/v3/api-docs`가 정상 JSON을 반환하는지 먼저 확인합니다.
 - Config Server와 Eureka Server가 먼저 정상 기동됐는지 확인합니다.
+
+## 🔎 Zipkin 분산 추적
+
+각 Spring 서비스는 Micrometer Tracing으로 HTTP 요청의 Trace/Span을 생성하고 Zipkin으로 전송합니다. 로그의 `traceId`로 여러 서비스에 걸친 요청 흐름을 함께 조회할 수 있습니다.
+
+로컬 UI:
+
+```text
+http://localhost:9411/zipkin
+```
+
+운영에서는 9411 포트를 외부에 공개하지 않습니다. EC2 SSH 터널을 연결한 뒤 같은 로컬 주소로 접속합니다.
+
+```powershell
+ssh -i "logistics-platform-key.pem" -L 9411:localhost:9411 ubuntu@EC2_주소
+```
+
+`TRACING_SAMPLING_PROBABILITY=1.0`은 모든 요청을 수집합니다. 트래픽이 증가하면 운영 값을 `0.1` 등으로 낮춥니다. 현재 Zipkin 데이터는 컨테이너 재시작 시 사라지는 인메모리 방식입니다.
 
 ## 🧪 테스트 및 CI
 
@@ -320,15 +359,78 @@ GitHub Actions는 `main`, `dev` 브랜치에 대한 Push 및 Pull Request에서 
 - 환경 변수와 인증 정보는 저장소에 커밋하지 않습니다.
 - 이벤트 전환을 고려해 서비스 간 계약과 도메인 이벤트 후보를 문서화합니다.
 
-## 🗓️ 향후 확장 계획
+## ☁️ AWS 운영 배포
 
-### AWS 배포
-
-기본 기능과 로컬 통합 테스트가 완료된 후 일정에 따라 적용합니다.
+`main` Push CI가 성공하면 `Publish ECR Images` 워크플로가 검증된 커밋 SHA로 서비스 이미지를 빌드합니다. GitHub OIDC로 AWS IAM Role을 임시로 인수하여 ECR에 Push하고, Systems Manager Run Command로 EC2 배포 스크립트를 실행합니다.
 
 ```text
-Feature Branch → Pull Request → GitHub Actions → AWS ECR → AWS ECS Fargate
+main Push → CI 성공 → ECR Push → SSM Run Command → EC2 Docker Compose → Caddy HTTPS
 ```
+
+GitHub Repository Variables:
+
+```text
+AWS_REGION
+AWS_ROLE_ARN
+EC2_INSTANCE_ID
+```
+
+EC2에서 `.env.prod.example`을 참고해 `.env.prod`를 작성합니다. 이 파일은 Git이 관리하지 않으며 자동 배포 시 기존 값을 읽기만 합니다.
+
+```dotenv
+SPRING_PROFILES_ACTIVE=prod
+API_DOMAIN=api.logistics-platfom.shop
+POSTGRES_HOST=RDS_ENDPOINT
+POSTGRES_PORT=5432
+POSTGRES_SSL_MODE=require
+JWT_SECRET=BASE64_ENCODED_32_BYTE_SECRET
+```
+
+JWT 키는 일반 Base64로 인코딩된 32바이트 값을 사용합니다.
+
+```bash
+openssl rand -base64 32 | tr -d '\n'
+```
+
+운영 Compose 실행 및 상태 확인:
+
+```bash
+export ECR_REGISTRY=AWS_ACCOUNT_ID.dkr.ecr.ap-northeast-2.amazonaws.com
+export IMAGE_TAG=DEPLOYED_COMMIT_SHA
+
+docker compose \
+  --env-file .env.prod \
+  -f infrastructure/docker-compose.yml \
+  -f infrastructure/docker-compose.prod.yml \
+  -f infrastructure/docker-compose.ecr.yml \
+  ps
+```
+
+운영 DB는 RDS PostgreSQL을 사용하며 AI DB에 `vector` Extension을 활성화합니다. RDS가 Private Subnet에 있으면 DBeaver는 EC2 SSH 터널을 통해 접속합니다.
+
+### Session Manager 접속
+
+EC2 인스턴스 Role에 `AmazonSSMManagedInstanceCore`를 연결하면 고정 공인 IP와 SSH 22번 포트 없이 AWS 콘솔에서 접속할 수 있습니다.
+
+```text
+EC2 → 인스턴스 선택 → 연결 → Session Manager → 연결
+```
+
+접속 후 Ubuntu 사용자로 전환합니다.
+
+```bash
+sudo -iu ubuntu
+cd ~/logistics-platform
+```
+
+### Flyway 운영 주의사항
+
+이미 적용된 `V1`, `V2` 등의 Migration 파일은 수정하지 않습니다. 스키마 변경은 항상 새 버전 파일로 추가해 checksum 불일치를 방지합니다.
+
+## 🗓️ 향후 확장 계획
+
+- EC2 단일 호스트에서 ECS 또는 다중 인스턴스로 확장
+- ElastiCache, MSK 등 관리형 서비스 검토
 
 ## 📬 배송 보상 Outbox와 Kafka
 
@@ -374,3 +476,5 @@ docker compose --env-file .env -f infrastructure/docker-compose.yml exec kafka /
 
 - [인프라 설계서](docs/infrastructure.md)
 - [인프라 구성도](docs/infrastructure-diagram.png)
+- [인프라 구성도 SVG 원본](docs/infrastructure-diagram.svg)
+- [Swagger / OpenAPI 가이드](docs/swagger.md)

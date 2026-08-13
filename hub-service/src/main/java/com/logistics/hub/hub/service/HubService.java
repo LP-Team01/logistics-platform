@@ -8,6 +8,8 @@ import com.logistics.hub.hub.dto.HubPageResponseDto;
 import com.logistics.hub.hub.dto.HubResponseDto;
 import com.logistics.hub.hub.dto.HubUpdateRequestDto;
 import com.logistics.hub.hub.entity.Hub;
+import com.logistics.hub.hub.event.HubDeletedEvent;
+import com.logistics.hub.hub.event.HubEventProducer;
 import com.logistics.hub.hub.repository.HubRepository;
 import com.logistics.hub.hubroute.service.HubRouteService;
 import lombok.RequiredArgsConstructor;
@@ -28,9 +30,14 @@ public class HubService {
 
     private final HubRepository hubRepository;
     private final HubRouteService hubRouteService;
+    private final HubEventProducer hubEventProducer;
 
     @Transactional
     public HubResponseDto createHub(HubCreateRequestDto request) {
+        if (hubRepository.existsByNameAndDeletedAtIsNull(request.name())) {
+            throw new BusinessException(ErrorCode.DUPLICATE_HUB);
+        }
+
         Hub hub = Hub.builder()
             .name(request.name())
             .address(request.address())
@@ -74,6 +81,8 @@ public class HubService {
         for (UUID routeId : relatedRoutesIds) {
             hubRouteService.deleteHubRoute(routeId, deletedBy);
         }
+
+        hubEventProducer.publishHubDeleted(new HubDeletedEvent(hubId, hub.getDeletedAt(), deletedBy));
 
         return HubDeleteResponseDto.from(hub);
     }
