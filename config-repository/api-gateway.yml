@@ -199,7 +199,7 @@ gateway:
       # --- order-service ---
       - path: /api/orders
         methods: [POST]
-        roles: [MASTER, HUB_MANAGER]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER]
       - path: /api/orders
         methods: [GET]
         roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
