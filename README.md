@@ -35,9 +35,9 @@
 
 ## 🏗️ 인프라 구성도
 
-![물류관리 시스템 인프라 구성도](docs/infrastructure-diagram.png)
+![물류관리 플랫폼 인프라 구성도](docs/infrastructure-diagram.jpg)
 
-[수정 가능한 SVG 원본](docs/infrastructure-diagram.svg)
+[수정 가능한 아이콘 구성도 원본](docs/infrastructure-diagram-icons.html)
 
 로컬은 Docker Compose로 PostgreSQL, Redis, Kafka, Zipkin과 전체 서비스를 실행합니다. 운영은 RDS PostgreSQL을 외부 DB로 사용하고, ECR 이미지를 EC2의 Docker Compose로 실행합니다. Caddy가 API Gateway 앞에서 TLS 인증서 발급과 HTTPS 역프록시를 담당합니다.
 
@@ -45,12 +45,12 @@
 
 | 이름 | 담당 역할 |
 |---|---|
-| 김태희 | 팀장, 인프라, API Gateway, Order Service |
+| 이용현 | 팀리더, AI·Notification Service |
+| 김태희 | 인프라, API Gateway, Order Service |
 | 나상우 | User Service, API Gateway |
 | 김민지 | Hub Service |
 | 강윤석 | Company·Product Service |
 | 강소율 | Delivery Service |
-| 이용현 | AI·Notification Service |
 
 ## 🧩 서비스 구성
 
@@ -486,6 +486,6 @@ docker compose --env-file .env -f infrastructure/docker-compose.yml exec kafka /
 ## 📚 관련 문서
 
 - [인프라 설계서](docs/infrastructure.md)
-- [인프라 구성도](docs/infrastructure-diagram.png)
-- [인프라 구성도 SVG 원본](docs/infrastructure-diagram.svg)
+- [인프라 구성도](docs/infrastructure-diagram.jpg)
+- [수정 가능한 아이콘 구성도 원본](docs/infrastructure-diagram-icons.html)
 - [Swagger / OpenAPI 가이드](docs/swagger.md)

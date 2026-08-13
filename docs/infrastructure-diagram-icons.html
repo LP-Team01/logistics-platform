@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>물류관리 플랫폼 인프라 구성도</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #eef3f9; font-family: "Malgun Gothic", "Noto Sans KR", Arial, sans-serif; color: #172033; }
+    .canvas { width: 1800px; height: 1200px; padding: 42px 48px; background: linear-gradient(145deg, #f8fbff 0%, #eef3f9 100%); position: relative; overflow: hidden; }
+    h1 { margin: 0; font-size: 38px; letter-spacing: -1.2px; }
+    .subtitle { margin-top: 8px; color: #65748b; font-size: 17px; }
+    .panel { position: absolute; left: 48px; width: 1704px; border: 2px solid #c8d4e3; border-radius: 22px; background: rgba(255,255,255,.94); box-shadow: 0 12px 30px rgba(37, 63, 97, .08); }
+    .runtime { top: 126px; height: 760px; }
+    .pipeline { top: 916px; height: 240px; }
+    .panel-title { position: absolute; left: 28px; top: 22px; font-size: 24px; font-weight: 800; }
+    .panel-note { position: absolute; right: 30px; top: 28px; font-size: 14px; color: #718096; }
+    .node { position: absolute; border: 2px solid #9eb1c8; border-radius: 16px; background: #fff; display: flex; align-items: center; padding: 12px 14px; gap: 12px; z-index: 2; }
+    .node img { width: 44px; height: 44px; object-fit: contain; flex: 0 0 auto; }
+    .node .name { font-size: 17px; font-weight: 800; line-height: 1.15; }
+    .node .desc { margin-top: 5px; font-size: 12px; color: #6b7b91; line-height: 1.25; }
+    .external { background: #f8fafc; border-color: #94a3b8; }
+    .aws { background: #fff8eb; border-color: #f59e0b; }
+    .spring { background: #f3faee; border-color: #70ad47; }
+    .data { background: #ecfdf5; border-color: #10b981; }
+    .platform { background: #f7f3ff; border-color: #8b5cf6; }
+    .observe { background: #fff7ed; border-color: #fb923c; }
+    .ec2 { position: absolute; left: 505px; top: 76px; width: 900px; height: 630px; border: 2px solid #7da8e8; border-radius: 22px; background: #f8fbff; z-index: 1; }
+    .ec2-title { position: absolute; left: 22px; top: 16px; display: flex; align-items: center; gap: 10px; color: #1d4ed8; font-size: 18px; font-weight: 800; }
+    .ec2-title img { width: 32px; height: 32px; }
+    .group { position: absolute; border: 1.5px dashed #b2c2d6; border-radius: 18px; background: rgba(255,255,255,.65); }
+    .group-title { position: absolute; top: 12px; left: 16px; font-size: 13px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: .7px; }
+    .service-grid { left: 22px; top: 202px; width: 590px; height: 276px; }
+    .infra-grid { left: 632px; top: 202px; width: 244px; height: 386px; }
+    .service { width: 174px; height: 78px; padding: 10px; }
+    .service img { width: 38px; height: 38px; }
+    .service .name { font-size: 15px; }
+    .service .desc { font-size: 11px; }
+    .small { width: 204px; height: 70px; padding: 9px 12px; }
+    .small img { width: 37px; height: 37px; }
+    .small .name { font-size: 15px; }
+    .api-icons { display: flex; align-items: center; gap: 7px; flex: 0 0 auto; }
+    .api-icons img { width: 30px; height: 30px; object-fit: contain; }
+    .legend { position: absolute; left: 24px; bottom: 18px; font-size: 12px; color: #64748b; }
+    .line-label { position: absolute; z-index: 3; background: white; color: #607089; font-size: 12px; padding: 2px 7px; border-radius: 8px; }
+    svg.links { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+    .flow { fill: none; stroke: #667991; stroke-width: 2.4; marker-end: url(#arrow); }
+    .dash { stroke-dasharray: 8 7; }
+    .pipe-row { position: absolute; left: 48px; right: 48px; top: 78px; display: flex; align-items: center; justify-content: space-between; }
+    .pipe-node { width: 196px; height: 94px; border: 2px solid #a6b6ca; border-radius: 15px; background: #fff; display: flex; align-items: center; padding: 12px; gap: 11px; }
+    .pipe-node img { width: 42px; height: 42px; object-fit: contain; }
+    .pipe-node .name { font-size: 15px; font-weight: 800; }
+    .pipe-node .desc { font-size: 11px; color: #6b7b91; margin-top: 4px; }
+    .chev { font-size: 28px; font-weight: 900; color: #8091a7; }
+    .brand-note { position: absolute; bottom: 14px; left: 30px; color: #718096; font-size: 12px; }
+  </style>
+</head>
+<body>
+<main class="canvas">
+  <h1>물류관리 플랫폼 인프라 구성도</h1>
+  <div class="subtitle">Spring Boot MSA · Amazon EC2 / RDS · Docker Compose · GitHub Actions 자동 배포</div>
+
+  <section class="panel runtime">
+    <div class="panel-title">1. 운영 아키텍처</div>
+    <div class="panel-note">외부 요청은 HTTPS로 Gateway에 진입하고 서비스별 DB는 RDS에서 논리 분리</div>
+
+    <svg class="links" viewBox="0 0 1704 760" preserveAspectRatio="none">
+      <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#667991"/></marker></defs>
+      <path class="flow" d="M180 344 H210"/><path class="flow" d="M355 344 H375"/><path class="flow" d="M495 344 H520 V213 H537"/>
+      <path class="flow dash" d="M786 207 H845"/><path class="flow dash" d="M786 235 H1020 V207 H1065"/>
+      <path class="flow" d="M710 258 V330"/><path class="flow" d="M710 330 H575 V390"/><path class="flow" d="M710 330 H764 V390"/><path class="flow" d="M710 330 H953 V390"/>
+      <path class="flow" d="M710 330 V486 H575"/><path class="flow" d="M710 486 H764"/><path class="flow" d="M710 486 H953"/>
+      <path class="flow dash" d="M1118 440 H1160"/><path class="flow dash" d="M1118 536 H1160"/>
+      <path class="flow" d="M1405 326 H1440"/><path class="flow" d="M1405 500 H1440"/>
+      <path class="flow" d="M1405 620 H1440"/>
+    </svg>
+
+    <div class="node external" style="left:28px;top:302px;width:152px;height:84px"><img src="https://api.iconify.design/material-symbols/laptop-mac-outline.svg?color=%23475569"><div><div class="name">Client</div><div class="desc">Swagger / API</div></div></div>
+    <div class="node external" style="left:210px;top:302px;width:145px;height:84px"><img src="https://api.iconify.design/mdi/web.svg?color=%232563eb"><div><div class="name">Gabia DNS</div><div class="desc">API Domain</div></div></div>
+    <div class="node aws" style="left:375px;top:292px;width:120px;height:104px;display:block;text-align:center;padding:9px"><img style="width:34px;height:34px" src="https://api.iconify.design/simple-icons/caddy.svg?color=%231f88c0"><div><div class="name">Caddy</div><div class="desc">TLS · Proxy<br>80 / 443</div></div></div>
+    <span class="line-label" style="left:184px;top:324px">HTTPS</span>
+
+    <div class="ec2">
+      <div class="ec2-title"><img src="https://api.iconify.design/logos/aws-ec2.svg"><span>Amazon EC2 · Docker Compose</span></div>
+      <div class="node spring" style="left:32px;top:92px;width:248px;height:90px"><img src="https://api.iconify.design/logos/spring-icon.svg"><div><div class="name">API Gateway</div><div class="desc">JWT 검증 · 라우팅 · Swagger</div></div></div>
+      <div class="node platform" style="left:338px;top:92px;width:204px;height:90px"><img src="https://api.iconify.design/logos/spring-icon.svg"><div><div class="name">Eureka</div><div class="desc">Service Discovery · 8761</div></div></div>
+      <div class="node platform" style="left:560px;top:92px;width:228px;height:90px"><img src="https://api.iconify.design/logos/spring-icon.svg"><div><div class="name">Config Server</div><div class="desc">Central Config · 8888</div></div></div>
+
+      <div class="group service-grid"><div class="group-title">Domain Services</div>
+        <div class="node spring service" style="left:16px;top:48px"><img src="https://api.iconify.design/logos/spring-icon.svg"><div><div class="name">User Service</div><div class="desc">인증 · 사용자 · 8081</div></div></div>
+        <div class="node spring service" style="left:206px;top:48px"><img src="https://api.iconify.design/logos/spring-icon.svg"><div><div class="name">Hub Service</div><div class="desc">허브 · 경로 · 8082</div></div></div>
+        <div class="node spring service" style="left:396px;top:48px"><img src="https://api.iconify.design/logos/spring-icon.svg"><div><div class="name">Company</div><div class="desc">업체 · 상품 · 8083</div></div></div>
+        <div class="node spring service" style="left:16px;top:148px"><img src="https://api.iconify.design/logos/spring-icon.svg"><div><div class="name">Order Service</div><div class="desc">CQRS · Outbox · 8084</div></div></div>
+        <div class="node spring service" style="left:206px;top:148px"><img src="https://api.iconify.design/logos/spring-icon.svg"><div><div class="name">Delivery</div><div class="desc">배송 · 담당자 · 8085</div></div></div>
+        <div class="node spring service" style="left:396px;top:148px"><img src="https://api.iconify.design/logos/spring-icon.svg"><div><div class="name">AI / Notification</div><div class="desc">RAG · Slack · 8086</div></div></div>
+      </div>
+
+      <div class="group infra-grid"><div class="group-title">Platform & Observability</div>
+        <div class="node data small" style="left:18px;top:48px"><img src="https://api.iconify.design/logos/redis.svg"><div><div class="name">Redis</div><div class="desc">Cache · Token · 6379</div></div></div>
+        <div class="node platform small" style="left:18px;top:128px"><img src="https://api.iconify.design/logos/kafka-icon.svg"><div><div class="name">Kafka</div><div class="desc">Outbox · Retry · DLT</div></div></div>
+        <div class="node observe small" style="left:18px;top:208px"><img src="https://api.iconify.design/mdi/chart-timeline-variant-shimmer.svg?color=%23f97316"><div><div class="name">Zipkin</div><div class="desc">Distributed Tracing</div></div></div>
+        <div class="node observe small" style="left:18px;top:288px"><img src="https://api.iconify.design/logos/prometheus.svg"><div><div class="name">Prometheus</div><div class="desc">Metrics Collection</div></div></div>
+      </div>
+      <div class="legend">서비스는 Eureka에 등록되고 Config Server에서 설정을 로드합니다.</div>
+    </div>
+
+    <div class="node data" style="left:1440px;top:232px;width:224px;height:188px;display:block;text-align:center;padding:18px"><img style="width:58px;height:58px" src="https://api.iconify.design/logos/postgresql.svg"><div class="name" style="margin-top:8px">Amazon RDS</div><div class="desc">PostgreSQL 17 · pgvector<br>user / hub / company<br>order / delivery / ai DB</div></div>
+    <div class="node external" style="left:1440px;top:450px;width:224px;height:128px;display:block;text-align:center">
+      <div class="api-icons" style="justify-content:center;margin-bottom:9px">
+        <img src="https://api.iconify.design/logos/google-gemini.svg" title="Gemini">
+        <img src="https://api.iconify.design/logos/slack-icon.svg" title="Slack">
+        <img src="https://api.iconify.design/simple-icons/naver.svg?color=%2303c75a" title="Naver Maps">
+      </div>
+      <div class="name">External APIs</div><div class="desc">Gemini · Slack · Naver Maps</div>
+    </div>
+    <div class="node observe" style="left:1440px;top:600px;width:224px;height:88px"><img src="https://api.iconify.design/logos/grafana.svg"><div><div class="name">Grafana</div><div class="desc">Metrics Dashboard</div></div></div>
+  </section>
+
+  <section class="panel pipeline">
+    <div class="panel-title">2. CI/CD 배포 흐름</div>
+    <div class="panel-note">main 브랜치 CI 성공 시 검증된 이미지 자동 배포</div>
+    <div class="pipe-row">
+      <div class="pipe-node"><img src="https://api.iconify.design/material-symbols/code-blocks-outline.svg?color=%23475569"><div><div class="name">Developer</div><div class="desc">Push / Pull Request</div></div></div><span class="chev">›</span>
+      <div class="pipe-node"><img src="https://api.iconify.design/logos/github-actions.svg"><div><div class="name">GitHub Actions</div><div class="desc">Test · Build · CI</div></div></div><span class="chev">›</span>
+      <div class="pipe-node"><img src="https://api.iconify.design/logos/aws-iam.svg"><div><div class="name">AWS IAM OIDC</div><div class="desc">Temporary Credentials</div></div></div><span class="chev">›</span>
+      <div class="pipe-node"><img src="https://api.iconify.design/logos/aws.svg"><div><div class="name">Amazon ECR</div><div class="desc">Service Images</div></div></div><span class="chev">›</span>
+      <div class="pipe-node"><img src="https://api.iconify.design/logos/aws-systems-manager.svg"><div><div class="name">AWS SSM</div><div class="desc">Run Command</div></div></div><span class="chev">›</span>
+      <div class="pipe-node"><img src="https://api.iconify.design/logos/docker-icon.svg"><div><div class="name">EC2 Deploy</div><div class="desc">Pull · Recreate · Health</div></div></div>
+    </div>
+    <div class="brand-note">TLS: Caddy · Runtime: Docker Compose · Database: Amazon RDS · Access: AWS Systems Manager</div>
+  </section>
+</main>
+</body>
+</html>
