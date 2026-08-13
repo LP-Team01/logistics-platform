@@ -11,7 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Configuration
-@EnableJpaAuditing
+@EnableJpaAuditing(modifyOnCreate = false)
 public class JpaAuditingConfig {
     // @CreatedDate와 @LastModifiedDate가 저장·수정 시각을 자동 기록하도록 활성화합니다.
     @Bean

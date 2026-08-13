@@ -150,9 +150,9 @@ public class OrderCommandService {
             order.addItem(orderItem);
         }
 
-        // 주문 및 주문 상품을 저장하고 UUID를 확정
+        // UUID만 먼저 확정하고 INSERT는 트랜잭션 커밋 때 한 번 수행
         Order savedOrder =
-                orderRepository.saveAndFlush(order);
+                orderRepository.save(order);
 
         // 배송 생성 요청 목록
         List<CreateDeliveryRequest> deliveryRequests =

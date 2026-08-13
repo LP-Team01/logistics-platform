@@ -178,7 +178,7 @@ class OrderCommandServiceBatchTest {
          * 실제 DB를 사용하지 않으므로
          * 저장 시 생성되는 주문과 주문 상품 UUID를 직접 설정
          */
-        when(orderRepository.saveAndFlush(
+        when(orderRepository.save(
                 any(Order.class)
         )).thenAnswer(invocation -> {
             Order savedOrder =
