@@ -44,7 +44,8 @@ public class OrderCommandController {
         roleValidator.validate(
             userRole,
             "MASTER",
-            "HUB_MANAGER"
+            "HUB_MANAGER",
+            "COMPANY_MANAGER"
         );
 
         return ResponseEntity
