@@ -85,7 +85,7 @@ public class ProductService {
     public void deleteProduct(UUID productId, UUID userId) {
         Product product = productRepository.findByProductIdAndDeletedAtIsNull(productId)
             .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
-        product.delete(userId.toString());
+        product.delete(userId);
     }
 
     private void validateHubAndCompanyExists(UUID hubId, UUID companyId) {

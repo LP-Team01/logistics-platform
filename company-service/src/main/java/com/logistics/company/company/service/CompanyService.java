@@ -57,7 +57,7 @@ public class CompanyService {
     public void deleteCompany(UUID companyId, UUID userId) {
         Company company = companyRepository.findByCompanyIdAndDeletedAtIsNull(companyId)
             .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
-        company.delete(userId.toString());
+        company.delete(userId);
     }
 
     // 허브 ID 유효성 검증 메서드

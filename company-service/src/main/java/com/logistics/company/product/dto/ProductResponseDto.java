@@ -15,7 +15,7 @@ public record ProductResponseDto(
     Integer quantity,
     Integer price,
     Instant createdAt,
-    String createdBy
+    UUID createdBy
 ){
     public static ProductResponseDto from(Product product) {
         return new ProductResponseDto(
