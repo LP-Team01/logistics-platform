@@ -199,7 +199,7 @@ gateway:
       # --- order-service ---
       - path: /api/orders
         methods: [POST]
-        roles: [COMPANY_MANAGER]
+        roles: [MASTER, HUB_MANAGER]
       - path: /api/orders
         methods: [GET]
         roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
@@ -217,13 +217,13 @@ gateway:
         roles: [MASTER, HUB_MANAGER]
       - path: /api/orders/*
         methods: [GET]
-        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER]
+        roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
       - path: /api/orders/*
         methods: [PUT]
         roles: [MASTER, HUB_MANAGER]
       - path: /api/orders/*
         methods: [DELETE]
-        roles: [MASTER]
+        roles: [MASTER, HUB_MANAGER]
 
       # --- delivery-service ---
       # 더 구체적인 경로는 반드시 /* 같은 넓은 패턴보다 앞에 와야 함
