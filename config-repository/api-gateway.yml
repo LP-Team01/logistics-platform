@@ -177,11 +177,14 @@ gateway:
         roles: [MASTER]
 
       # --- company-service ---
+      - path: /api/companies
+        methods: [POST]
+        roles: [MASTER, HUB_MANAGER]
       - path: /api/companies/*
         methods: [GET]
         roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER]
       - path: /api/companies/*
-        methods: [DELETE]
+        methods: [PUT, DELETE]
         roles: [MASTER, HUB_MANAGER]
       - path: /api/products
         methods: [GET, POST]
