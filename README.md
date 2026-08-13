@@ -41,6 +41,17 @@
 
 로컬은 Docker Compose로 PostgreSQL, Redis, Kafka, Zipkin과 전체 서비스를 실행합니다. 운영은 RDS PostgreSQL을 외부 DB로 사용하고, ECR 이미지를 EC2의 Docker Compose로 실행합니다. Caddy가 API Gateway 앞에서 TLS 인증서 발급과 HTTPS 역프록시를 담당합니다.
 
+## 👥 팀원 및 역할 분담
+
+| 이름 | 담당 역할 |
+|---|---|
+| 김태희 | 팀장, 인프라, API Gateway, Order Service |
+| 나상우 | User Service, API Gateway |
+| 김민지 | Hub Service |
+| 강윤석 | Company·Product Service |
+| 강소율 | Delivery Service |
+| 이용현 | AI·Notification Service |
+
 ## 🧩 서비스 구성
 
 | 애플리케이션 | 포트 | 역할 |
