@@ -18,7 +18,7 @@ kafka:
     hub-events: ${HUB_EVENTS_TOPIC:hub-events}
 
 internal:
-  service:
+  hub-service:
     name: hub-service
     allowed-name: delivery-service
     key: ${HUB_INTERNAL_SERVICE_KEY}
