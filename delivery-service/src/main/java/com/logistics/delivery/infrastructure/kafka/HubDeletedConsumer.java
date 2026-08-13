@@ -26,7 +26,7 @@ public class HubDeletedConsumer {
         topics = "${kafka.topic.hub-events}",
         containerFactory = "hubEventsKafkaListenerContainerFactory"
     )
-    @CacheEvict(value = "hubs", key = "#event.hubId()")
+    @CacheEvict(value = "delivery-service-hubs", key = "#event.hubId()")
     public void consume(HubDeletedEvent event) {
         deliveryAgentCommandService.deleteAllByHub(event.hubId(), event.deletedBy());
         log.info("허브 삭제로 소속 배송담당자 소프트삭제 및 hubs 캐시 evict 완료. hubId={}, deletedAt={}",
