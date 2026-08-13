@@ -144,7 +144,7 @@ gateway:
         methods: [GET]
         roles: [MASTER, HUB_MANAGER, COMPANY_MANAGER, DELIVERY_MANAGER]
       - path: /api/users/*
-        methods: [PATCH, DELETE]
+        methods: [PATCH, DELETE,GET,PUT]
         roles: [MASTER]
       - path: /api/users
         methods: [GET, POST]
