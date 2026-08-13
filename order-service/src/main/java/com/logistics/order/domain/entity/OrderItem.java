@@ -8,8 +8,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -24,7 +22,6 @@ public class OrderItem extends BaseEntity {
 
     // 주문 상품 한 줄의 고유 식별자입니다.
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "order_item_id", nullable = false, updatable = false)
     private UUID orderItemId;
 
@@ -115,6 +112,7 @@ public class OrderItem extends BaseEntity {
         if (unitPrice == null || unitPrice < 0) throw new BusinessException(ErrorCode.INVALID_ORDER_UNIT_PRICE);
         // 주문 수량 검증
         if (quantity == null || quantity <= 0) throw new BusinessException(ErrorCode.INVALID_ORDER_QUANTITY);
+        this.orderItemId = UUID.randomUUID();
         this.productId = productId;
         this.productName = productName;
         this.unitPrice = unitPrice;
