@@ -12,7 +12,7 @@ public class HubQueryService {
 
     private final HubServiceClient hubServiceClient;
 
-    @Cacheable(value = "hubs", key = "#hubId")
+    @Cacheable(value = "delivery-service-hubs", key = "#hubId")
     public HubServiceHubResponseDto getHub(UUID hubId) {
         return hubServiceClient.getHub(hubId);
     }
