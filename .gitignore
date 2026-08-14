@@ -48,6 +48,7 @@ Desktop.ini
 .env.*
 .env.dev
 .env.prod
+infrastructure/caddy/active-upstream.caddy
 !.env.example
 !.env.rds.example
 !.env.prod.example

@@ -12,7 +12,7 @@ permissions:
 
 concurrency:
   group: publish-ecr-main
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   publish:
@@ -110,7 +110,7 @@ jobs:
           cat > ssm-parameters.json <<EOF
           {
             "commands": [
-              "sudo -u ubuntu -H bash -lc 'cd /home/ubuntu/logistics-platform && git pull --ff-only origin main && bash infrastructure/deploy-ec2.sh $ECR_REGISTRY $IMAGE_TAG $AWS_REGION'"
+              "sudo -u ubuntu -H bash -lc 'cd /home/ubuntu/logistics-platform && git fetch origin main && git checkout --detach $IMAGE_TAG && bash infrastructure/deploy-ec2.sh $ECR_REGISTRY $IMAGE_TAG $AWS_REGION'"
             ]
           }
           EOF
