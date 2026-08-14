@@ -56,7 +56,8 @@ main push
   → GitHub OIDC로 AWS IAM Role 임시 권한 획득
   → 서비스 이미지 9개를 ECR에 commit SHA 태그로 push
   → SSM Run Command로 EC2 배포 명령 실행
-  → EC2가 비활성 Blue/Green 스택에 ECR image pull
+  → EC2가 비활성 색상의 ECR image pull
+  → Eureka, Config Server, 도메인 서비스, Gateway 순차 기동
   → 전체 서비스 Health Check 성공 시 Caddy upstream 전환
   → 진행 중 요청 대기 후 기존 스택 종료
 ```
@@ -72,7 +73,7 @@ docker compose \
   ps
 ```
 
-실제 pull 및 전환은 GitHub Actions가 `infrastructure/deploy-ec2.sh`를 호출해 수행합니다. Redis, Kafka, Zipkin, Caddy와 RDS는 공유하며 Spring 애플리케이션 9개만 `logistics-blue`, `logistics-green` 프로젝트로 교대합니다. 신규 스택이 Healthy가 아니면 Caddy를 변경하지 않으므로 기존 버전이 유지됩니다.
+실제 pull 및 전환은 GitHub Actions가 `infrastructure/deploy-ec2.sh`를 호출해 수행합니다. Redis, Kafka, Zipkin, Caddy와 RDS는 공유하며 Spring 애플리케이션 9개만 `logistics-blue`, `logistics-green` 프로젝트로 교대합니다. 8GiB EC2의 JVM 동시 시작 부하를 줄이기 위해 `Eureka → Config Server → User → Hub → Company → Order → Delivery → AI/Notification → API Gateway` 순서로 기동합니다. 신규 스택이 Healthy가 아니면 Caddy를 변경하지 않고 후보 스택만 정지하므로 기존 버전이 유지됩니다. GitHub Actions의 SSM 완료 대기 시간은 최대 40분입니다.
 
 Blue와 Green은 같은 RDS를 공유합니다. Flyway 변경은 두 애플리케이션 버전이 동시에 사용할 수 있는 확장형 마이그레이션으로 작성하고, 컬럼 삭제·이름 변경 같은 파괴적 변경은 이전 색상 종료 후 별도 배포로 분리합니다.
 
@@ -83,9 +84,15 @@ cat ~/.logistics-platform-deploy/active-color
 # Blue/Green 컨테이너 상태
 docker ps --format 'table {{.Names}}\t{{.Status}}' \
   | grep -E 'logistics-(blue|green)'
+
+# 배포 중 RAM, Swap 및 컨테이너 메모리 확인
+free -h
+docker stats --no-stream
 ```
 
 최초 도입 시에는 동적 upstream 파일 마운트를 적용하기 위해 Caddy가 한 번 재생성됩니다. 이후에는 `caddy reload`로 연결을 유지한 채 upstream만 전환합니다.
+
+2026-08-14 운영 검증에서 `legacy → blue` 전환, Blue 애플리케이션 9개 Health Check, Caddy upstream 변경 및 Legacy 스택 종료를 확인했습니다.
 
 ## 서비스 통신 원칙
 

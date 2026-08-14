@@ -377,7 +377,7 @@ GitHub Actions는 `main`, `dev` 브랜치에 대한 Push 및 Pull Request에서 
 
 ```text
 main Push → CI 성공 → ECR Push → SSM Run Command
-          → 비활성 Blue/Green 스택 실행·Health Check
+          → 비활성 색상의 서비스를 순차 실행·Health Check
           → Caddy 무중단 reload → 기존 스택 종료
 ```
 
@@ -420,7 +420,7 @@ docker compose \
   ps
 ```
 
-배포 스크립트는 Redis, Kafka, Zipkin, Caddy와 RDS는 공유하고 Spring 애플리케이션 9개만 Blue/Green으로 교대합니다. 신규 스택 전체가 Healthy일 때만 Caddy upstream을 변경하며, 실패하면 기존 스택으로 계속 서비스합니다.
+배포 스크립트는 Redis, Kafka, Zipkin, Caddy와 RDS는 공유하고 Spring 애플리케이션 9개만 Blue/Green으로 교대합니다. 8GiB EC2의 시작 부하를 줄이기 위해 `Eureka → Config Server → User → Hub → Company → Order → Delivery → AI/Notification → API Gateway` 순서로 한 서비스씩 기동합니다. 신규 스택 전체가 Healthy일 때만 Caddy upstream을 변경하며, 실패하면 후보 스택을 정지하고 기존 버전으로 계속 서비스합니다. GitHub Actions는 순차 기동 시간을 고려해 SSM 배포 완료를 최대 40분 동안 기다립니다.
 
 Blue와 Green은 같은 RDS를 사용하므로 Flyway는 두 애플리케이션 버전에서 모두 동작하는 하위 호환 마이그레이션으로 작성합니다. 컬럼 삭제나 이름 변경 같은 파괴적 변경은 이전 색상 종료 후 별도 배포로 진행합니다.
 
@@ -431,9 +431,15 @@ cat ~/.logistics-platform-deploy/active-color
 # 배포 상태 확인
 docker ps --format 'table {{.Names}}\t{{.Status}}' \
   | grep -E 'logistics-(blue|green)'
+
+# 배포 중 메모리와 Swap 확인
+free -h
+docker stats --no-stream
 ```
 
 처음 적용할 때는 Caddy에 동적 upstream 파일을 마운트하기 위해 Caddy 컨테이너가 한 번 재생성됩니다. 이후 배포는 Caddy의 graceful reload를 사용합니다.
+
+2026-08-14 운영 검증에서 최초 `legacy → blue` 전환과 Blue 애플리케이션 9개의 Health Check, 기존 Legacy 스택 종료를 확인했습니다.
 
 운영 DB는 RDS PostgreSQL을 사용하며 AI DB에 `vector` Extension을 활성화합니다. RDS가 Private Subnet에 있으면 DBeaver는 EC2 SSH 터널을 통해 접속합니다.
 
