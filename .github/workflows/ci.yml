@@ -38,7 +38,11 @@ jobs:
           docker compose --env-file .env.example -f infrastructure/docker-compose.yml -f infrastructure/docker-compose.rds.yml config --quiet
           docker compose --env-file .env.prod.example -f infrastructure/docker-compose.yml -f infrastructure/docker-compose.prod.yml config --quiet
           ECR_REGISTRY=000000000000.dkr.ecr.ap-northeast-2.amazonaws.com IMAGE_TAG=ci docker compose --env-file .env.prod.example -f infrastructure/docker-compose.yml -f infrastructure/docker-compose.prod.yml -f infrastructure/docker-compose.ecr.yml config --quiet
+          ECR_REGISTRY=000000000000.dkr.ecr.ap-northeast-2.amazonaws.com IMAGE_TAG=ci DEPLOYMENT_COLOR=blue EUREKA_HOST=blue-eureka-server CONFIG_SERVER_HOST=blue-config-server docker compose -p logistics-blue --env-file .env.prod.example -f infrastructure/docker-compose.yml -f infrastructure/docker-compose.prod.yml -f infrastructure/docker-compose.ecr.yml -f infrastructure/docker-compose.blue-green.yml config --quiet
           docker compose --profile monitoring --env-file .env.example -f infrastructure/docker-compose.yml config --quiet
+
+      - name: Validate deployment script
+        run: bash -n infrastructure/deploy-ec2.sh
 
       - name: Build Docker images
         run: docker compose --env-file .env.example -f infrastructure/docker-compose.yml build

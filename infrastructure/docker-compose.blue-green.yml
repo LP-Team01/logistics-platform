@@ -1,0 +1,26 @@
+# Blue/Green application stacks share the existing Redis, Kafka, Zipkin and Caddy network.
+# DEPLOYMENT_COLOR must be either blue or green.
+services:
+  eureka-server:
+    networks:
+      logistics:
+        aliases:
+          - ${DEPLOYMENT_COLOR:?DEPLOYMENT_COLOR is required}-eureka-server
+
+  config-server:
+    networks:
+      logistics:
+        aliases:
+          - ${DEPLOYMENT_COLOR:?DEPLOYMENT_COLOR is required}-config-server
+
+  api-gateway:
+    networks:
+      logistics:
+        aliases:
+          - ${DEPLOYMENT_COLOR:?DEPLOYMENT_COLOR is required}-api-gateway
+
+networks:
+  logistics:
+    external: true
+    name: logistics-platform_logistics
+    driver: !reset null

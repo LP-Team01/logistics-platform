@@ -136,6 +136,7 @@ logistics-platform/
 │  ├─ docker-compose.yml
 │  ├─ docker-compose.prod.yml
 │  ├─ docker-compose.ecr.yml
+│  ├─ docker-compose.blue-green.yml
 │  ├─ Dockerfile
 │  ├─ Caddyfile
 │  ├─ deploy-ec2.sh
@@ -375,7 +376,9 @@ GitHub Actions는 `main`, `dev` 브랜치에 대한 Push 및 Pull Request에서 
 `main` Push CI가 성공하면 `Publish ECR Images` 워크플로가 검증된 커밋 SHA로 서비스 이미지를 빌드합니다. GitHub OIDC로 AWS IAM Role을 임시로 인수하여 ECR에 Push하고, Systems Manager Run Command로 EC2 배포 스크립트를 실행합니다.
 
 ```text
-main Push → CI 성공 → ECR Push → SSM Run Command → EC2 Docker Compose → Caddy HTTPS
+main Push → CI 성공 → ECR Push → SSM Run Command
+          → 비활성 Blue/Green 스택 실행·Health Check
+          → Caddy 무중단 reload → 기존 스택 종료
 ```
 
 GitHub Repository Variables:
@@ -416,6 +419,21 @@ docker compose \
   -f infrastructure/docker-compose.ecr.yml \
   ps
 ```
+
+배포 스크립트는 Redis, Kafka, Zipkin, Caddy와 RDS는 공유하고 Spring 애플리케이션 9개만 Blue/Green으로 교대합니다. 신규 스택 전체가 Healthy일 때만 Caddy upstream을 변경하며, 실패하면 기존 스택으로 계속 서비스합니다.
+
+Blue와 Green은 같은 RDS를 사용하므로 Flyway는 두 애플리케이션 버전에서 모두 동작하는 하위 호환 마이그레이션으로 작성합니다. 컬럼 삭제나 이름 변경 같은 파괴적 변경은 이전 색상 종료 후 별도 배포로 진행합니다.
+
+```bash
+# 현재 활성 색상 확인
+cat ~/.logistics-platform-deploy/active-color
+
+# 배포 상태 확인
+docker ps --format 'table {{.Names}}\t{{.Status}}' \
+  | grep -E 'logistics-(blue|green)'
+```
+
+처음 적용할 때는 Caddy에 동적 upstream 파일을 마운트하기 위해 Caddy 컨테이너가 한 번 재생성됩니다. 이후 배포는 Caddy의 graceful reload를 사용합니다.
 
 운영 DB는 RDS PostgreSQL을 사용하며 AI DB에 `vector` Extension을 활성화합니다. RDS가 Private Subnet에 있으면 DBeaver는 EC2 SSH 터널을 통해 접속합니다.
 

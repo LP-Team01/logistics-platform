@@ -5,8 +5,8 @@ x-app-common: &app-common
   networks: [logistics]
   environment: &common-environment
     SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-local}
-    EUREKA_URL: http://eureka-server:8761/eureka
-    CONFIG_SERVER_URL: http://config-server:8888
+    EUREKA_URL: http://${EUREKA_HOST:-eureka-server}:8761/eureka
+    CONFIG_SERVER_URL: http://${CONFIG_SERVER_HOST:-config-server}:8888
     INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY}
     HUB_INTERNAL_SERVICE_KEY: ${HUB_INTERNAL_SERVICE_KEY}
     JWT_SECRET: ${JWT_SECRET}
