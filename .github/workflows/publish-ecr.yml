@@ -1,10 +1,12 @@
 name: Publish ECR Images
 
 on:
-  workflow_run:
-    workflows: [CI]
-    branches: [main]
-    types: [completed]
+  # Re-enable this block to publish automatically after main CI succeeds.
+  # workflow_run:
+  #   workflows: [CI]
+  #   branches: [main]
+  #   types: [completed]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -16,17 +18,19 @@ concurrency:
 
 jobs:
   publish:
-    if: >
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_branch == 'main'
+    # Re-enable this condition together with the workflow_run trigger.
+    # if: >
+    #   github.event.workflow_run.conclusion == 'success' &&
+    #   github.event.workflow_run.event == 'push' &&
+    #   github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout tested commit
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+        # Re-enable this ref together with the workflow_run trigger.
+        # with:
+        #   ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -74,7 +78,8 @@ jobs:
       - name: Build and push service images
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+          # IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           services=(
             eureka-server
@@ -103,7 +108,8 @@ jobs:
       - name: Deploy tested images to EC2
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+          # IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+          IMAGE_TAG: ${{ github.sha }}
           AWS_REGION: ${{ vars.AWS_REGION }}
           EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
         run: |
