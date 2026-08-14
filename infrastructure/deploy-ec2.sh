@@ -29,6 +29,15 @@ app_services=(
   ai-notification-service
 )
 
+domain_services=(
+  user-service
+  hub-service
+  company-service
+  order-service
+  delivery-service
+  ai-notification-service
+)
+
 base_files=(
   --env-file .env.prod
   -f infrastructure/docker-compose.yml
@@ -103,17 +112,23 @@ cleanup_candidate() {
 trap cleanup_candidate EXIT
 
 docker compose -p "$candidate_project" "${color_files[@]}" config --quiet
-docker compose -p "$candidate_project" "${color_files[@]}" pull "${app_services[@]}"
+docker compose -p "$candidate_project" "${color_files[@]}" pull --quiet "${app_services[@]}"
 
 # Start in dependency order and switch traffic only after every service is healthy.
 docker compose -p "$candidate_project" "${color_files[@]}" \
   up -d --no-deps --force-recreate --wait --wait-timeout 180 eureka-server
 docker compose -p "$candidate_project" "${color_files[@]}" \
   up -d --no-deps --force-recreate --wait --wait-timeout 180 config-server
+# Start memory-heavy domain services one at a time to avoid an EC2 startup spike.
+for service in "${domain_services[@]}"; do
+  echo "Starting $candidate_color $service..."
+  docker compose -p "$candidate_project" "${color_files[@]}" \
+    up -d --no-deps --force-recreate --wait --wait-timeout 300 "$service"
+done
+
+# The gateway is switched only after every downstream service is healthy.
 docker compose -p "$candidate_project" "${color_files[@]}" \
-  up -d --no-deps --force-recreate --wait --wait-timeout 300 \
-  api-gateway user-service hub-service company-service order-service \
-  delivery-service ai-notification-service
+  up -d --no-deps --force-recreate --wait --wait-timeout 300 api-gateway
 
 docker exec "$caddy_id" wget -qO- \
   "http://${candidate_color}-api-gateway:9091/actuator/health" \
