@@ -47,10 +47,14 @@
     .flow { fill: none; stroke: #667991; stroke-width: 2.4; marker-end: url(#arrow); }
     .dash { stroke-dasharray: 8 7; }
     .pipe-row { position: absolute; left: 48px; right: 48px; top: 78px; display: flex; align-items: center; justify-content: space-between; }
-    .pipe-node { width: 196px; height: 94px; border: 2px solid #a6b6ca; border-radius: 15px; background: #fff; display: flex; align-items: center; padding: 12px; gap: 11px; }
-    .pipe-node img { width: 42px; height: 42px; object-fit: contain; }
-    .pipe-node .name { font-size: 15px; font-weight: 800; }
+    .pipe-node { width: 176px; height: 94px; border: 2px solid #a6b6ca; border-radius: 15px; background: #fff; display: flex; align-items: center; padding: 11px; gap: 9px; }
+    .pipe-node img { width: 38px; height: 38px; object-fit: contain; }
+    .pipe-node .name { font-size: 14px; font-weight: 800; }
     .pipe-node .desc { font-size: 11px; color: #6b7b91; margin-top: 4px; }
+    .bg-icon { width: 42px; display: flex; flex-direction: column; gap: 4px; flex: 0 0 auto; }
+    .slot { height: 18px; border-radius: 5px; color: #fff; font-size: 10px; font-weight: 900; display: grid; place-items: center; }
+    .slot.blue { background: #2563eb; }
+    .slot.green { background: #16a34a; }
     .chev { font-size: 28px; font-weight: 900; color: #8091a7; }
     .brand-note { position: absolute; bottom: 14px; left: 30px; color: #718096; font-size: 12px; }
   </style>
@@ -118,16 +122,17 @@
 
   <section class="panel pipeline">
     <div class="panel-title">2. CI/CD 배포 흐름</div>
-    <div class="panel-note">main 브랜치 CI 성공 시 검증된 이미지 자동 배포</div>
+    <div class="panel-note">신규 색상 스택 Health Check 성공 후 Caddy가 트래픽을 무중단 전환</div>
     <div class="pipe-row">
       <div class="pipe-node"><img src="https://api.iconify.design/material-symbols/code-blocks-outline.svg?color=%23475569"><div><div class="name">Developer</div><div class="desc">Push / Pull Request</div></div></div><span class="chev">›</span>
       <div class="pipe-node"><img src="https://api.iconify.design/logos/github-actions.svg"><div><div class="name">GitHub Actions</div><div class="desc">Test · Build · CI</div></div></div><span class="chev">›</span>
       <div class="pipe-node"><img src="https://api.iconify.design/logos/aws-iam.svg"><div><div class="name">AWS IAM OIDC</div><div class="desc">Temporary Credentials</div></div></div><span class="chev">›</span>
       <div class="pipe-node"><img src="https://api.iconify.design/logos/aws.svg"><div><div class="name">Amazon ECR</div><div class="desc">Service Images</div></div></div><span class="chev">›</span>
       <div class="pipe-node"><img src="https://api.iconify.design/logos/aws-systems-manager.svg"><div><div class="name">AWS SSM</div><div class="desc">Run Command</div></div></div><span class="chev">›</span>
-      <div class="pipe-node"><img src="https://api.iconify.design/logos/docker-icon.svg"><div><div class="name">EC2 Deploy</div><div class="desc">Pull · Recreate · Health</div></div></div>
+      <div class="pipe-node"><div class="bg-icon"><span class="slot blue">BLUE</span><span class="slot green">GREEN</span></div><div><div class="name">Blue / Green</div><div class="desc">Idle Stack · Health</div></div></div><span class="chev">›</span>
+      <div class="pipe-node"><img src="https://api.iconify.design/simple-icons/caddy.svg?color=%231f88c0"><div><div class="name">Caddy Switch</div><div class="desc">Traffic · Rollback</div></div></div>
     </div>
-    <div class="brand-note">TLS: Caddy · Runtime: Docker Compose · Database: Amazon RDS · Access: AWS Systems Manager</div>
+    <div class="brand-note">TLS: Caddy · Runtime: Docker Compose · Deployment: Blue/Green · Database: Amazon RDS · Access: AWS Systems Manager</div>
   </section>
 </main>
 </body>

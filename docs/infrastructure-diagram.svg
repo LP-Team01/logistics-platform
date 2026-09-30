@@ -137,11 +137,11 @@
   <text x="1115" y="908" class="box-title">AWS SSM</text>
   <text x="1115" y="934" class="box-sub">Run Command</text>
   <rect x="1270" y="875" width="224" height="82" rx="14" class="aws"/>
-  <text x="1382" y="908" class="box-title">EC2 Deployment</text>
-  <text x="1382" y="934" class="box-sub">Compose Pull · Recreate</text>
+  <text x="1382" y="908" class="box-title">Blue / Green</text>
+  <text x="1382" y="934" class="box-sub">Idle Stack · Health</text>
   <rect x="1540" y="875" width="180" height="82" rx="14" class="data"/>
-  <text x="1630" y="908" class="box-title">Health Check</text>
-  <text x="1630" y="934" class="box-sub">Actuator · Eureka</text>
+  <text x="1630" y="908" class="box-title">Caddy Switch</text>
+  <text x="1630" y="934" class="box-sub">Traffic · Rollback</text>
 
   <path d="M234 916 H290" class="arrow"/>
   <path d="M494 916 H550" class="arrow"/>
@@ -150,5 +150,5 @@
   <path d="M1214 916 H1270" class="arrow"/>
   <path d="M1494 916 H1540" class="arrow"/>
 
-  <text x="58" y="1016" class="note">운영 원칙: 외부 공개는 Caddy 80/443만 허용 · RDS는 사설망 · 서버 관리는 Session Manager 권장 · Secret은 Git에 저장하지 않음</text>
+  <text x="58" y="1016" class="note">운영 원칙: Caddy 80/443만 공개 · 신규 색상 Health Check 후 무중단 전환 · 실패 시 기존 색상 유지 · RDS는 사설망</text>
 </svg>
