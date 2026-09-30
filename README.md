@@ -9,6 +9,7 @@
 ![Kafka](https://img.shields.io/badge/Apache_Kafka-3.9.2-231F20?logo=apachekafka&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI-2088FF?logo=githubactions&logoColor=white)
+![Deployment](https://img.shields.io/badge/Deployment-Blue%2FGreen-2563EB)
 
 ## 📌 프로젝트 소개
 
@@ -16,7 +17,7 @@
 
 서비스별 책임과 데이터베이스를 분리한 MSA 구조를 사용하며, API Gateway를 통해 외부 요청을 단일 진입점으로 관리합니다. 기본 기능은 REST 기반 동기 통신으로 구현하고, AI 알림 서비스는 Spring AI와 Gemini, pgvector 기반 RAG 및 Slack 알림 연동을 지원합니다.
 
-주문 생성 실패 후 배송 보상 취소가 실패하는 경우를 대비해 Outbox와 Kafka 기반 재처리를 적용했습니다. 운영 환경은 GitHub Actions, Amazon ECR, EC2, RDS, Caddy로 구성하며 `main` CI 성공 시 검증된 이미지를 자동 배포합니다.
+주문 생성 실패 후 배송 보상 취소가 실패하는 경우를 대비해 Outbox와 Kafka 기반 재처리를 적용했습니다. 운영 환경은 GitHub Actions, Amazon ECR, EC2, RDS, Caddy로 구성하며 `main` CI 성공 시 검증된 이미지를 Blue/Green 방식으로 무중단 배포합니다.
 
 ## 🎯 주요 목표
 
@@ -31,7 +32,7 @@
 - Slack을 이용한 주요 업무 알림 전송
 - Docker Compose를 이용한 동일한 로컬 개발 환경 제공
 - GitHub Actions를 이용한 테스트 및 빌드 자동화
-- ECR, EC2, RDS와 SSM을 이용한 운영 배포 자동화
+- ECR, EC2, RDS와 SSM을 이용한 Blue/Green 무중단 배포 자동화
 
 ## 🏗️ 인프라 구성도
 
@@ -39,7 +40,7 @@
 
 [수정 가능한 아이콘 구성도 원본](docs/infrastructure-diagram-icons.html)
 
-로컬은 Docker Compose로 PostgreSQL, Redis, Kafka, Zipkin과 전체 서비스를 실행합니다. 운영은 RDS PostgreSQL을 외부 DB로 사용하고, ECR 이미지를 EC2의 Docker Compose로 실행합니다. Caddy가 API Gateway 앞에서 TLS 인증서 발급과 HTTPS 역프록시를 담당합니다.
+로컬은 Docker Compose로 PostgreSQL, Redis, Kafka, Zipkin과 전체 서비스를 실행합니다. 운영은 RDS PostgreSQL을 외부 DB로 사용하고, ECR 이미지를 EC2의 Docker Compose로 실행합니다. 배포 시 비활성 Blue/Green 스택을 순차 기동하고 전체 Health Check가 성공하면 Caddy가 트래픽을 무중단 전환합니다. 실패 시 후보 스택을 종료하고 기존 색상을 유지합니다.
 
 ## 👥 팀원 및 역할 분담
 
