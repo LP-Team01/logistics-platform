@@ -36,7 +36,7 @@
 
 ## 🏗️ 인프라 구성도
 
-![물류관리 플랫폼 인프라 구성도](docs/infrastructure-diagram.jpg)
+![물류관리 플랫폼 Blue/Green 인프라 구성도](docs/infrastructure-diagram-blue-green.jpg)
 
 [수정 가능한 아이콘 구성도 원본](docs/infrastructure-diagram-icons.html)
 
@@ -511,6 +511,6 @@ docker compose --env-file .env -f infrastructure/docker-compose.yml exec kafka /
 ## 📚 관련 문서
 
 - [인프라 설계서](docs/infrastructure.md)
-- [인프라 구성도](docs/infrastructure-diagram.jpg)
+- [인프라 구성도](docs/infrastructure-diagram-blue-green.jpg)
 - [수정 가능한 아이콘 구성도 원본](docs/infrastructure-diagram-icons.html)
 - [Swagger / OpenAPI 가이드](docs/swagger.md)
